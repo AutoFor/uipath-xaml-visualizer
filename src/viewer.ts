@@ -14,7 +14,6 @@ class XamlViewer {
   private parser: XamlParser;                    // XAMLパーサーのインスタンス
   private sequenceRenderer: SequenceRenderer;    // Sequenceレンダラー
   private treeRenderer: TreeViewRenderer;        // ツリービューレンダラー
-  private currentXaml: string = '';              // 現在読み込まれているXAML
   private isVisualMode: boolean = true;          // ビジュアルモード/Rawモード
 
   constructor() {
