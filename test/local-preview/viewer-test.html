@@ -177,7 +177,7 @@
             setTimeout(() => errorDiv.style.display = 'none', 5000);
         }
 
-        // XAMLファイルを読み込み
+        // XAMLファイルをパスから読み込み
         async function loadXamlFile(filePath) {
             try {
                 showLoading(true);
@@ -193,6 +193,29 @@
                 showError(error.message);
                 showLoading(false);
             }
+        }
+
+        // ファイル選択から読み込み
+        function loadXamlFromFile(file) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    showLoading(true);
+                    const xamlText = e.target.result;
+                    currentXaml = xamlText;
+                    await renderXaml(xamlText);
+                    showLoading(false);
+                } catch (error) {
+                    showError(error.message);
+                    showLoading(false);
+                }
+            };
+            reader.onerror = () => {
+                showError('ファイルの読み込みに失敗しました');
+            };
+            reader.readAsText(file);
         }
 
         // XAMLをレンダリング
