@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UiPath XAML Viewer</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ヘッダー -->
+        <header class="viewer-header">
+            <h1>UiPath XAML Visualizer</h1>
+            <div class="header-actions">
+                <button id="toggle-tree" class="btn">ツリー表示切替</button>
+                <button id="toggle-view" class="btn">Raw XML</button>
+            </div>
+        </header>
+
+        <!-- メインコンテナ -->
+        <div class="viewer-container">
+            <!-- サイドバー: ツリービュー -->
+            <aside id="tree-view" class="tree-view">
+                <div class="tree-header">
+                    <input type="text" id="tree-search" placeholder="検索..." />
+                </div>
+                <div id="tree-content" class="tree-content">
+                    <!-- ツリー構造がここに動的に生成される -->
+                </div>
+            </aside>
+
+            <!-- メインビュー -->
+            <main class="main-view">
+                <div id="visual-view" class="visual-view">
+                    <!-- ビジュアル表示がここに生成される -->
+                </div>
+                <div id="raw-view" class="raw-view" style="display: none;">
+                    <pre><code id="raw-xml"></code></pre>
+                </div>
+            </main>
+
+            <!-- 詳細パネル -->
+            <aside id="detail-panel" class="detail-panel" style="display: none;">
+                <div class="panel-header">
+                    <h3>アクティビティ詳細</h3>
+                    <button id="close-panel" class="btn-close">×</button>
+                </div>
+                <div id="detail-content" class="detail-content">
+                    <!-- 詳細情報がここに表示される -->
+                </div>
+            </aside>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>XAML を読み込み中...</p>
+        </div>
+
+        <!-- エラー表示 -->
+        <div id="error" class="error" style="display: none;">
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script src="viewer.js"></script>
+</body>
+</html>
