@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                          // ES2020をターゲットにコンパイル
+    "module": "ESNext",                          // ESModuleを使用
+    "moduleResolution": "node",                  // Node.js形式のモジュール解決
+    "lib": ["ES2020", "DOM"],                    // ES2020とDOM APIを使用可能に
+    "outDir": "./dist",                          // コンパイル結果の出力先
+    "rootDir": "./src",                          // ソースコードのルート
+    "strict": true,                              // 厳格な型チェック有効化
+    "esModuleInterop": true,                     // CommonJSモジュールとの互換性
+    "skipLibCheck": true,                        // 型定義ファイルのチェックスキップ
+    "forceConsistentCasingInFileNames": true,    // ファイル名の大文字小文字を厳密に
+    "resolveJsonModule": true,                   // JSONファイルのインポートを許可
+    "declaration": true,                         // .d.tsファイルを生成
+    "declarationMap": true,                      // ソースマップを生成
+    "sourceMap": true,                           // デバッグ用のソースマップ
+    "noImplicitAny": true,                       // 暗黙のany型を禁止
+    "noUnusedLocals": true,                      // 未使用のローカル変数を警告
+    "noUnusedParameters": true,                  // 未使用のパラメータを警告
+    "noImplicitReturns": true,                   // 戻り値のない分岐を警告
+    "noFallthroughCasesInSwitch": true           // switch文のフォールスルーを警告
+  },
+  "include": [
+    "src/**/*"                                   // srcフォルダ内の全ファイルを対象
+  ],
+  "exclude": [
+    "node_modules",                              // node_modulesを除外
+    "dist",                                      // ビルド結果を除外
+    "tests"                                      // テストファイルを除外
+  ]
+}
