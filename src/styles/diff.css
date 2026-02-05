@@ -1,0 +1,208 @@
+/* 差分表示用のスタイル */
+
+/* 差分サマリー */
+.diff-summary {
+  display: flex;
+  gap: 16px;                                    /* カード間の間隔 */
+  padding: 24px;
+  background-color: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.summary-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.count {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.count.added {
+  color: #28a745;                               /* 緑: 追加 */
+}
+
+.count.removed {
+  color: #d73a49;                               /* 赤: 削除 */
+}
+
+.count.modified {
+  color: #ffa500;                               /* オレンジ: 変更 */
+}
+
+/* 差分コンテナ */
+.diff-container {
+  flex: 1;
+  overflow-y: auto;                             /* 縦スクロール有効 */
+  padding: 24px;
+}
+
+.diff-content {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 差分アイテム */
+.diff-item {
+  margin-bottom: 16px;
+}
+
+.diff-item.diff-added {
+  border-left: 4px solid #28a745;               /* 緑のボーダー */
+  background-color: #f0fff4;                    /* 薄い緑の背景 */
+}
+
+.diff-item.diff-removed {
+  border-left: 4px solid #d73a49;               /* 赤のボーダー */
+  background-color: #ffeef0;                    /* 薄い赤の背景 */
+}
+
+.diff-item.diff-modified {
+  border-left: 4px solid #ffa500;               /* オレンジのボーダー */
+  background-color: #fff8e1;                    /* 薄いオレンジの背景 */
+}
+
+/* バッジ */
+.badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+.badge-added {
+  background-color: #28a745;
+  color: white;
+}
+
+.badge-removed {
+  background-color: #d73a49;
+  color: white;
+}
+
+.badge-modified {
+  background-color: #ffa500;
+  color: white;
+}
+
+/* プロパティ変更 */
+.property-changes {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.changes-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.property-diff-detail {
+  margin-top: 8px;
+}
+
+.property-change-item {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #fafafa;
+  border-radius: 4px;
+}
+
+.prop-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #555;
+}
+
+.diff-before {
+  color: #d73a49;                               /* 赤: 削除された値 */
+  font-family: 'Courier New', monospace;
+  padding: 4px;
+  background-color: #ffeef0;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+.diff-after {
+  color: #28a745;                               /* 緑: 追加された値 */
+  font-family: 'Courier New', monospace;
+  padding: 4px;
+  background-color: #f0fff4;
+  border-radius: 4px;
+}
+
+/* スクリーンショット比較 */
+.screenshot-compare {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: #f0f7ff;
+  border-radius: 4px;
+  border: 1px solid #b3d9ff;
+}
+
+.screenshot-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #0078d4;
+}
+
+.compare-container {
+  display: flex;
+  gap: 16px;                                    /* 画像間の間隔 */
+}
+
+.screenshot-before,
+.screenshot-after {
+  flex: 1;
+  text-align: center;
+}
+
+.screenshot-before .label {
+  font-weight: 600;
+  color: #d73a49;
+  margin-bottom: 8px;
+}
+
+.screenshot-after .label {
+  font-weight: 600;
+  color: #28a745;
+  margin-bottom: 8px;
+}
+
+.compare-container img {
+  max-width: 100%;
+  max-height: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* セレクト */
+.select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: #0078d4;
+}
