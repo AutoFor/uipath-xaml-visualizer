@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Activity x:Class="SimpleWorkflow"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Sequence DisplayName="Main Sequence">
+
+    <!-- ログメッセージ: 開始 -->
+    <ui:LogMessage DisplayName="Log Start" Level="Info" Message="&quot;ワークフロー開始&quot;" />
+
+    <!-- 変数への代入 -->
+    <Assign DisplayName="Set Result Variable">
+      <Assign.To>
+        <OutArgument x:TypeArguments="x:String">[result]</OutArgument>
+      </Assign.To>
+      <Assign.Value>
+        <InArgument x:TypeArguments="x:String">&quot;処理成功&quot;</InArgument>
+      </Assign.Value>
+    </Assign>
+
+    <!-- 条件分岐 -->
+    <If DisplayName="Check Result" Condition="[result &lt;&gt; &quot;&quot;]">
+      <If.Then>
+        <!-- 成功時の処理 -->
+        <Sequence DisplayName="Success Path">
+          <ui:LogMessage DisplayName="Log Success" Level="Info" Message="[&quot;結果: &quot; + result]" />
+        </Sequence>
+      </If.Then>
+      <If.Else>
+        <!-- 失敗時の処理 -->
+        <Sequence DisplayName="Error Path">
+          <ui:LogMessage DisplayName="Log Error" Level="Error" Message="&quot;エラーが発生しました&quot;" />
+        </Sequence>
+      </If.Else>
+    </If>
+
+    <!-- ディレイ -->
+    <Delay DisplayName="Wait 2 seconds" Duration="00:00:02" />
+
+    <!-- ログメッセージ: 終了 -->
+    <ui:LogMessage DisplayName="Log End" Level="Info" Message="&quot;ワークフロー終了&quot;" />
+
+  </Sequence>
+
+</Activity>
