@@ -23,10 +23,25 @@
             margin-top: 0;
             color: #0078d4;
         }
-        .test-controls select,
+        .test-controls input[type="text"],
         .test-controls button {
             width: 100%;
             margin-bottom: 8px;
+        }
+        .test-controls input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        .test-controls input[type="file"] {
+            width: 100%;
+            margin-bottom: 8px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
         }
         .test-info {
             margin-top: 12px;
@@ -34,6 +49,14 @@
             background: #f0f7ff;
             border-radius: 4px;
             font-size: 12px;
+        }
+        .test-hint {
+            margin-top: 8px;
+            padding: 8px;
+            background: #fff3cd;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #856404;
         }
     </style>
 </head>
