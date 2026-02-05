@@ -4,8 +4,10 @@ node_modules/
 # Build outputs
 dist/
 build/
-*.js
-*.js.map
+*.vsix
+
+# TypeScript
+*.tsbuildinfo
 
 # Environment files
 .env
@@ -26,3 +28,10 @@ npm-debug.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Azure DevOps extension
+*.vsix.manifest
