@@ -64,16 +64,30 @@
     <!-- テストコントロールパネル -->
     <div class="test-controls">
         <h3>🧪 ローカルテスト</h3>
-        <label for="xaml-selector">サンプルXAML:</label>
-        <select id="xaml-selector">
-            <option value="">-- 選択してください --</option>
-            <option value="../fixtures/simple-sequence.xaml">Simple Sequence</option>
-            <option value="../fixtures/click-workflow.xaml">Click Workflow</option>
-        </select>
-        <button id="load-btn" class="btn">読み込み</button>
+
+        <!-- 方法1: ファイルパス入力 -->
+        <label for="file-path">XAMLファイルパス:</label>
+        <input type="text" id="file-path" placeholder="例: ../fixtures/simple-sequence.xaml" />
+        <button id="load-path-btn" class="btn">パスから読み込み</button>
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">
+
+        <!-- 方法2: ファイル選択 -->
+        <label for="file-input">または、ファイルを選択:</label>
+        <input type="file" id="file-input" accept=".xaml" />
+
+        <hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">
+
         <button id="reload-btn" class="btn">再読み込み</button>
+
+        <div class="test-hint">
+            <strong>💡 ヒント:</strong><br>
+            - test/fixtures/simple-sequence.xaml<br>
+            - test/fixtures/click-workflow.xaml
+        </div>
+
         <div class="test-info">
-            <strong>注意:</strong> ブラウザのセキュリティ制限により、ローカルファイル読み込みにはWebサーバーが必要です。
+            <strong>注意:</strong> パス入力の場合、Webサーバー（npm run serve）が必要です。
         </div>
     </div>
 
