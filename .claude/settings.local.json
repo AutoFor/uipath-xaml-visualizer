@@ -3,7 +3,8 @@
     "allow": [
       "Bash(git init:*)",
       "Bash(git add:*)",
-      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Add project specification\n\nUiPath XAML Visualizer for GitHub プロジェクトの仕様書を追加。\n主要機能:\n- GitHub上でUiPath XAMLファイルを視覚的に表示\n- ワークフロー構造の可視化（Sequence/Flowchart/StateMachine）\n- 差分表示機能\n- Informative Screenshot表示機能\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
+      "Bash(git commit -m \"$(cat <<''EOF''\nInitial commit: Add project specification\n\nUiPath XAML Visualizer for GitHub プロジェクトの仕様書を追加。\n主要機能:\n- GitHub上でUiPath XAMLファイルを視覚的に表示\n- ワークフロー構造の可視化（Sequence/Flowchart/StateMachine）\n- 差分表示機能\n- Informative Screenshot表示機能\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []
