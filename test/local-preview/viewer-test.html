@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UiPath XAML Viewer - Local Test</title>
+    <link rel="stylesheet" href="../../dist/styles/main.css">
+    <style>
+        /* ローカルテスト用の追加スタイル */
+        .test-controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 16px;
+            border: 2px solid #0078d4;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            z-index: 2000;
+            max-width: 300px;
+        }
+        .test-controls h3 {
+            margin-top: 0;
+            color: #0078d4;
+        }
+        .test-controls select,
+        .test-controls button {
+            width: 100%;
+            margin-bottom: 8px;
+        }
+        .test-info {
+            margin-top: 12px;
+            padding: 8px;
+            background: #f0f7ff;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <!-- テストコントロールパネル -->
+    <div class="test-controls">
+        <h3>🧪 ローカルテスト</h3>
+        <label for="xaml-selector">サンプルXAML:</label>
+        <select id="xaml-selector">
+            <option value="">-- 選択してください --</option>
+            <option value="../fixtures/simple-sequence.xaml">Simple Sequence</option>
+            <option value="../fixtures/click-workflow.xaml">Click Workflow</option>
+        </select>
+        <button id="load-btn" class="btn">読み込み</button>
+        <button id="reload-btn" class="btn">再読み込み</button>
+        <div class="test-info">
+            <strong>注意:</strong> ブラウザのセキュリティ制限により、ローカルファイル読み込みにはWebサーバーが必要です。
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- ヘッダー -->
+        <header class="viewer-header">
+            <h1>UiPath XAML Visualizer - ローカルテスト</h1>
+            <div class="header-actions">
+                <button id="toggle-tree" class="btn">ツリー表示切替</button>
+                <button id="toggle-view" class="btn">Raw XML</button>
+            </div>
+        </header>
+
+        <!-- メインコンテナ -->
+        <div class="viewer-container">
+            <!-- サイドバー: ツリービュー -->
+            <aside id="tree-view" class="tree-view">
+                <div class="tree-header">
+                    <input type="text" id="tree-search" placeholder="検索..." />
+                </div>
+                <div id="tree-content" class="tree-content">
+                    <!-- ツリー構造がここに動的に生成される -->
+                </div>
+            </aside>
+
+            <!-- メインビュー -->
+            <main class="main-view">
+                <div id="visual-view" class="visual-view">
+                    <div style="text-align: center; padding: 48px; color: #666;">
+                        <h2>📄 XAMLファイルを選択してください</h2>
+                        <p>右上のコントロールパネルからサンプルXAMLを選択して「読み込み」ボタンをクリックしてください。</p>
+                    </div>
+                </div>
+                <div id="raw-view" class="raw-view" style="display: none;">
+                    <pre><code id="raw-xml"></code></pre>
+                </div>
+            </main>
+
+            <!-- 詳細パネル -->
+            <aside id="detail-panel" class="detail-panel" style="display: none;">
+                <div class="panel-header">
+                    <h3>アクティビティ詳細</h3>
+                    <button id="close-panel" class="btn-close">×</button>
+                </div>
+                <div id="detail-content" class="detail-content">
+                    <!-- 詳細情報がここに表示される -->
+                </div>
+            </aside>
+        </div>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>XAML を読み込み中...</p>
+        </div>
+
+        <!-- エラー表示 -->
+        <div id="error" class="error" style="display: none;">
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <!-- ローカルテスト用のスクリプト -->
+    <script type="module">
+        // パーサーとレンダラーをインポート
+        import { XamlParser } from '../../dist/parser/xaml-parser.js';
+        import { SequenceRenderer } from '../../dist/renderer/sequence-renderer.js';
+        import { TreeViewRenderer } from '../../dist/renderer/tree-view-renderer.js';
+
+        let currentXaml = '';
+        let isVisualMode = true;
+        const parser = new XamlParser();
+        const sequenceRenderer = new SequenceRenderer();
+        const treeRenderer = new TreeViewRenderer();
+
+        // ローディング表示
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        // エラー表示
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 5000);
+        }
+
+        // XAMLファイルを読み込み
+        async function loadXamlFile(filePath) {
+            try {
+                showLoading(true);
+                const response = await fetch(filePath);
+                if (!response.ok) {
+                    throw new Error(`ファイルの読み込みに失敗しました: ${response.status}`);
+                }
+                const xamlText = await response.text();
+                currentXaml = xamlText;
+                await renderXaml(xamlText);
+                showLoading(false);
+            } catch (error) {
+                showError(error.message);
+                showLoading(false);
+            }
+        }
+
+        // XAMLをレンダリング
+        async function renderXaml(xaml) {
+            try {
+                // パース
+                const parsedData = parser.parse(xaml);
+
+                // ツリービューを生成
+                const treeContent = document.getElementById('tree-content');
+                treeRenderer.render(parsedData, treeContent);
+
+                // メインビューを生成
+                const visualView = document.getElementById('visual-view');
+                sequenceRenderer.render(parsedData, visualView);
+
+                // Raw XMLも準備
+                const rawXml = document.getElementById('raw-xml');
+                rawXml.textContent = xaml;
+            } catch (error) {
+                showError('XAML解析エラー: ' + error.message);
+            }
+        }
+
+        // ビュー切替
+        function toggleView() {
+            isVisualMode = !isVisualMode;
+            const visualView = document.getElementById('visual-view');
+            const rawView = document.getElementById('raw-view');
+            const toggleBtn = document.getElementById('toggle-view');
+
+            if (isVisualMode) {
+                visualView.style.display = 'block';
+                rawView.style.display = 'none';
+                toggleBtn.textContent = 'Raw XML';
+            } else {
+                visualView.style.display = 'none';
+                rawView.style.display = 'block';
+                toggleBtn.textContent = 'Visual View';
+            }
+        }
+
+        // ツリー表示切替
+        function toggleTreeView() {
+            const treeView = document.getElementById('tree-view');
+            treeView.classList.toggle('hidden');
+        }
+
+        // 詳細パネルを閉じる
+        function closeDetailPanel() {
+            document.getElementById('detail-panel').style.display = 'none';
+        }
+
+        // イベントリスナー
+        document.getElementById('load-btn').addEventListener('click', () => {
+            const selector = document.getElementById('xaml-selector');
+            const filePath = selector.value;
+            if (filePath) {
+                loadXamlFile(filePath);
+            } else {
+                showError('XAMLファイルを選択してください');
+            }
+        });
+
+        document.getElementById('reload-btn').addEventListener('click', () => {
+            if (currentXaml) {
+                renderXaml(currentXaml);
+            } else {
+                showError('先にXAMLファイルを読み込んでください');
+            }
+        });
+
+        document.getElementById('toggle-view').addEventListener('click', toggleView);
+        document.getElementById('toggle-tree').addEventListener('click', toggleTreeView);
+        document.getElementById('close-panel').addEventListener('click', closeDetailPanel);
+    </script>
+</body>
+</html>
