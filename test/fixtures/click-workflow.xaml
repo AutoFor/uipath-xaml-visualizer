@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Activity x:Class="ClickWorkflow"
+  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
+  xmlns:ui="http://schemas.uipath.com/workflow/activities"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Sequence DisplayName="Browser Automation">
+
+    <!-- ブラウザを開く -->
+    <ui:LogMessage DisplayName="Open Browser" Level="Info" Message="&quot;ブラウザを起動します&quot;" />
+
+    <!-- ログインボタンをクリック -->
+    <ui:Click DisplayName="Click Login Button"
+              InformativeScreenshot="click_login_001.png"
+              ContinueOnError="False">
+      <ui:Click.Target>
+        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='loginBtn' tag='BUTTON'/&gt;" />
+      </ui:Click.Target>
+    </ui:Click>
+
+    <!-- ユーザー名を入力 -->
+    <ui:TypeInto DisplayName="Type Username"
+                 InformativeScreenshot="type_username_001.png"
+                 Text="&quot;testuser@example.com&quot;">
+      <ui:TypeInto.Target>
+        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='username' tag='INPUT'/&gt;" />
+      </ui:TypeInto.Target>
+    </ui:TypeInto>
+
+    <!-- パスワードを入力 -->
+    <ui:TypeInto DisplayName="Type Password"
+                 InformativeScreenshot="type_password_001.png"
+                 Text="&quot;********&quot;">
+      <ui:TypeInto.Target>
+        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='password' tag='INPUT' type='password'/&gt;" />
+      </ui:TypeInto.Target>
+    </ui:TypeInto>
+
+    <!-- サブミットボタンをクリック -->
+    <ui:Click DisplayName="Click Submit"
+              InformativeScreenshot="click_submit_001.png">
+      <ui:Click.Target>
+        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='submitBtn' tag='BUTTON'/&gt;" />
+      </ui:Click.Target>
+    </ui:Click>
+
+    <!-- 結果を取得 -->
+    <ui:GetText DisplayName="Get Result Message">
+      <ui:GetText.Target>
+        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl class='result-message' tag='DIV'/&gt;" />
+      </ui:GetText.Target>
+    </ui:GetText>
+
+    <!-- 成功ログ -->
+    <ui:LogMessage DisplayName="Log Success" Level="Info" Message="&quot;ログイン完了&quot;" />
+
+  </Sequence>
+
+</Activity>
