@@ -3,10 +3,10 @@
  * XAMLファイルをパースして構造化データに変換
  */
 
-// UiPath固有の名前空間
-const UIPATH_NS = 'http://schemas.uipath.com/workflow/activities';
-const XAML_NS = 'http://schemas.microsoft.com/winfx/2006/xaml';
-const ACTIVITIES_NS = 'http://schemas.microsoft.com/netfx/2009/xaml/activities';
+// UiPath固有の名前空間（将来の拡張用に定義）
+// const UIPATH_NS = 'http://schemas.uipath.com/workflow/activities';
+// const XAML_NS = 'http://schemas.microsoft.com/winfx/2006/xaml';
+// const ACTIVITIES_NS = 'http://schemas.microsoft.com/netfx/2009/xaml/activities';
 
 /**
  * アクティビティの型定義
