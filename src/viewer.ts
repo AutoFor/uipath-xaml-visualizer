@@ -56,7 +56,6 @@ class XamlViewer {
         throw new Error('ファイル内容を取得できませんでした');
       }
 
-      this.currentXaml = fileContent;
       await this.renderXaml(fileContent);        // XAMLをレンダリング
 
       this.showLoading(false);                   // ローディング非表示
