@@ -1,8 +1,8 @@
-# UiPath XAML Visualizer for GitHub
+# UiPath XAML Visualizer for Azure DevOps
 
 ## 概要
 
-GitHub上でUiPath StudioのXAMLファイルを視覚的に表示するブラウザ拡張機能。生のXMLコードではなく、ワークフローの構造を直感的に理解できる形式で表示する。
+Azure DevOps上でUiPath StudioのXAMLファイルを視覚的に表示する拡張機能。Repos内の生XMLコードを、ワークフローの構造として直感的に理解できる形式で表示する。
 
 ---
 
@@ -10,21 +10,21 @@ GitHub上でUiPath StudioのXAMLファイルを視覚的に表示するブラウ
 
 ### 現状の問題点
 
-- GitHubでUiPath XAMLファイルを開くと、生のXMLコードとして表示される
+- Azure DevOps ReposでUiPath XAMLファイルを開くと、生のXMLコードとして表示される
 - XMLの名前空間、属性、ネストが複雑で可読性が低い
 - ワークフローの全体像を把握するのに時間がかかる
-- コードレビュー時に変更点の影響範囲が理解しにくい
+- Pull Request レビュー時に変更点の影響範囲が理解しにくい
 
 ### 解決策
 
-XAMLをパースし、UiPath Studioに近いビジュアル表現で表示する拡張機能を開発する。
+Azure DevOps拡張機能として、XAMLをパースしUiPath Studioに近いビジュアル表現で表示する。Azure Repos のファイルビューおよびPR差分ビューに統合する。
 
 ---
 
 ## 対象ユーザー
 
 - UiPath RPA開発者
-- コードレビュー担当者
+- Pull Request レビュー担当者
 - プロジェクト管理者・リーダー
 
 ---
@@ -37,9 +37,9 @@ XAMLをパースし、UiPath Studioに近いビジュアル表現で表示する
 
 | 機能 | 説明 |
 |------|------|
-| XAML自動検出 | GitHubの`.xaml`ファイルページを自動検出 |
+| XAML自動検出 | Azure Repos内の`.xaml`ファイルを自動検出 |
 | UiPath判定 | UiPath固有の名前空間（`http://schemas.uipath.com/workflow/activities`）で識別 |
-| 表示切替 | 「Raw XML」⇔「Visual View」のトグルボタン |
+| 表示切替 | 「Raw XML」⇔「Visual View」のタブ切替 |
 
 #### 1.2 ワークフロー可視化
 
@@ -202,7 +202,6 @@ UiPathプロジェクトでは、UI操作アクティビティ（Click、TypeInt
 │                                                           │
 │   ┌─────────────────────────────────────────────────┐     │
 │   │                                                 │     │
-│   │                                                 │     │
 │   │            [フルサイズ画像]                      │     │
 │   │                                                 │     │
 │   │                 🔴 ← クリック位置               │     │
@@ -232,7 +231,7 @@ Informative Screenshot を持つ可能性のあるアクティビティ:
 | GetAttribute | 属性取得 |
 | SelectItem | ドロップダウン選択 |
 
-#### 4.5.4 GitHub上での画像取得
+#### 4.5.4 Azure DevOps上での画像取得
 
 **画像取得フロー:**
 
@@ -241,11 +240,12 @@ Informative Screenshot を持つ可能性のあるアクティビティ:
    └─ 例: "click_login_abc123.png"
 
 2. .screenshots フォルダのパスを構築
-   └─ 同一リポジトリ内: /{owner}/{repo}/blob/{branch}/.screenshots/
-   └─ サブフォルダ対応: /{path}/.screenshots/
+   └─ Azure DevOps REST API: GET /items?path=/.screenshots/{filename}
 
-3. GitHub Raw URL で画像を取得
-   └─ https://raw.githubusercontent.com/{owner}/{repo}/{branch}/.screenshots/{filename}
+3. Git Items API で画像バイナリを取得
+   └─ GET {org}/{project}/_apis/git/repositories/{repoId}/items
+        ?path=.screenshots/{filename}
+        &api-version=7.1
 
 4. 画像をキャッシュして表示
 ```
@@ -464,17 +464,17 @@ PR全体の変更サマリーを生成:
 | メモリ使用量 | 50MB以下 |
 | 大規模ファイル対応 | 10,000行以上は警告表示 |
 
-### ブラウザ対応
+### 対応環境
 
-- Google Chrome（優先）
-- Microsoft Edge
-- Firefox（将来対応）
+- Azure DevOps Services（クラウド）
+- Azure DevOps Server 2020以降（オンプレミス）
 
 ### セキュリティ
 
 - XAMLデータは外部サーバーに送信しない
-- すべての処理はクライアントサイドで完結
-- 最小限の権限リクエスト
+- すべての処理はクライアントサイド（拡張機能iframe内）で完結
+- Azure DevOps API呼び出しは拡張機能SDKの認証を利用
+- 最小限のスコープリクエスト（`vso.code` のみ）
 
 ---
 
@@ -482,100 +482,206 @@ PR全体の変更サマリーを生成:
 
 ### アーキテクチャ
 
+Azure DevOps拡張機能はiframe内で動作する。Azure DevOps Extension SDKを通じてホストと通信し、REST APIでリポジトリデータを取得する。
+
 ```
-┌─────────────────────────────────────────────────────┐
-│                  Browser Extension                   │
-├─────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
-│  │  Content    │  │  XAML       │  │  Renderer   │  │
-│  │  Script     │→ │  Parser     │→ │  Engine     │  │
-│  └─────────────┘  └─────────────┘  └─────────────┘  │
-│         ↓                                ↓          │
-│  ┌─────────────┐               ┌─────────────────┐  │
-│  │  GitHub     │               │  Visual         │  │
-│  │  DOM        │               │  Components     │  │
-│  └─────────────┘               └─────────────────┘  │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   Azure DevOps Host                          │
+├─────────────────────────────────────────────────────────────┤
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │              Extension iframe (sandboxed)               │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌──────────────┐   │  │
+│  │  │  Extension  │  │  XAML       │  │  Renderer    │   │  │
+│  │  │  SDK Init   │→ │  Parser     │→ │  (React)     │   │  │
+│  │  └──────┬──────┘  └─────────────┘  └──────────────┘   │  │
+│  │         │                                              │  │
+│  │  ┌──────▼──────┐  ┌──────────────────────────────────┐ │  │
+│  │  │  Azure      │  │  azure-devops-ui コンポーネント    │ │  │
+│  │  │  DevOps     │  │  (Table, Card, TreeView, Tabs)   │ │  │
+│  │  │  REST API   │  └──────────────────────────────────┘ │  │
+│  │  └─────────────┘                                       │  │
+│  └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+### 技術スタック
+
+| 項目 | 技術 |
+|------|------|
+| 言語 | TypeScript |
+| フレームワーク | React |
+| UIライブラリ | azure-devops-ui |
+| SDK | azure-devops-extension-sdk, azure-devops-extension-api |
+| ビルド | webpack |
+| スタイル | SASS |
+| テスト | Jest + React Testing Library + Playwright |
+| パッケージング | tfx-cli（.vsix生成） |
+
+### Azure DevOps 拡張ポイント（Contribution Points）
+
+| Contribution | Type | Target | 用途 |
+|-------------|------|--------|------|
+| xaml-file-viewer | `ms.vss-code-web.content-renderer` | `ms.vss-code-web.content-renderer-collection` | Repos ファイルビューにカスタムレンダラー |
+| xaml-pr-tab | `ms.vss-web.tab` | `ms.vss-code-web.pr-tabs` | PRに「XAML Changes」タブ追加 |
 
 ### ディレクトリ構成
 
 ```
 uipath-xaml-visualizer/
-├── manifest.json           # 拡張機能マニフェスト（v3）
+├── vss-extension.json          # Azure DevOps拡張機能マニフェスト
+├── package.json
+├── tsconfig.json
+├── webpack.config.js
 ├── src/
-│   ├── content/
-│   │   ├── content.js      # GitHubページ検出・DOM操作
-│   │   └── content.css     # ビジュアルスタイル
+│   ├── FileViewer/
+│   │   ├── FileViewer.tsx      # ファイルビュー Hub
+│   │   ├── FileViewer.html
+│   │   └── FileViewer.scss
+│   ├── DiffViewer/
+│   │   ├── DiffViewer.tsx      # PR差分ビュー
+│   │   ├── DiffViewer.html
+│   │   └── DiffViewer.scss
+│   ├── PrSummary/
+│   │   ├── PrSummary.tsx       # PR変更サマリータブ
+│   │   ├── PrSummary.html
+│   │   └── PrSummary.scss
+│   ├── components/
+│   │   ├── ActivityCard.tsx
+│   │   ├── SequenceView.tsx
+│   │   ├── FlowchartView.tsx
+│   │   ├── TreeView.tsx
+│   │   ├── DetailPanel.tsx
+│   │   ├── ScreenshotView.tsx
+│   │   ├── DiffSummary.tsx
+│   │   └── PropertyDiff.tsx
 │   ├── parser/
-│   │   ├── xaml-parser.js  # XAMLパーサー
-│   │   └── activity-map.js # アクティビティ定義マップ
-│   ├── renderer/
-│   │   ├── sequence.js     # Sequence描画
-│   │   ├── flowchart.js    # Flowchart描画
-│   │   ├── tree-view.js    # ツリービュー
-│   │   └── detail-panel.js # 詳細パネル
+│   │   ├── xaml-parser.ts
+│   │   ├── property-extractor.ts
+│   │   └── activity-map.ts
+│   ├── diff/
+│   │   ├── activity-diff.ts
+│   │   └── property-diff.ts
+│   ├── services/
+│   │   ├── git-api.ts           # Azure DevOps Git REST API
+│   │   └── screenshot-resolver.ts
 │   └── utils/
-│       └── helpers.js      # ユーティリティ関数
-├── icons/
-│   ├── icon16.png
-│   ├── icon48.png
-│   └── icon128.png
-├── popup/
-│   ├── popup.html          # ポップアップUI
-│   └── popup.js
-└── styles/
-    └── main.css
+│       └── helpers.ts
+├── static/
+│   └── images/
+│       └── logo.png
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   ├── e2e/
+│   └── fixtures/
+└── configs/
+    ├── dev.json                 # 開発用マニフェスト
+    └── release.json             # リリース用マニフェスト
 ```
 
-### manifest.json
+### vss-extension.json
 
 ```json
 {
-  "manifest_version": 3,
-  "name": "UiPath XAML Visualizer for GitHub",
+  "manifestVersion": 1,
+  "id": "uipath-xaml-visualizer",
+  "publisher": "your-publisher-id",
   "version": "1.0.0",
-  "description": "GitHubでUiPath XAMLファイルを視覚的に表示",
+  "name": "UiPath XAML Visualizer",
+  "description": "Azure DevOpsでUiPath XAMLファイルを視覚的に表示",
+  "public": false,
+  "categories": ["Azure Repos"],
+  "targets": [
+    { "id": "Microsoft.VisualStudio.Services" }
+  ],
   "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
+    "default": "static/images/logo.png"
   },
-  "permissions": ["activeTab", "storage"],
-  "host_permissions": ["https://github.com/*"],
-  "action": {
-    "default_popup": "popup/popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png"
-    }
+  "scopes": ["vso.code"],
+  "content": {
+    "details": { "path": "overview.md" }
   },
-  "content_scripts": [
+  "files": [
+    { "path": "dist", "addressable": true },
+    { "path": "static", "addressable": true }
+  ],
+  "contributions": [
     {
-      "matches": ["https://github.com/*"],
-      "js": ["src/content/content.js"],
-      "css": ["src/content/content.css"]
+      "id": "xaml-file-viewer",
+      "type": "ms.vss-code-web.content-renderer",
+      "targets": ["ms.vss-code-web.content-renderer-collection"],
+      "properties": {
+        "uri": "dist/FileViewer/FileViewer.html",
+        "mimeTypes": ["text/xml"],
+        "fileExtensions": [".xaml"]
+      }
+    },
+    {
+      "id": "xaml-pr-tab",
+      "type": "ms.vss-web.tab",
+      "targets": ["ms.vss-code-web.pr-tabs"],
+      "properties": {
+        "name": "XAML Changes",
+        "title": "UiPath XAML Changes",
+        "uri": "dist/PrSummary/PrSummary.html"
+      }
     }
   ]
 }
 ```
 
-### XAMLパース処理
+### Azure DevOps REST API 利用
 
-```javascript
-// 主要な名前空間
-const UIPATH_NS = 'http://schemas.uipath.com/workflow/activities';
-const XAML_NS = 'http://schemas.microsoft.com/winfx/2006/xaml';
+```typescript
+import * as SDK from "azure-devops-extension-sdk";
+import { getClient } from "azure-devops-extension-api";
+import { GitRestClient } from "azure-devops-extension-api/Git";
 
-// アクティビティタイプの判定
-function parseActivity(element) {
-  return {
-    type: element.localName,
-    displayName: element.getAttribute('DisplayName'),
-    annotations: parseAnnotations(element),
-    properties: parseProperties(element),
-    children: parseChildren(element)
-  };
+// XAMLファイル内容の取得
+async function getFileContent(
+  repositoryId: string,
+  path: string,
+  version: string
+): Promise<string> {
+  const gitClient = getClient(GitRestClient);
+  const item = await gitClient.getItemText(
+    repositoryId, path,
+    undefined, undefined, undefined, undefined, undefined,
+    { version, versionType: 0 }
+  );
+  return item;
+}
+
+// スクリーンショット画像の取得
+async function getScreenshotBlob(
+  repositoryId: string,
+  screenshotPath: string,
+  version: string
+): Promise<Blob> {
+  const gitClient = getClient(GitRestClient);
+  const stream = await gitClient.getItemContent(
+    repositoryId, screenshotPath,
+    undefined, undefined, undefined, undefined, undefined,
+    { version, versionType: 0 }
+  );
+  return new Blob([stream]);
+}
+
+// PR差分の取得
+async function getPrChanges(
+  repositoryId: string,
+  pullRequestId: number
+): Promise<GitChange[]> {
+  const gitClient = getClient(GitRestClient);
+  const iterations = await gitClient.getPullRequestIterations(
+    repositoryId, pullRequestId
+  );
+  const lastIteration = iterations[iterations.length - 1];
+  const changes = await gitClient.getPullRequestIterationChanges(
+    repositoryId, pullRequestId, lastIteration.id!
+  );
+  return changes.changeEntries
+    .filter(c => c.item?.path?.endsWith('.xaml'));
 }
 ```
 
@@ -585,18 +691,30 @@ function parseActivity(element) {
 
 ### カラースキーム
 
+azure-devops-ui のデザインシステムに準拠:
+
 | 用途 | カラー |
 |------|--------|
-| Sequence背景 | `#E3F2FD` (薄い青) |
-| Flowchart背景 | `#F3E5F5` (薄い紫) |
-| If/条件分岐 | `#FFF3E0` (薄いオレンジ) |
-| ループ | `#E8F5E9` (薄い緑) |
-| エラーハンドリング | `#FFEBEE` (薄い赤) |
+| Sequence背景 | `--palette-primary-tint-40` |
+| Flowchart背景 | `--palette-purple-tint-40` |
+| If/条件分岐 | `--palette-orange-tint-40` |
+| ループ | `--palette-green-tint-40` |
+| エラーハンドリング | `--palette-red-tint-40` |
+| 差分追加 | `--communication-background` |
+| 差分削除 | `--palette-red-tint-40` |
 
-### アイコン
+### コンポーネント
 
-- Material Icons または Lucide Icons を使用
-- UiPath Studioのアイコンに近いデザイン
+azure-devops-ui コンポーネントを活用:
+
+| 用途 | コンポーネント |
+|------|--------------|
+| 表示切替 | `Tabs` / `TabBar` |
+| ツリービュー | `Tree` |
+| アクティビティ詳細 | `Card` / `Panel` |
+| 差分サマリー | `Table` |
+| フィルタリング | `FilterBar` |
+| ステータス表示 | `Pill` / `Status` |
 
 ---
 
@@ -604,10 +722,11 @@ function parseActivity(element) {
 
 ### Phase 1: MVP（2週間）
 
-- [x] プロジェクトセットアップ
+- [x] プロジェクトセットアップ（webpack + TypeScript + React）
+- [ ] vss-extension.json 定義
 - [ ] 基本的なXAMLパーサー
 - [ ] Sequence表示
-- [ ] 表示切替ボタン
+- [ ] ファイルビュータブ追加
 
 ### Phase 2: 主要機能（2週間）
 
@@ -619,14 +738,14 @@ function parseActivity(element) {
 ### Phase 3: 拡張機能（2週間）
 
 - [ ] StateMachine対応
-- [ ] Diff View対応
+- [ ] PR差分ビュー・サマリータブ
+- [ ] Informative Screenshot表示
 - [ ] 設定画面
-- [ ] ダークモード対応
 
 ### Phase 4: 最適化・公開（1週間）
 
 - [ ] パフォーマンス最適化
-- [ ] Chrome Web Store公開
+- [ ] Visual Studio Marketplace公開
 - [ ] ドキュメント整備
 
 ---
@@ -652,8 +771,8 @@ function parseActivity(element) {
 | レベル | 比率 | ツール |
 |--------|------|--------|
 | ユニットテスト | 70% | Jest |
-| 統合テスト | 20% | Jest + jsdom |
-| E2Eテスト | 10% | Playwright / Puppeteer |
+| 統合テスト | 20% | Jest + React Testing Library |
+| E2Eテスト | 10% | Playwright |
 
 ---
 
@@ -661,97 +780,24 @@ function parseActivity(element) {
 
 #### 1.1 XAMLパーサーテスト
 
-**テストファイル:** `tests/unit/parser/xaml-parser.test.js`
-
-```javascript
-describe('XAMLParser', () => {
-  describe('parseActivity', () => {
-    test('Sequence要素を正しくパースできる', () => {
-      const xaml = `<Sequence DisplayName="Main">...</Sequence>`;
-      const result = parseActivity(xaml);
-      expect(result.type).toBe('Sequence');
-      expect(result.displayName).toBe('Main');
-    });
-
-    test('ネストしたアクティビティをパースできる', () => {
-      const xaml = `
-        <Sequence DisplayName="Parent">
-          <Assign DisplayName="Child1" />
-          <Assign DisplayName="Child2" />
-        </Sequence>
-      `;
-      const result = parseActivity(xaml);
-      expect(result.children).toHaveLength(2);
-    });
-
-    test('UiPath名前空間のアクティビティを識別できる', () => {
-      const xaml = `<ui:Click DisplayName="Click Button" />`;
-      const result = parseActivity(xaml);
-      expect(result.type).toBe('Click');
-      expect(result.namespace).toBe('ui');
-    });
-  });
-});
-```
-
-**テストケース一覧:**
+**テストファイル:** `tests/unit/parser/xaml-parser.test.ts`
 
 | ID | テストケース | 期待結果 |
 |----|-------------|----------|
 | UP-001 | 空のXAML | エラーハンドリング |
 | UP-002 | 不正なXML構文 | パースエラー返却 |
-| UP-003 | Sequence単体 | 正常パース |
-| UP-004 | Flowchart単体 | 正常パース |
-| UP-005 | StateMachine単体 | 正常パース |
-| UP-006 | 深いネスト（10階層） | 正常パース |
-| UP-007 | 大量アクティビティ（100個） | 正常パース |
-| UP-008 | 日本語DisplayName | 正常パース |
-| UP-009 | 特殊文字を含む属性値 | エスケープ処理 |
-| UP-010 | InformativeScreenshot属性 | ファイル名抽出 |
+| UP-003 | Sequence単体 | type="Sequence", displayName正常 |
+| UP-004 | Flowchart単体 | type="Flowchart" 正常 |
+| UP-005 | StateMachine単体 | type="StateMachine" 正常 |
+| UP-006 | 深いネスト（10階層） | 全階層パース |
+| UP-007 | 大量アクティビティ（100個） | 全件パース |
+| UP-008 | 日本語DisplayName | 文字化けなし |
+| UP-009 | 特殊文字を含む属性値（`&lt;`, `&amp;`） | エスケープ処理 |
+| UP-010 | InformativeScreenshot属性あり | ファイル名抽出 |
 
 #### 1.2 プロパティ抽出テスト
 
-**テストファイル:** `tests/unit/parser/property-extractor.test.js`
-
-```javascript
-describe('PropertyExtractor', () => {
-  describe('extractProperties', () => {
-    test('Assign のTo/Valueを抽出できる', () => {
-      const activity = parseActivity(`
-        <Assign DisplayName="Set Variable">
-          <Assign.To><OutArgument>[result]</OutArgument></Assign.To>
-          <Assign.Value><InArgument>"Success"</InArgument></Assign.Value>
-        </Assign>
-      `);
-      const props = extractProperties(activity);
-      expect(props.to).toBe('result');
-      expect(props.value).toBe('"Success"');
-    });
-
-    test('Click のSelectorを抽出できる', () => {
-      const activity = parseActivity(`
-        <ui:Click DisplayName="Click">
-          <ui:Click.Target>
-            <ui:Target Selector="<html/><webctrl id='btn'/>" />
-          </ui:Click.Target>
-        </ui:Click>
-      `);
-      const props = extractProperties(activity);
-      expect(props.selector).toContain('webctrl');
-    });
-
-    test('InformativeScreenshotを抽出できる', () => {
-      const activity = parseActivity(`
-        <ui:Click InformativeScreenshot="click_001.png" />
-      `);
-      const props = extractProperties(activity);
-      expect(props.informativeScreenshot).toBe('click_001.png');
-    });
-  });
-});
-```
-
-**テストケース一覧:**
+**テストファイル:** `tests/unit/parser/property-extractor.test.ts`
 
 | ID | テストケース | 期待結果 |
 |----|-------------|----------|
@@ -759,7 +805,7 @@ describe('PropertyExtractor', () => {
 | PE-002 | If.Condition | 条件式を抽出 |
 | PE-003 | ForEach.Values | コレクション式を抽出 |
 | PE-004 | InvokeWorkflowFile.WorkflowFileName | ファイルパスを抽出 |
-| PE-005 | Selector（エスケープ済み） | デコード済みセレクター |
+| PE-005 | Selector（HTMLエスケープ済み） | デコード済みセレクター |
 | PE-006 | Timeout属性 | 数値として抽出 |
 | PE-007 | ContinueOnError属性 | Boolean値として抽出 |
 | PE-008 | Arguments（複数） | 全引数をリストで抽出 |
@@ -768,55 +814,15 @@ describe('PropertyExtractor', () => {
 
 #### 1.3 差分検出テスト
 
-**テストファイル:** `tests/unit/diff/activity-diff.test.js`
-
-```javascript
-describe('ActivityDiff', () => {
-  describe('compareActivities', () => {
-    test('追加されたアクティビティを検出', () => {
-      const before = [{ id: '1', type: 'Assign' }];
-      const after = [
-        { id: '1', type: 'Assign' },
-        { id: '2', type: 'Click' }
-      ];
-      const diff = compareActivities(before, after);
-      expect(diff.added).toHaveLength(1);
-      expect(diff.added[0].type).toBe('Click');
-    });
-
-    test('削除されたアクティビティを検出', () => {
-      const before = [
-        { id: '1', type: 'Assign' },
-        { id: '2', type: 'Click' }
-      ];
-      const after = [{ id: '1', type: 'Assign' }];
-      const diff = compareActivities(before, after);
-      expect(diff.removed).toHaveLength(1);
-    });
-
-    test('プロパティ変更を検出', () => {
-      const before = [{ id: '1', displayName: 'Old Name' }];
-      const after = [{ id: '1', displayName: 'New Name' }];
-      const diff = compareActivities(before, after);
-      expect(diff.modified).toHaveLength(1);
-      expect(diff.modified[0].changes.displayName).toEqual({
-        before: 'Old Name',
-        after: 'New Name'
-      });
-    });
-  });
-});
-```
-
-**テストケース一覧:**
+**テストファイル:** `tests/unit/diff/activity-diff.test.ts`
 
 | ID | テストケース | 期待結果 |
 |----|-------------|----------|
 | AD-001 | アクティビティ追加 | added配列に含まれる |
 | AD-002 | アクティビティ削除 | removed配列に含まれる |
 | AD-003 | DisplayName変更 | modified.changesに含まれる |
-| AD-004 | Selector変更 | modified.changesに含まれる |
-| AD-005 | Condition変更 | modified.changesに含まれる |
+| AD-004 | Selector変更 | modified.changesにbefore/after |
+| AD-005 | Condition変更 | modified.changesにbefore/after |
 | AD-006 | 複数プロパティ同時変更 | すべてchangesに含まれる |
 | AD-007 | 順序変更のみ | 変更なしと判定 |
 | AD-008 | ネスト内の変更 | 親子関係を維持して検出 |
@@ -825,346 +831,177 @@ describe('ActivityDiff', () => {
 
 #### 1.4 スクリーンショットパス解決テスト
 
-**テストファイル:** `tests/unit/screenshot/path-resolver.test.js`
-
-```javascript
-describe('ScreenshotPathResolver', () => {
-  describe('resolveScreenshotPath', () => {
-    test('ルートの.screenshotsから解決', () => {
-      const xamlPath = '/owner/repo/blob/main/Main.xaml';
-      const filename = 'click_001.png';
-      const result = resolveScreenshotPath(xamlPath, filename);
-      expect(result).toBe(
-        'https://raw.githubusercontent.com/owner/repo/main/.screenshots/click_001.png'
-      );
-    });
-
-    test('サブフォルダの.screenshotsから解決', () => {
-      const xamlPath = '/owner/repo/blob/main/SubProcess/Process.xaml';
-      const filename = 'click_002.png';
-      const result = resolveScreenshotPath(xamlPath, filename, {
-        checkSubfolder: true
-      });
-      expect(result).toContain('SubProcess/.screenshots/click_002.png');
-    });
-
-    test('ブランチ名にスラッシュを含む場合', () => {
-      const xamlPath = '/owner/repo/blob/feature/new-ui/Main.xaml';
-      const filename = 'click_001.png';
-      const result = resolveScreenshotPath(xamlPath, filename);
-      expect(result).toContain('feature/new-ui');
-    });
-  });
-});
-```
-
-**テストケース一覧:**
+**テストファイル:** `tests/unit/screenshot/path-resolver.test.ts`
 
 | ID | テストケース | 期待結果 |
 |----|-------------|----------|
-| SP-001 | ルートXAML + ルート.screenshots | 正しいURL生成 |
-| SP-002 | サブフォルダXAML + 同階層.screenshots | 正しいURL生成 |
-| SP-003 | サブフォルダXAML + ルート.screenshots（フォールバック） | 正しいURL生成 |
-| SP-004 | feature/xxx ブランチ | スラッシュを正しく処理 |
-| SP-005 | 日本語ファイル名 | URLエンコード |
-| SP-006 | スペースを含むファイル名 | URLエンコード |
-| SP-007 | 存在しないファイル | null返却 |
-| SP-008 | プライベートリポジトリ | 認証エラーハンドリング |
+| SP-001 | ルートXAML + ルート.screenshots | `/.screenshots/{file}` |
+| SP-002 | サブフォルダXAML + 同階層.screenshots | `/Sub/.screenshots/{file}` |
+| SP-003 | サブフォルダ + ルートフォールバック | `/.screenshots/{file}` |
+| SP-004 | 日本語ファイル名 | 正しくエンコード |
+| SP-005 | スペースを含むファイル名 | 正しくエンコード |
+| SP-006 | 存在しないファイル | null返却 |
+| SP-007 | API認証エラー | エラーハンドリング |
+| SP-008 | 複数階層のフォールバック検索 | 上位階層順に検索 |
+
+#### 1.5 Azure DevOps API サービステスト
+
+**テストファイル:** `tests/unit/services/git-api.test.ts`
+
+Azure DevOps SDKとGitRestClientをモックし、APIサービス層を単体テスト:
+
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| GA-001 | XAMLファイル内容取得 | テキスト返却 |
+| GA-002 | スクリーンショット画像取得 | Blob返却 |
+| GA-003 | PRのXAML変更一覧取得 | .xamlのみフィルタ |
+| GA-004 | .screenshotsフォルダ存在確認 | Boolean返却 |
+| GA-005 | 存在しないファイル取得 | 404エラーハンドリング |
+| GA-006 | 権限不足（vso.codeなし） | 403エラーハンドリング |
+| GA-007 | PRのbefore/afterコンテンツ取得 | 両バージョン返却 |
+| GA-008 | ブランチ指定でファイル取得 | 正しいバージョン指定 |
+
+```typescript
+// テスト例
+jest.mock('azure-devops-extension-api', () => ({
+  getClient: jest.fn()
+}));
+
+describe('GitApiService', () => {
+  let mockGitClient: jest.Mocked<GitRestClient>;
+
+  beforeEach(() => {
+    mockGitClient = {
+      getItemText: jest.fn(),
+      getItemContent: jest.fn(),
+      getPullRequestIterations: jest.fn(),
+      getPullRequestIterationChanges: jest.fn(),
+      getItems: jest.fn()
+    } as any;
+    (getClient as jest.Mock).mockReturnValue(mockGitClient);
+  });
+
+  test('GA-001: XAMLファイル内容を取得できる', async () => {
+    mockGitClient.getItemText.mockResolvedValue('<Sequence />');
+    const service = new GitApiService();
+    const content = await service.getFileContent('repo-id', '/Main.xaml', 'main');
+    expect(content).toBe('<Sequence />');
+  });
+
+  test('GA-005: 存在しないファイルで404エラー', async () => {
+    mockGitClient.getItemText.mockRejectedValue(
+      new Error('TF401174: The item does not exist')
+    );
+    const service = new GitApiService();
+    await expect(
+      service.getFileContent('repo-id', '/NotExist.xaml', 'main')
+    ).rejects.toThrow('TF401174');
+  });
+});
+```
 
 ---
 
 ### 2. 統合テスト
 
-#### 2.1 レンダラー統合テスト
+#### 2.1 Reactコンポーネント統合テスト
 
-**テストファイル:** `tests/integration/renderer.test.js`
+**テストファイル:** `tests/integration/components/FileViewer.test.tsx`
 
-```javascript
-describe('Renderer Integration', () => {
-  let container;
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| FV-001 | Sequenceワークフロー表示 | sequence-container + activity-card 3件 |
+| FV-002 | Flowchartワークフロー表示 | flowchart-container + node表示 |
+| FV-003 | ツリーとメインの連動 | ツリークリック → カードハイライト |
+| FV-004 | スクリーンショット正常表示 | img要素が表示 |
+| FV-005 | スクリーンショット取得失敗 | エラーメッセージ表示 |
+| FV-006 | 大規模ワークフロー表示 | 2秒以内にレンダリング完了 |
 
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    document.body.removeChild(container);
-  });
-
-  test('Sequenceワークフローを正しくレンダリング', async () => {
-    const xaml = loadFixture('sequence-workflow.xaml');
-    await renderWorkflow(xaml, container);
-    
-    expect(container.querySelector('.sequence-container')).toBeTruthy();
-    expect(container.querySelectorAll('.activity-card')).toHaveLength(5);
-  });
-
-  test('Flowchartワークフローを正しくレンダリング', async () => {
-    const xaml = loadFixture('flowchart-workflow.xaml');
-    await renderWorkflow(xaml, container);
-    
-    expect(container.querySelector('.flowchart-container')).toBeTruthy();
-    expect(container.querySelectorAll('.flowchart-node')).toHaveLength(8);
-    expect(container.querySelectorAll('.flowchart-edge')).toHaveLength(10);
-  });
-
-  test('ツリービューとメインビューが連動する', async () => {
-    const xaml = loadFixture('nested-workflow.xaml');
-    await renderWorkflow(xaml, container);
-    
-    const treeItem = container.querySelector('.tree-item[data-id="activity-3"]');
-    treeItem.click();
-    
-    const activityCard = container.querySelector('.activity-card[data-id="activity-3"]');
-    expect(activityCard.classList.contains('highlighted')).toBe(true);
-  });
-
-  test('スクリーンショットが正しく表示される', async () => {
-    const xaml = loadFixture('click-with-screenshot.xaml');
-    mockFetch('https://raw.githubusercontent.com/.../click_001.png', mockImageBlob);
-    
-    await renderWorkflow(xaml, container);
-    
-    const screenshot = container.querySelector('.informative-screenshot img');
-    expect(screenshot).toBeTruthy();
-    expect(screenshot.src).toContain('click_001.png');
+```tsx
+// テスト例
+describe('FileViewer Integration', () => {
+  test('FV-001: Sequenceワークフローを正しくレンダリング', async () => {
+    mockGitApi.getFileContent.mockResolvedValue(
+      loadFixture('sequence-simple.xaml')
+    );
+    render(<FileViewer />);
+    await waitFor(() => {
+      expect(screen.getByTestId('sequence-container')).toBeInTheDocument();
+      expect(screen.getAllByTestId('activity-card')).toHaveLength(3);
+    });
   });
 });
 ```
 
 #### 2.2 差分表示統合テスト
 
-**テストファイル:** `tests/integration/diff-view.test.js`
+**テストファイル:** `tests/integration/components/DiffViewer.test.tsx`
 
-```javascript
-describe('DiffView Integration', () => {
-  test('プロパティ差分が正しく表示される', async () => {
-    const beforeXaml = loadFixture('before.xaml');
-    const afterXaml = loadFixture('after.xaml');
-    
-    const container = document.createElement('div');
-    await renderDiffView(beforeXaml, afterXaml, container);
-    
-    // 変更されたアクティビティにマーカーがある
-    const modifiedCards = container.querySelectorAll('.activity-card.modified');
-    expect(modifiedCards.length).toBeGreaterThan(0);
-    
-    // プロパティ差分が表示されている
-    const propDiffs = container.querySelectorAll('.property-diff');
-    expect(propDiffs.length).toBeGreaterThan(0);
-    
-    // Before/After値が表示されている
-    const beforeValue = container.querySelector('.diff-before');
-    const afterValue = container.querySelector('.diff-after');
-    expect(beforeValue).toBeTruthy();
-    expect(afterValue).toBeTruthy();
-  });
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| DV-001 | プロパティ差分表示 | modified + property-diff要素表示 |
+| DV-002 | スクリーンショット差分表示 | before/after画像2枚表示 |
+| DV-003 | 変更サマリー集計 | 追加/変更カウント表示 |
+| DV-004 | フィルタリング | 追加のみ表示に切替 |
 
-  test('スクリーンショット差分が比較表示される', async () => {
-    const beforeXaml = loadFixture('click-before.xaml');
-    const afterXaml = loadFixture('click-after.xaml');
-    
-    mockFetch('.../.screenshots/click_old.png', mockOldImage);
-    mockFetch('.../.screenshots/click_new.png', mockNewImage);
-    
-    const container = document.createElement('div');
-    await renderDiffView(beforeXaml, afterXaml, container);
-    
-    const screenshotDiff = container.querySelector('.screenshot-diff');
-    expect(screenshotDiff).toBeTruthy();
-    expect(screenshotDiff.querySelectorAll('img')).toHaveLength(2);
-  });
-});
-```
+#### 2.3 PRサマリータブ統合テスト
 
-#### 2.3 GitHub DOM統合テスト
+**テストファイル:** `tests/integration/components/PrSummary.test.tsx`
 
-**テストファイル:** `tests/integration/github-dom.test.js`
-
-```javascript
-describe('GitHub DOM Integration', () => {
-  test('GitHubのファイルビューページを検出', () => {
-    document.body.innerHTML = loadFixture('github-file-view.html');
-    
-    const detector = new GitHubPageDetector();
-    expect(detector.isFileView()).toBe(true);
-    expect(detector.getFilePath()).toBe('/owner/repo/blob/main/Main.xaml');
-  });
-
-  test('GitHubのPRページを検出', () => {
-    document.body.innerHTML = loadFixture('github-pr-diff.html');
-    
-    const detector = new GitHubPageDetector();
-    expect(detector.isPullRequest()).toBe(true);
-    expect(detector.getDiffFiles()).toContain('Main.xaml');
-  });
-
-  test('表示切替ボタンが正しい位置に挿入される', () => {
-    document.body.innerHTML = loadFixture('github-file-view.html');
-    
-    insertToggleButton();
-    
-    const button = document.querySelector('.xaml-visualizer-toggle');
-    expect(button).toBeTruthy();
-    expect(button.closest('.file-actions')).toBeTruthy();
-  });
-});
-```
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| PS-001 | 全XAMLファイル変更サマリー | ファイルごとに変更表示 |
+| PS-002 | XAML変更なしのPR | 空メッセージ表示 |
+| PS-003 | 注意すべき変更の警告 | Timeout/ContinueOnError変更を強調 |
 
 ---
 
 ### 3. E2Eテスト
 
-#### 3.1 基本操作E2Eテスト
+実際のAzure DevOps組織に開発版拡張機能をインストールしてPlaywrightで実行。
 
-**テストファイル:** `tests/e2e/basic-operations.spec.js`
-
-```javascript
-import { test, expect } from '@playwright/test';
-
-test.describe('Basic Operations', () => {
-  test.beforeEach(async ({ context }) => {
-    // 拡張機能をロード
-    await context.addInitScript(() => {
-      // 拡張機能の初期化
-    });
-  });
-
-  test('GitHubでXAMLファイルを開くとビジュアライザーが有効になる', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/blob/main/Main.xaml');
-    
-    // トグルボタンが表示される
-    await expect(page.locator('.xaml-visualizer-toggle')).toBeVisible();
-    
-    // ボタンをクリック
-    await page.click('.xaml-visualizer-toggle');
-    
-    // ビジュアルビューが表示される
-    await expect(page.locator('.xaml-visual-view')).toBeVisible();
-    await expect(page.locator('.sequence-container')).toBeVisible();
-  });
-
-  test('アクティビティをクリックすると詳細パネルが開く', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/blob/main/Main.xaml');
-    await page.click('.xaml-visualizer-toggle');
-    
-    // アクティビティカードをクリック
-    await page.click('.activity-card:first-child');
-    
-    // 詳細パネルが表示される
-    await expect(page.locator('.detail-panel')).toBeVisible();
-    await expect(page.locator('.detail-panel .property-list')).toBeVisible();
-  });
-
-  test('ツリービューで項目をクリックするとスクロールする', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/blob/main/LargeWorkflow.xaml');
-    await page.click('.xaml-visualizer-toggle');
-    
-    // ツリーの下の方の項目をクリック
-    await page.click('.tree-item:nth-child(20)');
-    
-    // 該当アクティビティが表示領域内にある
-    const activity = page.locator('.activity-card.highlighted');
-    await expect(activity).toBeInViewport();
-  });
-});
+**環境変数:**
+```
+AZDO_TEST_ORG=test-organization
+AZDO_TEST_PROJECT=UiPathProject
+AZDO_TEST_REPO=rpa-workflows
+AZDO_PAT=<Personal Access Token>
 ```
 
-#### 3.2 差分表示E2Eテスト
+#### 3.1 ファイルビューE2E
 
-**テストファイル:** `tests/e2e/diff-view.spec.js`
+**テストファイル:** `tests/e2e/file-viewer.spec.ts`
 
-```javascript
-test.describe('Diff View', () => {
-  test('PRページでXAML差分がビジュアル表示される', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/pull/123/files');
-    
-    // XAMLファイルの差分セクションを見つける
-    const xamlDiff = page.locator('.file-diff:has([data-path$=".xaml"])');
-    
-    // ビジュアル差分ボタンをクリック
-    await xamlDiff.locator('.xaml-diff-toggle').click();
-    
-    // ビジュアル差分が表示される
-    await expect(xamlDiff.locator('.visual-diff-view')).toBeVisible();
-    
-    // 追加・削除・変更のマーカーが表示される
-    await expect(xamlDiff.locator('.diff-added')).toBeVisible();
-    await expect(xamlDiff.locator('.diff-modified')).toBeVisible();
-  });
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| E2E-FV-001 | XAMLファイル表示でタブ出現 | ビジュアライザータブ表示 |
+| E2E-FV-002 | タブクリックでビジュアル表示 | sequence-container表示 |
+| E2E-FV-003 | アクティビティ→詳細パネル | detail-panel表示 |
+| E2E-FV-004 | InformativeScreenshot表示 | img要素表示 |
+| E2E-FV-005 | 非UiPath XAMLでは非表示 | タブが出現しない |
 
-  test('プロパティ差分の詳細が展開できる', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/pull/123/files');
-    
-    const xamlDiff = page.locator('.file-diff:has([data-path$=".xaml"])');
-    await xamlDiff.locator('.xaml-diff-toggle').click();
-    
-    // 変更されたアクティビティをクリック
-    await xamlDiff.locator('.activity-card.modified:first-child').click();
-    
-    // プロパティ差分詳細が表示される
-    await expect(xamlDiff.locator('.property-diff-detail')).toBeVisible();
-    await expect(xamlDiff.locator('.diff-before')).toBeVisible();
-    await expect(xamlDiff.locator('.diff-after')).toBeVisible();
-  });
-});
-```
+#### 3.2 PR差分E2E
 
-#### 3.3 スクリーンショット表示E2Eテスト
+**テストファイル:** `tests/e2e/diff-viewer.spec.ts`
 
-**テストファイル:** `tests/e2e/screenshot.spec.js`
+| ID | テストケース | 期待結果 |
+|----|-------------|----------|
+| E2E-DV-001 | PRページにXAML Changesタブ | タブ表示 |
+| E2E-DV-002 | タブクリックで差分サマリー | pr-change-summary表示 |
+| E2E-DV-003 | 変更アクティビティ展開 | property-diff-detail表示 |
+| E2E-DV-004 | スクリーンショット比較切替 | slider/side-by-side切替 |
 
-```javascript
-test.describe('Screenshot Display', () => {
-  test('InformativeScreenshotが表示される', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/blob/main/ClickWorkflow.xaml');
-    await page.click('.xaml-visualizer-toggle');
-    
-    // Clickアクティビティを展開
-    await page.click('.activity-card[data-type="Click"]');
-    
-    // スクリーンショットサムネイルが表示される
-    const thumbnail = page.locator('.informative-screenshot img');
-    await expect(thumbnail).toBeVisible();
-    
-    // 拡大ボタンをクリック
-    await page.click('.screenshot-expand-btn');
-    
-    // モーダルが開く
-    await expect(page.locator('.screenshot-modal')).toBeVisible();
-    await expect(page.locator('.screenshot-modal img')).toBeVisible();
-  });
-
-  test('スクリーンショットが見つからない場合のエラー表示', async ({ page }) => {
-    // .screenshotsフォルダがないリポジトリ
-    await page.goto('https://github.com/test-org/no-screenshots-repo/blob/main/Click.xaml');
-    await page.click('.xaml-visualizer-toggle');
-    
-    await page.click('.activity-card[data-type="Click"]');
-    
-    // エラーメッセージが表示される
-    await expect(page.locator('.screenshot-error')).toBeVisible();
-    await expect(page.locator('.screenshot-error')).toContainText('画像が見つかりません');
-  });
-
-  test('差分表示でスクリーンショット比較ができる', async ({ page }) => {
-    await page.goto('https://github.com/test-org/test-repo/pull/456/files');
-    
-    const xamlDiff = page.locator('.file-diff:has([data-path$=".xaml"])');
-    await xamlDiff.locator('.xaml-diff-toggle').click();
-    
-    // スクリーンショットが変更されたアクティビティ
-    const modifiedClick = xamlDiff.locator('.activity-card.modified[data-type="Click"]');
-    await modifiedClick.click();
-    
-    // 比較ビューが表示される
-    await expect(xamlDiff.locator('.screenshot-compare')).toBeVisible();
-    
-    // スライダー比較モードに切り替え
-    await page.click('.compare-mode-slider');
-    await expect(xamlDiff.locator('.slider-compare')).toBeVisible();
-  });
+```typescript
+// テスト例
+test('E2E-DV-001: PRページにXAML Changesタブ', async ({ page }) => {
+  await page.goto(
+    `https://dev.azure.com/${ORG}/${PROJECT}/_git/${REPO}/pullrequest/${PR_ID}`
+  );
+  const xamlTab = page.locator('text=XAML Changes');
+  await expect(xamlTab).toBeVisible();
+  await xamlTab.click();
+  const frame = page.frameLocator('iframe');
+  await expect(frame.locator('.pr-change-summary')).toBeVisible();
 });
 ```
 
@@ -1172,26 +1009,21 @@ test.describe('Screenshot Display', () => {
 
 ### 4. テストデータ（Fixtures）
 
-#### 4.1 XAMLフィクスチャ
-
-**ファイル構成:**
-
 ```
 tests/fixtures/
 ├── xaml/
-│   ├── sequence-simple.xaml        # シンプルなSequence
-│   ├── sequence-nested.xaml        # ネストしたSequence
-│   ├── flowchart-basic.xaml        # 基本的なFlowchart
-│   ├── flowchart-complex.xaml      # 複雑なFlowchart
-│   ├── statemachine.xaml           # StateMachine
-│   ├── with-screenshot.xaml        # InformativeScreenshot付き
-│   ├── large-workflow.xaml         # 大規模（100+アクティビティ）
-│   ├── special-chars.xaml          # 特殊文字を含む
-│   ├── japanese-names.xaml         # 日本語DisplayName
+│   ├── sequence-simple.xaml
+│   ├── sequence-nested.xaml
+│   ├── flowchart-basic.xaml
+│   ├── flowchart-complex.xaml
+│   ├── statemachine.xaml
+│   ├── with-screenshot.xaml
+│   ├── large-workflow.xaml        # 100+ アクティビティ
+│   ├── japanese-names.xaml
 │   └── invalid/
-│       ├── malformed.xaml          # 不正なXML
-│       ├── missing-namespace.xaml  # 名前空間なし
-│       └── empty.xaml              # 空ファイル
+│       ├── malformed.xaml
+│       ├── missing-namespace.xaml
+│       └── empty.xaml
 ├── diff/
 │   ├── before/
 │   │   ├── simple-change.xaml
@@ -1201,59 +1033,12 @@ tests/fixtures/
 │       ├── simple-change.xaml
 │       ├── property-change.xaml
 │       └── screenshot-change.xaml
-├── github-html/
-│   ├── file-view.html              # ファイル表示ページ
-│   ├── pr-diff.html                # PR差分ページ
-│   └── commit-diff.html            # コミット差分ページ
-└── images/
-    ├── click_001.png
-    ├── click_002.png
-    └── type_001.png
-```
-
-#### 4.2 サンプルXAMLフィクスチャ
-
-**sequence-simple.xaml:**
-```xml
-<Activity x:Class="TestWorkflow"
-  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
-  xmlns:ui="http://schemas.uipath.com/workflow/activities"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Sequence DisplayName="Main Sequence">
-    <ui:LogMessage DisplayName="Start Log" Level="Info" Message="Started" />
-    <Assign DisplayName="Set Variable">
-      <Assign.To><OutArgument x:TypeArguments="x:String">[result]</OutArgument></Assign.To>
-      <Assign.Value><InArgument x:TypeArguments="x:String">"OK"</InArgument></Assign.Value>
-    </Assign>
-    <ui:LogMessage DisplayName="End Log" Level="Info" Message="[result]" />
-  </Sequence>
-</Activity>
-```
-
-**with-screenshot.xaml:**
-```xml
-<Activity x:Class="ClickWorkflow"
-  xmlns="http://schemas.microsoft.com/netfx/2009/xaml/activities"
-  xmlns:ui="http://schemas.uipath.com/workflow/activities"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <Sequence DisplayName="Click Sequence">
-    <ui:Click DisplayName="Click Login" 
-              InformativeScreenshot="click_login_001.png">
-      <ui:Click.Target>
-        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='loginBtn'/&gt;" />
-      </ui:Click.Target>
-    </ui:Click>
-    <ui:TypeInto DisplayName="Type Username"
-                 InformativeScreenshot="type_username_001.png">
-      <ui:TypeInto.Target>
-        <ui:Target Selector="&lt;html app='chrome.exe'/&gt;&lt;webctrl id='username'/&gt;" />
-      </ui:TypeInto.Target>
-      <ui:TypeInto.Text>
-        <InArgument x:TypeArguments="x:String">"testuser"</InArgument>
-      </ui:TypeInto.Text>
-    </ui:TypeInto>
-  </Sequence>
-</Activity>
+├── images/
+│   ├── click_001.png
+│   └── type_001.png
+└── mocks/
+    ├── sdk-context.ts             # Azure DevOps SDKモック
+    └── git-client.ts              # GitRestClientモック
 ```
 
 ---
@@ -1271,93 +1056,147 @@ tests/fixtures/
     "test:e2e": "playwright test",
     "test:coverage": "jest --coverage",
     "test:watch": "jest --watch",
-    "test:ci": "jest --ci --coverage && playwright test"
+    "test:ci": "jest --ci --coverage",
+    "build": "webpack --mode production",
+    "build:dev": "webpack --mode development",
+    "package": "tfx extension create --manifest-globs vss-extension.json",
+    "package:dev": "tfx extension create --manifest-globs configs/dev.json",
+    "publish": "tfx extension publish --manifest-globs vss-extension.json"
   }
 }
 ```
 
 #### 5.2 Jest設定
 
-**jest.config.js:**
-```javascript
-module.exports = {
+**jest.config.ts:**
+```typescript
+import type { Config } from 'jest';
+
+const config: Config = {
   testEnvironment: 'jsdom',
-  setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  preset: 'ts-jest',
+  setupFilesAfterSetup: ['<rootDir>/tests/setup.ts'],
   collectCoverageFrom: [
-    'src/**/*.js',
-    '!src/**/*.test.js'
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/*.html'
   ],
   coverageThreshold: {
     global: {
-      branches: 80,
-      functions: 80,
-      lines: 80,
-      statements: 80
+      branches: 80, functions: 80, lines: 80, statements: 80
     }
   },
   moduleNameMapper: {
-    '\\.(css|less|scss)$': 'identity-obj-proxy'
+    '\\.(css|scss)$': 'identity-obj-proxy',
+    '^azure-devops-extension-sdk$': '<rootDir>/tests/fixtures/mocks/sdk-context.ts'
   }
 };
+export default config;
 ```
 
-#### 5.3 GitHub Actions CI
+#### 5.3 Azure Pipelines CI
 
-**.github/workflows/test.yml:**
+**azure-pipelines.yml:**
 ```yaml
-name: Test
+trigger:
+  branches:
+    include: [main, develop]
+pr:
+  branches:
+    include: [main]
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+pool:
+  vmImage: 'ubuntu-latest'
 
-jobs:
-  unit-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run test:unit
-      - run: npm run test:integration
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
+stages:
+  - stage: Test
+    jobs:
+      - job: UnitAndIntegrationTest
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+          - script: npm ci
+          - script: npm run test:unit -- --ci --coverage
+            displayName: 'Unit tests'
+          - script: npm run test:integration -- --ci
+            displayName: 'Integration tests'
+          - task: PublishTestResults@2
+            inputs:
+              testResultsFormat: 'JUnit'
+              testResultsFiles: 'junit.xml'
+            condition: always()
+          - task: PublishCodeCoverageResults@2
+            inputs:
+              summaryFileLocation: 'coverage/cobertura-coverage.xml'
 
-  e2e-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - run: npm ci
-      - run: npx playwright install --with-deps
-      - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: playwright-report/
+      - job: E2ETest
+        dependsOn: UnitAndIntegrationTest
+        condition: and(succeeded(), eq(variables['Build.Reason'], 'PullRequest'))
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+          - script: npm ci
+          - script: npx playwright install --with-deps
+          - script: npm run test:e2e
+            env:
+              AZDO_TEST_ORG: $(AZDO_TEST_ORG)
+              AZDO_TEST_PROJECT: $(AZDO_TEST_PROJECT)
+              AZDO_TEST_REPO: $(AZDO_TEST_REPO)
+              AZDO_PAT: $(AZDO_PAT)
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: 'playwright-report'
+              artifact: 'playwright-report'
+            condition: failed()
+
+  - stage: Build
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: BuildAndPackage
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '20.x'
+          - script: npm ci
+          - script: npm run build
+          - script: |
+              npm install -g tfx-cli
+              tfx extension create --manifest-globs vss-extension.json
+            displayName: 'Package .vsix'
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '*.vsix'
+              artifact: 'vsix'
+
+  - stage: PublishDev
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    jobs:
+      - job: PublishToMarketplace
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifact: 'vsix'
+          - script: |
+              npm install -g tfx-cli
+              tfx extension publish --vsix *.vsix --token $(MARKETPLACE_PAT)
 ```
 
 ---
 
 ### 6. テストカバレッジ目標
 
-| モジュール | 目標カバレッジ |
-|-----------|---------------|
-| XAMLパーサー | 90% |
-| プロパティ抽出 | 90% |
-| 差分検出 | 85% |
-| レンダラー | 80% |
-| スクリーンショット処理 | 85% |
-| GitHub DOM操作 | 75% |
+| モジュール | 目標 |
+|-----------|------|
+| XAMLパーサー (`src/parser/`) | 90% |
+| プロパティ抽出 (`src/parser/`) | 90% |
+| 差分検出 (`src/diff/`) | 85% |
+| APIサービス (`src/services/`) | 85% |
+| Reactコンポーネント (`src/components/`) | 80% |
+| スクリーンショット処理 (`src/services/`) | 85% |
 | 全体 | 80% |
 
 ---
@@ -1368,15 +1207,15 @@ jobs:
 
 | 名称 | 特徴 | 制限 |
 |------|------|------|
-| UiPath XAML support in GitHub (UiPath Marketplace) | 公式拡張機能 | Chrome限定、機能限定的 |
+| UiPath XAML support in GitHub (Marketplace) | Chrome拡張、GitHub専用 | Azure DevOps非対応 |
 | UiPath Task Capture XAML Import | XAMLからドキュメント生成 | 別ツール必要 |
 
 ### 差別化ポイント
 
-1. **リアルタイムプレビュー** - GitHub上で即座に確認
+1. **Azure DevOps ネイティブ統合** - Repos / PR に直接統合
 2. **インタラクティブ** - 折りたたみ・検索・ナビゲーション
-3. **Diff対応** - PR/コミット差分の視覚化
-4. **クロスブラウザ** - 複数ブラウザ対応予定
+3. **PR差分の視覚化** - プロパティ・スクリーンショットレベルの差分
+4. **変更サマリータブ** - レビューの効率化
 
 ---
 
@@ -1384,9 +1223,10 @@ jobs:
 
 | リスク | 影響 | 対策 |
 |--------|------|------|
-| GitHubのDOM構造変更 | 拡張機能が動作しなくなる | MutationObserverで動的対応、定期メンテナンス |
-| 大規模XAMLのパフォーマンス | レンダリング遅延 | 仮想スクロール、遅延読み込み |
+| Azure DevOps API変更 | 拡張機能が動作しなくなる | SDKバージョン固定、定期メンテナンス |
+| iframe内のパフォーマンス | レンダリング遅延 | 仮想スクロール、遅延読み込み |
 | UiPathバージョン差異 | パース失敗 | バージョン検出、フォールバック処理 |
+| Azure DevOps Server対応 | オンプレ環境での互換性 | APIバージョン分岐 |
 
 ---
 
@@ -1424,3 +1264,7 @@ jobs:
 | DisplayName | アクティビティの表示名 |
 | Argument | ワークフローへの入出力パラメータ |
 | Variable | ワークフロー内の変数 |
+| Contribution | Azure DevOps拡張機能の機能単位 |
+| Hub | Azure DevOpsのナビゲーション要素 |
+| .vsix | Azure DevOps拡張機能のパッケージ形式 |
+| vso.code | Azure Repos読み取りスコープ |
