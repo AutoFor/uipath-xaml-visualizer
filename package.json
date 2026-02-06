@@ -5,6 +5,7 @@
   "main": "dist/main.js",
   "scripts": {
     "build": "webpack --mode production",
+    "build:test": "webpack --config webpack.test.config.js",
     "dev": "webpack --mode development --watch",
     "package": "tfx extension create --manifest-globs vss-extension.json",
     "publish": "tfx extension publish --manifest-globs vss-extension.json",
