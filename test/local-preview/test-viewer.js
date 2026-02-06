@@ -314,7 +314,7 @@ class SequenceRenderer {
         header.className = 'activity-header';
         const title = document.createElement('span');
         title.className = 'activity-title';
-        title.textContent = `${activity.displayName}: ${activity.type}`;
+        title.textContent = `${activity.type}: ${activity.displayName}`;
         header.appendChild(title);
         card.appendChild(header);
         // プロパティ表示
