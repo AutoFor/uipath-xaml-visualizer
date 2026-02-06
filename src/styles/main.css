@@ -160,10 +160,29 @@ body {
 }
 
 .activity-header {
+  display: flex;                                /* フレックスボックスで横並び */
+  align-items: center;                          /* 縦方向中央揃え */
   font-weight: 600;
   font-size: 16px;
   margin-bottom: 12px;
   color: #333;
+}
+
+/* 折りたたみボタン */
+.collapse-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 8px;
+  color: #0078d4;
+  transition: transform 0.2s;                   /* 回転アニメーション */
+}
+
+.collapse-btn:hover {
+  background-color: #f0f0f0;
+  border-radius: 4px;
 }
 
 .activity-properties {
