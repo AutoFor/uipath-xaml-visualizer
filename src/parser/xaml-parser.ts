@@ -203,8 +203,16 @@ export class XamlParser {
     Array.from(element.children).forEach(child => {
       const childName = child.localName;
 
-      // プロパティ要素は除外
+      // プロパティ要素は除外（例: NApplicationCard.Body）
       if (childName.includes('.')) {
+        // ただし、プロパティ要素の中身は再帰的に処理
+        const nestedActivities = this.parseChildren(child);
+        children.push(...nestedActivities);
+        return;
+      }
+
+      // メタデータ要素を除外
+      if (this.isMetadataElement(child)) {
         return;
       }
 
