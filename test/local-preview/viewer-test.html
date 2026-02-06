@@ -63,15 +63,15 @@
 <body>
     <!-- テストコントロールパネル -->
     <div class="test-controls">
-        <h3>🧪 ローカルテスト</h3>
+        <h3>Local Test</h3>
 
         <!-- 主要機能: ファイル選択 -->
         <div style="background: #e8f5e9; padding: 12px; border-radius: 4px; margin-bottom: 12px;">
-            <strong>📁 XAMLファイルを選択</strong>
+            <strong>XAML File:</strong>
             <input type="file" id="file-input" accept=".xaml" style="margin-top: 8px;" />
             <div style="font-size: 11px; color: #2e7d32; margin-top: 4px;">
-                ✅ どこにあるファイルでもOK<br>
-                ✅ Webサーバー不要
+                Any local file supported<br>
+                No web server required
             </div>
         </div>
 
@@ -80,7 +80,7 @@
         <!-- サンプルXAML読み込み -->
         <details>
             <summary style="cursor: pointer; font-weight: 600; margin-bottom: 8px;">
-                📋 サンプルXAMLを試す
+                Sample XAML
             </summary>
             <button id="load-sample-1" class="btn" style="margin-bottom: 4px;">Simple Sequence</button>
             <button id="load-sample-2" class="btn">Click Workflow</button>
@@ -88,10 +88,10 @@
 
         <hr style="margin: 16px 0; border: none; border-top: 1px solid #ddd;">
 
-        <button id="reload-btn" class="btn">再読み込み</button>
+        <button id="reload-btn" class="btn">Reload</button>
 
         <div class="test-info" style="margin-top: 12px;">
-            <strong>💡 推奨:</strong> ファイル選択を使用してください。絶対パス（C:\...）には対応していません。
+            <strong>Note:</strong> Use file selection. Absolute paths (C:\...) not supported.
         </div>
     </div>
 
