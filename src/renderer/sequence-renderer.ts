@@ -164,8 +164,8 @@ export class SequenceRenderer {
     modal.innerHTML = `
       <div class="modal-content">
         <div class="modal-header">
-          <h3>📷 ${filename}</h3>
-          <button class="modal-close">✕</button>
+          <h3>${filename}</h3>
+          <button class="modal-close">X</button>
         </div>
         <div class="modal-body">
           <img src="${src}" alt="${filename}" />
