@@ -1,0 +1,21 @@
+{
+  "DisplayName": "シーケンス",
+  "Tooltip": null,
+  "HelpLink": null,
+  "Color": null,
+  "OriginalIconFileName": null,
+  "Arguments": [
+    {
+      "Name": "EnvironmentNo",
+      "DisplayName": "EnvironmentNo",
+      "Category": null,
+      "Tooltip": null,
+      "Placeholder": "0",
+      "Widget": null,
+      "IsRequired": false,
+      "IsPrincipal": true,
+      "ArgumentType": 0,
+      "DataSourceItems": null
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+﻿{
+  "Name": "Chrome いいづかこども診療所",
+  "Type": "App",
+  "Id": "oAPdPklAoEadCEZAA5e_Ug",
+  "Reference": "DUoL5iQ280uNrvpvxZ3Kow/oAPdPklAoEadCEZAA5e_Ug",
+  "Created": "2024-12-23T06:21:22.4058473Z",
+  "Updated": "2024-12-23T06:21:22.4058473Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=24.4.1.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=24.4.0.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}

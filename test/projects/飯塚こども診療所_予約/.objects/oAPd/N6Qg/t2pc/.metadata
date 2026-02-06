@@ -1,0 +1,13 @@
+﻿{
+  "Name": "Chrome いいづかこども診療所",
+  "Type": "Screen",
+  "Id": "t2pcl1jEjUqE28yFZg21Gw",
+  "Reference": "DUoL5iQ280uNrvpvxZ3Kow/t2pcl1jEjUqE28yFZg21Gw",
+  "ParentRef": "DUoL5iQ280uNrvpvxZ3Kow/N6Qg3-C-o06Xg1Nyw3r3_w",
+  "Created": "2024-12-23T06:21:22.443169Z",
+  "Updated": "2024-12-23T06:21:22.443169Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=24.4.1.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=24.4.0.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}

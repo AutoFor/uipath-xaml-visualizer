@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ObjectRepositoryTargetData ContentHash="KnpBQbShNEyBiI2kBdAyhQ" xmlns="http://schemas.uipath.com/workflow/activities/uix" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ObjectRepositoryTargetData.Data>
+    <TargetAnchorable x:Key="TargetAnchorable" BrowserURL="https://junnavi.com/iikodomo/" DesignTimeRectangle="91, 702, 1735, 46" DesignTimeScaleFactor="1.25" ElementType="Text" FullSelectorArgument="&lt;webctrl aaname='順番取りをする' class='btn_pink' parentid='contents' tag='DIV' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='順番取りをする' class='btn_pink' parentid='contents' tag='DIV' type='' check:innerText='順番取りをする' /&gt;" Guid="637048b1-19ec-4c90-a9ca-ab4a39777ed6" ScopeSelectorArgument="&lt;html app='chrome.exe' title='いいづかこども診療所' /&gt;" SearchSteps="FuzzySelector" Version="V3" Visibility="Interactive">
+      <imageRef attrName="InformativeScreenshot" originalValue="b9ca72bd9be43e1a2ce35785f64b356e.png" xmlns="">0Pomadhbw0EeputW3NvKAmw</imageRef>
+    </TargetAnchorable>
+    <x:String x:Key="ActivityType">Click</x:String>
+  </ObjectRepositoryTargetData.Data>
+</ObjectRepositoryTargetData>
