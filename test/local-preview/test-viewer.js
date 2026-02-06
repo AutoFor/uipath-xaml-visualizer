@@ -154,6 +154,12 @@ class XamlParser {
                 children.push(...nestedActivities);
                 return;
             }
+            // ActivityActionなどのラッパー要素は、中身を再帰的に処理
+            if (this.isWrapperElement(child)) {
+                const nestedActivities = this.parseChildren(child);
+                children.push(...nestedActivities);
+                return;
+            }
             // メタデータ要素を除外
             if (this.isMetadataElement(child)) {
                 return;
@@ -164,6 +170,17 @@ class XamlParser {
             }
         });
         return children;
+    }
+    /**
+     * ラッパー要素かどうかを判定（アクティビティではないが、中身を処理する必要がある要素）
+     */
+    isWrapperElement(element) {
+        const name = element.localName;
+        const wrapperTypes = [
+            'ActivityAction',
+            'ActivityAction.Argument'
+        ];
+        return wrapperTypes.includes(name);
     }
     /**
      * メタデータ要素かどうかを判定（アクティビティではない要素）
@@ -181,7 +198,6 @@ class XamlParser {
             'InArgument',
             'OutArgument',
             'InOutArgument',
-            'ActivityAction',
             'DelegateInArgument',
             'DelegateOutArgument',
             'TargetApp',

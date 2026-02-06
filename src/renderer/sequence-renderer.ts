@@ -72,12 +72,13 @@ export class SequenceRenderer {
   /**
    * プロパティをレンダリング
    */
-  private renderProperties(properties: Record<string, any>): HTMLElement {
+  private renderProperties(properties: Record<string, any>): HTMLElement | null {
     const propsDiv = document.createElement('div');
     propsDiv.className = 'activity-properties';
 
     // 主要なプロパティのみ表示（簡略表示）
     const importantProps = ['To', 'Value', 'Condition', 'Selector', 'Message'];
+    let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
 
     Object.entries(properties).forEach(([key, value]) => {
       if (importantProps.includes(key)) {
@@ -95,10 +96,12 @@ export class SequenceRenderer {
         propItem.appendChild(propKey);
         propItem.appendChild(propValue);
         propsDiv.appendChild(propItem);
+        hasVisibleProps = true; // プロパティが追加された
       }
     });
 
-    return propsDiv;
+    // 表示可能なプロパティがない場合はnullを返す
+    return hasVisibleProps ? propsDiv : null;
   }
 
   /**
