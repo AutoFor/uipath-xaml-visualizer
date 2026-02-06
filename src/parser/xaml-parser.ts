@@ -261,7 +261,6 @@ export class XamlParser {
       'InArgument',
       'OutArgument',
       'InOutArgument',
-      'ActivityAction',
       'DelegateInArgument',
       'DelegateOutArgument',
       'TargetApp',
