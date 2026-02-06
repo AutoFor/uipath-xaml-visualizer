@@ -110,7 +110,7 @@ export class SequenceRenderer {
 
     const label = document.createElement('div');
     label.className = 'screenshot-label';
-    label.textContent = '📷 Informative Screenshot:';
+    label.textContent = 'Informative Screenshot:';
 
     const img = document.createElement('img');
     img.className = 'screenshot-thumbnail';
@@ -122,7 +122,7 @@ export class SequenceRenderer {
     img.onerror = () => {
       screenshotDiv.innerHTML = `
         <div class="screenshot-error">
-          ⚠️ 画像が見つかりません<br>
+          [!] Image not found<br>
           ${filename}
         </div>
       `;
@@ -131,7 +131,7 @@ export class SequenceRenderer {
     // 拡大ボタン
     const expandBtn = document.createElement('button');
     expandBtn.className = 'screenshot-expand-btn';
-    expandBtn.textContent = '🔍 拡大';
+    expandBtn.textContent = 'Zoom';
     expandBtn.onclick = (e) => {
       e.stopPropagation();                      // カードのクリックイベントを阻止
       this.showScreenshotModal(filename, img.src);
