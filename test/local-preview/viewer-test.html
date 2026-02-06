@@ -441,19 +441,9 @@ ${currentXaml ? currentXaml.substring(0, 500) + '...' : 'Not loaded'}
             }
         });
 
-        // 再読み込み
-        document.getElementById('reload-btn').addEventListener('click', () => {
-            if (currentXaml) {
-                renderXaml(currentXaml);
-            } else {
-                showError('先にXAMLファイルを読み込んでください');
-            }
-        });
-
         document.getElementById('toggle-view').addEventListener('click', toggleView);
         document.getElementById('toggle-tree').addEventListener('click', toggleTreeView);
         document.getElementById('close-panel').addEventListener('click', closeDetailPanel);
-        document.getElementById('copy-debug-btn').addEventListener('click', copyDebugInfo);
 
         // ページ読み込み時にXAMLファイルをスキャン
         window.addEventListener('DOMContentLoaded', async () => {
