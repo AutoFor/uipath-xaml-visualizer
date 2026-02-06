@@ -3,7 +3,8 @@
     "allow": [
       "Bash(Select-Object Id,ProcessName,StartTime)",
       "Bash(Format-Table)",
-      "Bash(npm run build:test:*)"
+      "Bash(npm run build:test:*)",
+      "Bash(./restart-server.bat)"
     ],
     "deny": [],
     "ask": []
