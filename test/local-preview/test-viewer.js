@@ -328,6 +328,14 @@ class SequenceRenderer {
         // ヘッダー
         const header = document.createElement('div');
         header.className = 'activity-header';
+        // 折りたたみボタン（子要素がある場合のみ表示）
+        if (activity.children.length > 0) {
+            const collapseBtn = document.createElement('button');
+            collapseBtn.className = 'collapse-btn';
+            collapseBtn.textContent = '▼'; // 展開状態のアイコン
+            collapseBtn.title = '折りたたみ/展開';
+            header.appendChild(collapseBtn);
+        }
         const title = document.createElement('span');
         title.className = 'activity-title';
         title.textContent = `${activity.type}: ${activity.displayName}`;
@@ -354,6 +362,15 @@ class SequenceRenderer {
                 childrenContainer.appendChild(childElement);
             });
             card.appendChild(childrenContainer);
+            // 折りたたみボタンのクリックイベント
+            const collapseBtn = header.querySelector('.collapse-btn');
+            if (collapseBtn) {
+                collapseBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // カードのクリックイベントを阻止
+                    const isCollapsed = card.classList.toggle('collapsed'); // collapsed クラスをトグル
+                    collapseBtn.textContent = isCollapsed ? '▶' : '▼'; // アイコンを変更
+                });
+            }
         }
         // クリックイベント: 詳細パネルを開く
         card.addEventListener('click', (e) => {
