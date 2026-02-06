@@ -226,19 +226,67 @@ export class XamlParser {
   }
 
   /**
+   * メタデータ要素かどうかを判定（アクティビティではない要素）
+   */
+  private isMetadataElement(element: Element): boolean {
+    const name = element.localName;
+
+    // メタデータ要素のリスト
+    const metadataTypes = [
+      'WorkflowViewStateService.ViewState',
+      'Dictionary',
+      'Boolean',
+      'String',
+      'Property',
+      'Variable',
+      'InArgument',
+      'OutArgument',
+      'InOutArgument',
+      'ActivityAction',
+      'DelegateInArgument',
+      'DelegateOutArgument',
+      'TargetApp',
+      'TargetAnchorable',
+      'Target'
+    ];
+
+    // プレフィックスでチェック（sap:, scg:, x: など）
+    const prefix = element.prefix;
+    if (prefix === 'sap' || prefix === 'sap2010' || prefix === 'scg' || prefix === 'sco' || prefix === 'x') {
+      return true;
+    }
+
+    return metadataTypes.includes(name);
+  }
+
+  /**
    * アクティビティ要素かどうかを判定
    */
   private isActivity(element: Element): boolean {
     const name = element.localName;
 
-    // よくあるアクティビティタイプ
+    // よくあるアクティビティタイプ（基本）
     const activityTypes = [
       'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'If', 'While',
       'ForEach', 'Switch', 'TryCatch', 'Click', 'TypeInto', 'GetText',
-      'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay'
+      'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay',
+      // UiPath UIAutomation Next アクティビティ
+      'NApplicationCard', 'NClick', 'NTypeInto', 'NGetText', 'NHover',
+      'NKeyboardShortcut', 'NDoubleClick', 'NRightClick', 'NCheck',
+      'NSelect', 'NAttach', 'NWaitElement', 'NFindElement',
+      // その他のよくあるUiPathアクティビティ
+      'OpenBrowser', 'CloseBrowser', 'NavigateTo', 'AttachBrowser',
+      'ReadRange', 'WriteRange', 'AddDataRow', 'BuildDataTable',
+      'ForEachRow', 'ExcelApplicationScope', 'UseExcelFile'
     ];
 
-    return activityTypes.includes(name);
+    // リストにあればアクティビティ
+    if (activityTypes.includes(name)) {
+      return true;
+    }
+
+    // メタデータ要素でなければアクティビティとして扱う
+    return !this.isMetadataElement(element);
   }
 
   /**
