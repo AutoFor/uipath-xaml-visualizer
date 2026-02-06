@@ -336,7 +336,9 @@ class SequenceRenderer {
         // プロパティ表示
         if (Object.keys(activity.properties).length > 0) {
             const propsDiv = this.renderProperties(activity.properties);
-            card.appendChild(propsDiv);
+            if (propsDiv) { // nullチェックを追加
+                card.appendChild(propsDiv);
+            }
         }
         // InformativeScreenshot表示
         if (activity.informativeScreenshot) {
@@ -368,6 +370,7 @@ class SequenceRenderer {
         propsDiv.className = 'activity-properties';
         // 主要なプロパティのみ表示（簡略表示）
         const importantProps = ['To', 'Value', 'Condition', 'Selector', 'Message'];
+        let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
         Object.entries(properties).forEach(([key, value]) => {
             if (importantProps.includes(key)) {
                 const propItem = document.createElement('div');
@@ -381,9 +384,11 @@ class SequenceRenderer {
                 propItem.appendChild(propKey);
                 propItem.appendChild(propValue);
                 propsDiv.appendChild(propItem);
+                hasVisibleProps = true; // プロパティが追加された
             }
         });
-        return propsDiv;
+        // 表示可能なプロパティがない場合はnullを返す
+        return hasVisibleProps ? propsDiv : null;
     }
     /**
      * スクリーンショットをレンダリング
