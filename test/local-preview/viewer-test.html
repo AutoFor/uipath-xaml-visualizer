@@ -405,6 +405,12 @@
         document.getElementById('toggle-view').addEventListener('click', toggleView);
         document.getElementById('toggle-tree').addEventListener('click', toggleTreeView);
         document.getElementById('close-panel').addEventListener('click', closeDetailPanel);
+
+        // ページ読み込み時にXAMLファイルをスキャン
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('ページ読み込み完了 - XAMLファイルをスキャンします');
+            await populateXamlSelect();
+        });
     </script>
 </body>
 </html>
