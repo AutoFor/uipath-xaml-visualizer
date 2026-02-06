@@ -158,6 +158,63 @@
         const sequenceRenderer = new SequenceRenderer();
         const treeRenderer = new TreeViewRenderer();
 
+        // 動的にXAMLファイルをスキャン
+        async function scanXamlFiles() {
+            try {
+                console.log('XAMLファイルをスキャン中...');
+                const response = await fetch('../projects/sample/');
+                const html = await response.text();
+
+                // HTMLから.xamlファイルのリンクを抽出
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const links = doc.querySelectorAll('a[href$=".xaml"]');
+
+                const xamlFiles = [];
+                links.forEach(link => {
+                    const filename = link.getAttribute('href');
+                    if (filename && filename.endsWith('.xaml')) {
+                        xamlFiles.push({
+                            name: filename,
+                            path: `../projects/sample/${filename}`
+                        });
+                    }
+                });
+
+                console.log('検出されたXAMLファイル:', xamlFiles);
+                return xamlFiles;
+            } catch (error) {
+                console.error('XAMLファイルスキャンエラー:', error);
+                return [];
+            }
+        }
+
+        // ドロップダウンを動的に更新
+        async function populateXamlSelect() {
+            const select = document.getElementById('xaml-select');
+            const xamlFiles = await scanXamlFiles();
+
+            // 既存のオプションをクリア
+            select.innerHTML = '<option value="">-- Select File --</option>';
+
+            if (xamlFiles.length > 0) {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = 'Sample Project';
+
+                xamlFiles.forEach(file => {
+                    const option = document.createElement('option');
+                    option.value = file.path;
+                    option.textContent = file.name;
+                    optgroup.appendChild(option);
+                });
+
+                select.appendChild(optgroup);
+                console.log(`${xamlFiles.length}個のXAMLファイルを読み込みました`);
+            } else {
+                console.warn('XAMLファイルが見つかりませんでした');
+            }
+        }
+
         // ローディング表示
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'flex' : 'none';
