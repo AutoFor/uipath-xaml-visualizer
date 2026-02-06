@@ -4,7 +4,8 @@
       "Bash(Select-Object Id,ProcessName,StartTime)",
       "Bash(Format-Table)",
       "Bash(npm run build:test:*)",
-      "Bash(./restart-server.bat)"
+      "Bash(./restart-server.bat)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []
