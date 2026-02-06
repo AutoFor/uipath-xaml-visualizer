@@ -151,11 +151,14 @@
     </div>
 
     <!-- ローカルテスト用のスクリプト -->
+    <script src="../../src/parser/xaml-parser.ts" type="module"></script>
+    <script src="../../src/renderer/sequence-renderer.ts" type="module"></script>
+    <script src="../../src/renderer/tree-view-renderer.ts" type="module"></script>
     <script type="module">
-        // パーサーとレンダラーをインポート
-        import { XamlParser } from '../../dist/parser/xaml-parser.js';
-        import { SequenceRenderer } from '../../dist/renderer/sequence-renderer.js';
-        import { TreeViewRenderer } from '../../dist/renderer/tree-view-renderer.js';
+        // TypeScriptファイルを直接インポート（開発用）
+        import { XamlParser } from '../../src/parser/xaml-parser.ts';
+        import { SequenceRenderer } from '../../src/renderer/sequence-renderer.ts';
+        import { TreeViewRenderer } from '../../src/renderer/tree-view-renderer.ts';
 
         let currentXaml = '';
         let isVisualMode = true;
