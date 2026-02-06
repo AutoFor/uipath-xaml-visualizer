@@ -325,22 +325,16 @@
         }
 
         // イベントリスナー
-        // パスから読み込み
-        document.getElementById('load-path-btn').addEventListener('click', () => {
-            const filePathInput = document.getElementById('file-path');
-            const filePath = filePathInput.value.trim();
-            if (filePath) {
-                loadXamlFile(filePath);
-            } else {
-                showError('ファイルパスを入力してください');
-            }
+        // サンプル1を読み込み
+        document.getElementById('load-sample-1').addEventListener('click', () => {
+            console.log('サンプル1読み込み');
+            loadXamlFile('../fixtures/simple-sequence.xaml');
         });
 
-        // Enterキーでも読み込み
-        document.getElementById('file-path').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                document.getElementById('load-path-btn').click();
-            }
+        // サンプル2を読み込み
+        document.getElementById('load-sample-2').addEventListener('click', () => {
+            console.log('サンプル2読み込み');
+            loadXamlFile('../fixtures/click-workflow.xaml');
         });
 
         // ファイル選択から読み込み
