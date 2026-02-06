@@ -253,52 +253,7 @@ export class SequenceRenderer {
    * アクティビティタイプに応じたアイコンを取得
    */
   private getActivityIcon(type: string): string {
-    const iconMap: Record<string, string> = {
-      // 基本ワークフロー
-      'Sequence': '🔄',
-      'Flowchart': '📊',
-      'StateMachine': '⚙️',
-      // 制御フロー
-      'Assign': '📝',
-      'If': '🔀',
-      'While': '🔁',
-      'ForEach': '🔁',
-      'Switch': '🔀',
-      'TryCatch': '⚠️',
-      'Delay': '⏱️',
-      // 旧UIAutomation
-      'Click': '🖱️',
-      'TypeInto': '⌨️',
-      'GetText': '📄',
-      // UIAutomation Next (N系)
-      'NApplicationCard': '🖼️',  // アプリケーションスコープ
-      'NClick': '🖱️',           // クリック
-      'NTypeInto': '⌨️',        // 入力
-      'NGetText': '📄',         // テキスト取得
-      'NHover': '👆',           // ホバー
-      'NDoubleClick': '🖱️',     // ダブルクリック
-      'NRightClick': '🖱️',      // 右クリック
-      'NCheck': '☑️',           // チェックボックス
-      'NSelect': '📋',          // 選択
-      'NAttach': '📎',          // アタッチ
-      'NWaitElement': '⏳',     // 要素待機
-      'NFindElement': '🔍',     // 要素検索
-      'NKeyboardShortcut': '⌨️', // ショートカット
-      // その他
-      'LogMessage': '📋',
-      'WriteLine': '📝',
-      'InvokeWorkflowFile': '📤',
-      'OpenBrowser': '🌐',
-      'CloseBrowser': '🌐',
-      'NavigateTo': '🌐',
-      'AttachBrowser': '🌐',
-      // Excel
-      'ReadRange': '📊',
-      'WriteRange': '📊',
-      'ExcelApplicationScope': '📊',
-      'UseExcelFile': '📊'
-    };
-
-    return iconMap[type] || '📦';               // デフォルトアイコン
+    // アイコンなし - 空文字を返す
+    return '';
   }
 }
