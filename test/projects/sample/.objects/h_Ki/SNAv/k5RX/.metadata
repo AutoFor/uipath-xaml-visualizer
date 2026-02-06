@@ -1,0 +1,13 @@
+﻿{
+  "Name": "Spotify Premium",
+  "Type": "Screen",
+  "Id": "k5RXYd1f4U-9yIdS9OiBkw",
+  "Reference": "yCWEmSrtbEmlwv7Afgw9OA/k5RXYd1f4U-9yIdS9OiBkw",
+  "ParentRef": "yCWEmSrtbEmlwv7Afgw9OA/SNAvgwHK0Uquri69xl4Oxw",
+  "Created": "2026-02-06T11:43:01.9410054Z",
+  "Updated": "2026-02-06T11:43:01.9410054Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=25.10.22.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=25.12.1.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}

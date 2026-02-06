@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-16"?>
+<ObjectRepositoryTargetData ContentHash="kVun8X0kGkOIkWpfMR_GAA" xmlns="http://schemas.uipath.com/workflow/activities/uix" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ObjectRepositoryTargetData.Data>
+    <TargetAnchorable x:Key="TargetAnchorable" CVScreenId="3539927d-74c9-412a-8a32-ae7f562b72f9" CvTextArea="913, 297, 423, 50" CvTextArgument="Piss In The Wind" CvType="Text" DesignTimeRectangle="917, 290, 575, 68" ElementVisibilityArgument="Interactive" FullSelectorArgument="&lt;ctrl name='Piss In The Wind ‑「アルバム」by Joji | Spotify' role='document' /&gt;&lt;ctrl name='Piss In The Wind ‑「アルバム」by Joji | Spotify' role='grouping' /&gt;&lt;ctrl name='Piss In The Wind' role='grouping' /&gt;" Guid="7e822eac-1f56-43a8-bf84-5a2938fd3bda" ScopeSelectorArgument="&lt;wnd app='spotify.exe' appid='SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify' title='Spotify Premium' /&gt;" SearchSteps="Selector, CV" Version="V6" WaitForReadyArgument="Interactive">
+      <imageRef attrName="InformativeScreenshot" originalValue="60003da955a560933fcba479d8081378.png" xmlns="">0XaWrcO7D0k-IWOpnNQvh1A</imageRef>
+    </TargetAnchorable>
+    <x:String x:Key="ActivityType">Click</x:String>
+  </ObjectRepositoryTargetData.Data>
+</ObjectRepositoryTargetData>

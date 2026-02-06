@@ -1,0 +1,12 @@
+﻿{
+  "Name": "Spotify Premium",
+  "Type": "App",
+  "Id": "h_Kieiv8KEGudkh94CAMxw",
+  "Reference": "yCWEmSrtbEmlwv7Afgw9OA/h_Kieiv8KEGudkh94CAMxw",
+  "Created": "2026-02-06T11:43:01.8924572Z",
+  "Updated": "2026-02-06T11:43:01.8924572Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=25.10.22.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=25.12.1.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}

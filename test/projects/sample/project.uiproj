@@ -1,0 +1,6 @@
+{
+  "Name": "sample",
+  "ProjectType": "Process",
+  "Description": "空のプロジェクトです。",
+  "MainFile": "Main.xaml"
+}
