@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(Select-Object Id,ProcessName,StartTime)",
-      "Bash(Format-Table)"
+      "Bash(Format-Table)",
+      "Bash(npm run build:test:*)"
     ],
     "deny": [],
     "ask": []
