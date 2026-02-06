@@ -168,12 +168,28 @@
         }
 
         // エラー表示
-        function showError(message) {
+        function showError(message, error = null) {
+            console.error('エラー発生:', message);
+            if (error) {
+                console.error('詳細:', error);
+                console.error('スタックトレース:', error.stack);
+            }
+
             const errorDiv = document.getElementById('error');
             const errorMessage = document.getElementById('error-message');
-            errorMessage.textContent = message;
+
+            let displayMessage = message;
+            if (error) {
+                displayMessage += '\n\n詳細: ' + error.toString();
+                if (error.stack) {
+                    displayMessage += '\n\nスタック:\n' + error.stack;
+                }
+            }
+
+            errorMessage.textContent = displayMessage;
+            errorMessage.style.whiteSpace = 'pre-wrap';
             errorDiv.style.display = 'block';
-            setTimeout(() => errorDiv.style.display = 'none', 5000);
+            setTimeout(() => errorDiv.style.display = 'none', 10000);
         }
 
         // XAMLファイルをパスから読み込み
