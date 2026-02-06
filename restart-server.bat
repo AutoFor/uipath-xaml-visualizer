@@ -1,42 +1,43 @@
 @echo off
-REM UiPath XAML Visualizer - ローカルサーバー再起動スクリプト
+chcp 65001 >nul
+REM UiPath XAML Visualizer - Local Server Restart
 
 echo ========================================
 echo UiPath XAML Visualizer
-echo ローカルサーバー再起動
+echo Local Server Restart
 echo ========================================
 echo.
 
-REM ポート8080を使用しているプロセスを強制終了
-echo [1/3] ポート8080を使用中のプロセスを停止中...
+REM Stop processes using port 8080
+echo [1/3] Stopping processes on port 8080...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080') do (
-    echo プロセスID %%a を終了します...
+    echo Killing process ID %%a...
     taskkill /PID %%a /F >nul 2>&1
 )
-echo 完了
+echo Done
 echo.
 
-REM 念のため1秒待機
+REM Wait 1 second
 timeout /t 1 /nobreak >nul
 
-REM Webサーバーを起動
-echo [2/3] Webサーバーを起動中...
-echo ポート: 8080
-echo ルート: %CD%
+REM Start web server
+echo [2/3] Starting web server...
+echo Port: 8080
+echo Root: %CD%
 echo.
 start "UiPath XAML Visualizer Server" cmd /k "npm run serve"
 
-REM 起動待機
+REM Wait for startup
 timeout /t 2 /nobreak >nul
 
-echo [3/3] ブラウザで開く...
+echo [3/3] Opening browser...
 start http://localhost:8080/test/local-preview/viewer-test.html
 
 echo.
 echo ========================================
-echo サーバーが起動しました！
+echo Server started!
 echo URL: http://localhost:8080/test/local-preview/viewer-test.html
 echo.
-echo サーバーを停止するには、開いたコマンドウィンドウで Ctrl+C を押してください
+echo To stop server, press Ctrl+C in the opened window
 echo ========================================
 pause
