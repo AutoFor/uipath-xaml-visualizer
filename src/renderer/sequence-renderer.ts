@@ -247,12 +247,4 @@ export class SequenceRenderer {
 
     return String(value);
   }
-
-  /**
-   * アクティビティタイプに応じたアイコンを取得
-   */
-  private getActivityIcon(type: string): string {
-    // アイコンなし - 空文字を返す
-    return '';
-  }
 }

@@ -309,13 +309,12 @@ class SequenceRenderer {
         card.className = 'activity-card';
         card.dataset.id = activity.id; // データ属性にIDを設定
         card.dataset.type = activity.type; // データ属性にタイプを設定
-        // アイコンとヘッダー
+        // ヘッダー
         const header = document.createElement('div');
         header.className = 'activity-header';
-        const icon = this.getActivityIcon(activity.type);
         const title = document.createElement('span');
         title.className = 'activity-title';
-        title.textContent = `${icon} ${activity.type}: ${activity.displayName}`;
+        title.textContent = `${activity.type}: ${activity.displayName}`;
         header.appendChild(title);
         card.appendChild(header);
         // プロパティ表示
@@ -378,7 +377,7 @@ class SequenceRenderer {
         screenshotDiv.className = 'informative-screenshot';
         const label = document.createElement('div');
         label.className = 'screenshot-label';
-        label.textContent = '📷 Informative Screenshot:';
+        label.textContent = 'Informative Screenshot:';
         const img = document.createElement('img');
         img.className = 'screenshot-thumbnail';
         img.src = this.resolveScreenshotPath(filename); // スクリーンショットパスを解決
@@ -388,7 +387,7 @@ class SequenceRenderer {
         img.onerror = () => {
             screenshotDiv.innerHTML = `
         <div class="screenshot-error">
-          ⚠️ 画像が見つかりません<br>
+          [!] Image not found<br>
           ${filename}
         </div>
       `;
@@ -396,7 +395,7 @@ class SequenceRenderer {
         // 拡大ボタン
         const expandBtn = document.createElement('button');
         expandBtn.className = 'screenshot-expand-btn';
-        expandBtn.textContent = '🔍 拡大';
+        expandBtn.textContent = 'Zoom';
         expandBtn.onclick = (e) => {
             e.stopPropagation(); // カードのクリックイベントを阻止
             this.showScreenshotModal(filename, img.src);
@@ -456,16 +455,16 @@ class SequenceRenderer {
         // 詳細情報をレンダリング
         detailContent.innerHTML = `
       <div class="detail-section">
-        <h4>${this.getActivityIcon(activity.type)} ${activity.type}</h4>
+        <h4>${activity.type}</h4>
         <p><strong>DisplayName:</strong> ${activity.displayName}</p>
       </div>
       <div class="detail-section">
-        <h4>プロパティ</h4>
+        <h4>Properties</h4>
         ${this.renderAllProperties(activity.properties)}
       </div>
       ${activity.annotations ? `
         <div class="detail-section">
-          <h4>📎 Annotations</h4>
+          <h4>Annotations</h4>
           <p>${activity.annotations}</p>
         </div>
       ` : ''}
@@ -501,52 +500,8 @@ class SequenceRenderer {
      * アクティビティタイプに応じたアイコンを取得
      */
     getActivityIcon(type) {
-        const iconMap = {
-            // 基本ワークフロー
-            'Sequence': '🔄',
-            'Flowchart': '📊',
-            'StateMachine': '⚙️',
-            // 制御フロー
-            'Assign': '📝',
-            'If': '🔀',
-            'While': '🔁',
-            'ForEach': '🔁',
-            'Switch': '🔀',
-            'TryCatch': '⚠️',
-            'Delay': '⏱️',
-            // 旧UIAutomation
-            'Click': '🖱️',
-            'TypeInto': '⌨️',
-            'GetText': '📄',
-            // UIAutomation Next (N系)
-            'NApplicationCard': '🖼️', // アプリケーションスコープ
-            'NClick': '🖱️', // クリック
-            'NTypeInto': '⌨️', // 入力
-            'NGetText': '📄', // テキスト取得
-            'NHover': '👆', // ホバー
-            'NDoubleClick': '🖱️', // ダブルクリック
-            'NRightClick': '🖱️', // 右クリック
-            'NCheck': '☑️', // チェックボックス
-            'NSelect': '📋', // 選択
-            'NAttach': '📎', // アタッチ
-            'NWaitElement': '⏳', // 要素待機
-            'NFindElement': '🔍', // 要素検索
-            'NKeyboardShortcut': '⌨️', // ショートカット
-            // その他
-            'LogMessage': '📋',
-            'WriteLine': '📝',
-            'InvokeWorkflowFile': '📤',
-            'OpenBrowser': '🌐',
-            'CloseBrowser': '🌐',
-            'NavigateTo': '🌐',
-            'AttachBrowser': '🌐',
-            // Excel
-            'ReadRange': '📊',
-            'WriteRange': '📊',
-            'ExcelApplicationScope': '📊',
-            'UseExcelFile': '📊'
-        };
-        return iconMap[type] || '📦'; // デフォルトアイコン
+        // アイコンなし - 空文字を返す
+        return '';
     }
 }
 
