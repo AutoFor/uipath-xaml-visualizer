@@ -30,7 +30,7 @@ export class SequenceRenderer {
 
     const title = document.createElement('span');
     title.className = 'activity-title';
-    title.textContent = `${activity.displayName}: ${activity.type}`;
+    title.textContent = `${activity.type}: ${activity.displayName}`;
 
     header.appendChild(title);
     card.appendChild(header);
