@@ -317,23 +317,22 @@
         }
 
         // イベントリスナー
-        // サンプル1を読み込み
-        document.getElementById('load-sample-1').addEventListener('click', () => {
-            console.log('サンプル1読み込み');
-            loadXamlFile('../fixtures/simple-sequence.xaml');
+        // Loadボタンをクリック
+        document.getElementById('load-btn').addEventListener('click', () => {
+            const select = document.getElementById('xaml-select');
+            const filePath = select.value;
+            if (filePath) {
+                console.log('選択されたファイル:', filePath);
+                loadXamlFile(filePath);
+            } else {
+                showError('XAMLファイルを選択してください');
+            }
         });
 
-        // サンプル2を読み込み
-        document.getElementById('load-sample-2').addEventListener('click', () => {
-            console.log('サンプル2読み込み');
-            loadXamlFile('../fixtures/click-workflow.xaml');
-        });
-
-        // ファイル選択から読み込み
-        document.getElementById('file-input').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                loadXamlFromFile(file);
+        // セレクトボックスでEnterキー
+        document.getElementById('xaml-select').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('load-btn').click();
             }
         });
 
