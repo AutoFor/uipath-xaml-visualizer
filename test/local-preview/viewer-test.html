@@ -223,23 +223,35 @@
 
         // ファイル選択から読み込み
         function loadXamlFromFile(file) {
-            if (!file) return;
+            if (!file) {
+                console.warn('ファイルが選択されていません');
+                return;
+            }
+
+            console.log('ファイル選択から読み込み開始:', file.name, 'サイズ:', file.size, 'バイト');
 
             const reader = new FileReader();
             reader.onload = async (e) => {
                 try {
+                    console.log('FileReader読み込み完了');
                     showLoading(true);
                     const xamlText = e.target.result;
+                    console.log('XAML読み込み完了 - 長さ:', xamlText.length, '文字');
+                    console.log('XAML先頭100文字:', xamlText.substring(0, 100));
+
                     currentXaml = xamlText;
                     await renderXaml(xamlText);
                     showLoading(false);
+                    console.log('レンダリング成功！');
                 } catch (error) {
-                    showError(error.message);
+                    console.error('loadXamlFromFile エラー:', error);
+                    showError('ファイル選択からの読み込みエラー', error);
                     showLoading(false);
                 }
             };
-            reader.onerror = () => {
-                showError('ファイルの読み込みに失敗しました');
+            reader.onerror = (error) => {
+                console.error('FileReader エラー:', error);
+                showError('ファイルの読み込みに失敗しました', reader.error);
             };
             reader.readAsText(file);
         }
