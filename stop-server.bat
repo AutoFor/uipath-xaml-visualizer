@@ -1,20 +1,21 @@
 @echo off
-REM UiPath XAML Visualizer - ローカルサーバー停止スクリプト
+chcp 65001 >nul
+REM UiPath XAML Visualizer - Stop Local Server
 
 echo ========================================
 echo UiPath XAML Visualizer
-echo ローカルサーバー停止
+echo Stop Local Server
 echo ========================================
 echo.
 
-REM ポート8080を使用しているプロセスを強制終了
-echo ポート8080を使用中のプロセスを停止中...
+REM Stop processes using port 8080
+echo Stopping processes on port 8080...
 for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080') do (
-    echo プロセスID %%a を終了します...
+    echo Killing process ID %%a...
     taskkill /PID %%a /F
 )
 
 echo.
-echo サーバーを停止しました。
+echo Server stopped.
 echo.
 pause
