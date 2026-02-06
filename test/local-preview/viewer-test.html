@@ -195,17 +195,28 @@
         // XAMLファイルをパスから読み込み
         async function loadXamlFile(filePath) {
             try {
+                console.log('ファイルパスから読み込み開始:', filePath);
                 showLoading(true);
+
+                console.log('fetch開始...');
                 const response = await fetch(filePath);
+                console.log('fetch完了 - ステータス:', response.status, response.statusText);
+
                 if (!response.ok) {
-                    throw new Error(`ファイルの読み込みに失敗しました: ${response.status}`);
+                    throw new Error(`ファイルの読み込みに失敗しました: ${response.status} ${response.statusText}`);
                 }
+
+                console.log('テキスト読み込み開始...');
                 const xamlText = await response.text();
+                console.log('テキスト読み込み完了 - 長さ:', xamlText.length, '文字');
+
                 currentXaml = xamlText;
                 await renderXaml(xamlText);
                 showLoading(false);
+                console.log('読み込み成功！');
             } catch (error) {
-                showError(error.message);
+                console.error('loadXamlFile エラー:', error);
+                showError('ファイルパスからの読み込みエラー', error);
                 showLoading(false);
             }
         }
