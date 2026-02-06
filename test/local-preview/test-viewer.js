@@ -147,8 +147,15 @@ class XamlParser {
         const children = [];
         Array.from(element.children).forEach(child => {
             const childName = child.localName;
-            // プロパティ要素は除外
+            // プロパティ要素は除外（例: NApplicationCard.Body）
             if (childName.includes('.')) {
+                // ただし、プロパティ要素の中身は再帰的に処理
+                const nestedActivities = this.parseChildren(child);
+                children.push(...nestedActivities);
+                return;
+            }
+            // メタデータ要素を除外
+            if (this.isMetadataElement(child)) {
                 return;
             }
             // アクティビティとして解析
@@ -159,17 +166,60 @@ class XamlParser {
         return children;
     }
     /**
+     * メタデータ要素かどうかを判定（アクティビティではない要素）
+     */
+    isMetadataElement(element) {
+        const name = element.localName;
+        // メタデータ要素のリスト
+        const metadataTypes = [
+            'WorkflowViewStateService.ViewState',
+            'Dictionary',
+            'Boolean',
+            'String',
+            'Property',
+            'Variable',
+            'InArgument',
+            'OutArgument',
+            'InOutArgument',
+            'ActivityAction',
+            'DelegateInArgument',
+            'DelegateOutArgument',
+            'TargetApp',
+            'TargetAnchorable',
+            'Target'
+        ];
+        // プレフィックスでチェック（sap:, scg:, x: など）
+        const prefix = element.prefix;
+        if (prefix === 'sap' || prefix === 'sap2010' || prefix === 'scg' || prefix === 'sco' || prefix === 'x') {
+            return true;
+        }
+        return metadataTypes.includes(name);
+    }
+    /**
      * アクティビティ要素かどうかを判定
      */
     isActivity(element) {
         const name = element.localName;
-        // よくあるアクティビティタイプ
+        // よくあるアクティビティタイプ（基本）
         const activityTypes = [
             'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'If', 'While',
             'ForEach', 'Switch', 'TryCatch', 'Click', 'TypeInto', 'GetText',
-            'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay'
+            'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay',
+            // UiPath UIAutomation Next アクティビティ
+            'NApplicationCard', 'NClick', 'NTypeInto', 'NGetText', 'NHover',
+            'NKeyboardShortcut', 'NDoubleClick', 'NRightClick', 'NCheck',
+            'NSelect', 'NAttach', 'NWaitElement', 'NFindElement',
+            // その他のよくあるUiPathアクティビティ
+            'OpenBrowser', 'CloseBrowser', 'NavigateTo', 'AttachBrowser',
+            'ReadRange', 'WriteRange', 'AddDataRow', 'BuildDataTable',
+            'ForEachRow', 'ExcelApplicationScope', 'UseExcelFile'
         ];
-        return activityTypes.includes(name);
+        // リストにあればアクティビティ
+        if (activityTypes.includes(name)) {
+            return true;
+        }
+        // メタデータ要素でなければアクティビティとして扱う
+        return !this.isMetadataElement(element);
     }
     /**
      * 変数を抽出
@@ -452,19 +502,49 @@ class SequenceRenderer {
      */
     getActivityIcon(type) {
         const iconMap = {
+            // 基本ワークフロー
             'Sequence': '🔄',
             'Flowchart': '📊',
+            'StateMachine': '⚙️',
+            // 制御フロー
             'Assign': '📝',
             'If': '🔀',
             'While': '🔁',
             'ForEach': '🔁',
+            'Switch': '🔀',
+            'TryCatch': '⚠️',
+            'Delay': '⏱️',
+            // 旧UIAutomation
             'Click': '🖱️',
             'TypeInto': '⌨️',
             'GetText': '📄',
+            // UIAutomation Next (N系)
+            'NApplicationCard': '🖼️', // アプリケーションスコープ
+            'NClick': '🖱️', // クリック
+            'NTypeInto': '⌨️', // 入力
+            'NGetText': '📄', // テキスト取得
+            'NHover': '👆', // ホバー
+            'NDoubleClick': '🖱️', // ダブルクリック
+            'NRightClick': '🖱️', // 右クリック
+            'NCheck': '☑️', // チェックボックス
+            'NSelect': '📋', // 選択
+            'NAttach': '📎', // アタッチ
+            'NWaitElement': '⏳', // 要素待機
+            'NFindElement': '🔍', // 要素検索
+            'NKeyboardShortcut': '⌨️', // ショートカット
+            // その他
             'LogMessage': '📋',
+            'WriteLine': '📝',
             'InvokeWorkflowFile': '📤',
-            'TryCatch': '⚠️',
-            'Delay': '⏱️'
+            'OpenBrowser': '🌐',
+            'CloseBrowser': '🌐',
+            'NavigateTo': '🌐',
+            'AttachBrowser': '🌐',
+            // Excel
+            'ReadRange': '📊',
+            'WriteRange': '📊',
+            'ExcelApplicationScope': '📊',
+            'UseExcelFile': '📊'
         };
         return iconMap[type] || '📦'; // デフォルトアイコン
     }
