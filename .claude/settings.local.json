@@ -5,7 +5,8 @@
       "Bash(Format-Table)",
       "Bash(npm run build:test:*)",
       "Bash(./restart-server.bat)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []
