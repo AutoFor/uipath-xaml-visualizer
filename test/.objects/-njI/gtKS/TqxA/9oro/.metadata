@@ -1,0 +1,14 @@
+﻿{
+  "Name": "再生",
+  "Type": "Element",
+  "TaxonomyType": "Button",
+  "Id": "9oroVOtKGUaH-hvvWR5Jkw",
+  "Reference": "Xi6Wjh4MOkyLZxw9fFmJsg/9oroVOtKGUaH-hvvWR5Jkw",
+  "ParentRef": "Xi6Wjh4MOkyLZxw9fFmJsg/TqxAF--nMEq7pRk_pwy-Vw",
+  "Created": "2026-02-06T11:31:39.6698281Z",
+  "Updated": "2026-02-06T11:31:39.6698281Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=25.10.22.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=25.12.1.0, Culture=neutral, PublicKeyToken=null"
+  ]
+}
