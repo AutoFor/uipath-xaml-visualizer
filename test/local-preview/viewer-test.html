@@ -259,22 +259,35 @@
         // XAMLをレンダリング
         async function renderXaml(xaml) {
             try {
+                console.log('レンダリング開始...');
+
                 // パース
+                console.log('XAML パース中...');
                 const parsedData = parser.parse(xaml);
+                console.log('パース成功:', parsedData);
 
                 // ツリービューを生成
+                console.log('ツリービュー生成中...');
                 const treeContent = document.getElementById('tree-content');
                 treeRenderer.render(parsedData, treeContent);
+                console.log('ツリービュー完了');
 
                 // メインビューを生成
+                console.log('メインビュー生成中...');
                 const visualView = document.getElementById('visual-view');
                 sequenceRenderer.render(parsedData, visualView);
+                console.log('メインビュー完了');
 
                 // Raw XMLも準備
+                console.log('Raw XML準備中...');
                 const rawXml = document.getElementById('raw-xml');
                 rawXml.textContent = xaml;
+                console.log('Raw XML完了');
+
+                console.log('レンダリング完了！');
             } catch (error) {
-                showError('XAML解析エラー: ' + error.message);
+                console.error('renderXaml エラー:', error);
+                showError('XAML解析エラー', error);
             }
         }
 
