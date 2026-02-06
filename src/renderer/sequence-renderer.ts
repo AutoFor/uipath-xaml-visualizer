@@ -201,16 +201,16 @@ export class SequenceRenderer {
     // 詳細情報をレンダリング
     detailContent.innerHTML = `
       <div class="detail-section">
-        <h4>${this.getActivityIcon(activity.type)} ${activity.type}</h4>
+        <h4>${activity.type}</h4>
         <p><strong>DisplayName:</strong> ${activity.displayName}</p>
       </div>
       <div class="detail-section">
-        <h4>プロパティ</h4>
+        <h4>Properties</h4>
         ${this.renderAllProperties(activity.properties)}
       </div>
       ${activity.annotations ? `
         <div class="detail-section">
-          <h4>📎 Annotations</h4>
+          <h4>Annotations</h4>
           <p>${activity.annotations}</p>
         </div>
       ` : ''}
