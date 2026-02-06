@@ -24,14 +24,13 @@ export class SequenceRenderer {
     card.dataset.id = activity.id;              // データ属性にIDを設定
     card.dataset.type = activity.type;          // データ属性にタイプを設定
 
-    // アイコンとヘッダー
+    // ヘッダー
     const header = document.createElement('div');
     header.className = 'activity-header';
 
-    const icon = this.getActivityIcon(activity.type);
     const title = document.createElement('span');
     title.className = 'activity-title';
-    title.textContent = `${icon} ${activity.type}: ${activity.displayName}`;
+    title.textContent = `${activity.type}: ${activity.displayName}`;
 
     header.appendChild(title);
     card.appendChild(header);
