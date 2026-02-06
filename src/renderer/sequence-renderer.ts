@@ -38,7 +38,9 @@ export class SequenceRenderer {
     // プロパティ表示
     if (Object.keys(activity.properties).length > 0) {
       const propsDiv = this.renderProperties(activity.properties);
-      card.appendChild(propsDiv);
+      if (propsDiv) { // nullチェックを追加
+        card.appendChild(propsDiv);
+      }
     }
 
     // InformativeScreenshot表示
