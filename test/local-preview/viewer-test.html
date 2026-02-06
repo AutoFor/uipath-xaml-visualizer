@@ -97,8 +97,13 @@
         <div class="viewer-container">
             <!-- サイドバー: ツリービュー -->
             <aside id="tree-view" class="tree-view">
-                <div class="tree-header">
-                    <input type="text" id="tree-search" placeholder="検索..." />
+                <!-- XAML File Selection (moved from test-controls) -->
+                <div class="tree-header" style="background: #e3f2fd; padding: 12px;">
+                    <label for="xaml-select" style="display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px;">Select XAML File:</label>
+                    <select id="xaml-select" class="select" style="width: 100%; padding: 8px; font-size: 13px; margin-bottom: 8px; border: 1px solid #0078d4; border-radius: 4px;">
+                        <option value="">-- Select File --</option>
+                    </select>
+                    <button id="load-btn" class="btn" style="width: 100%; padding: 8px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">Load</button>
                 </div>
                 <div id="tree-content" class="tree-content">
                     <!-- ツリー構造がここに動的に生成される -->
