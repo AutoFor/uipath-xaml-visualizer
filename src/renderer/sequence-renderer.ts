@@ -69,6 +69,16 @@ export class SequenceRenderer {
       });
 
       card.appendChild(childrenContainer);
+
+      // 折りたたみボタンのクリックイベント
+      const collapseBtn = header.querySelector('.collapse-btn');
+      if (collapseBtn) {
+        collapseBtn.addEventListener('click', (e) => {
+          e.stopPropagation(); // カードのクリックイベントを阻止
+          const isCollapsed = card.classList.toggle('collapsed'); // collapsed クラスをトグル
+          collapseBtn.textContent = isCollapsed ? '▶' : '▼'; // アイコンを変更
+        });
+      }
     }
 
     // クリックイベント: 詳細パネルを開く
