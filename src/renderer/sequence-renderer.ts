@@ -28,6 +28,15 @@ export class SequenceRenderer {
     const header = document.createElement('div');
     header.className = 'activity-header';
 
+    // 折りたたみボタン（子要素がある場合のみ表示）
+    if (activity.children.length > 0) {
+      const collapseBtn = document.createElement('button');
+      collapseBtn.className = 'collapse-btn';
+      collapseBtn.textContent = '▼'; // 展開状態のアイコン
+      collapseBtn.title = '折りたたみ/展開';
+      header.appendChild(collapseBtn);
+    }
+
     const title = document.createElement('span');
     title.className = 'activity-title';
     title.textContent = `${activity.type}: ${activity.displayName}`;
