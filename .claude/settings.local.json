@@ -6,7 +6,8 @@
       "Bash(npm run build:test:*)",
       "Bash(./restart-server.bat)",
       "Bash(git checkout:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(gh issue view:*)"
     ],
     "deny": [],
     "ask": []
