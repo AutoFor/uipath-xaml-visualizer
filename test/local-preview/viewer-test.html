@@ -14,6 +14,7 @@
             <div class="header-actions">
                 <button id="toggle-tree" class="btn">ツリー表示切替</button>
                 <button id="toggle-view" class="btn">Raw XML</button>
+                <button id="copy-debug" class="btn">デバッグ情報コピー</button>
             </div>
         </header>
 
@@ -69,6 +70,11 @@
         <div id="error" class="error" style="display: none;">
             <p id="error-message"></p>
         </div>
+
+        <!-- コピー成功ステータス -->
+        <div id="copy-status" style="display: none; position: fixed; top: 20px; right: 20px; background: #4caf50; color: white; padding: 16px 24px; border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10000; font-size: 14px;">
+            デバッグ情報をコピーしました
+        </div>
     </div>
 
     <!-- ローカルテスト用のスクリプト -->
@@ -83,28 +89,21 @@
         const sequenceRenderer = new SequenceRenderer();
         const treeRenderer = new TreeViewRenderer();
 
-        // 動的にXAMLファイルをスキャン
+        // JSONからXAMLファイルリストを取得
         async function scanXamlFiles() {
             try {
                 console.log('XAMLファイルをスキャン中...');
-                const response = await fetch('../projects/sample/');
-                const html = await response.text();
+                const response = await fetch('../projects/sample/files.json');
 
-                // HTMLから.xamlファイルのリンクを抽出
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const links = doc.querySelectorAll('a[href$=".xaml"]');
+                if (!response.ok) {
+                    throw new Error(`files.jsonの読み込みに失敗: ${response.status}`);
+                }
 
-                const xamlFiles = [];
-                links.forEach(link => {
-                    const filename = link.getAttribute('href');
-                    if (filename && filename.endsWith('.xaml')) {
-                        xamlFiles.push({
-                            name: filename,
-                            path: `../projects/sample/${filename}`
-                        });
-                    }
-                });
+                const data = await response.json();
+                const xamlFiles = data.files.map(filename => ({
+                    name: filename,
+                    path: `../projects/sample/${filename}`
+                }));
 
                 console.log('検出されたXAMLファイル:', xamlFiles);
                 return xamlFiles;
@@ -126,15 +125,34 @@
                 const optgroup = document.createElement('optgroup');
                 optgroup.label = 'Sample Project';
 
+                let mainXamlPath = null; // Main.xamlのパスを保存
+
                 xamlFiles.forEach(file => {
                     const option = document.createElement('option');
                     option.value = file.path;
                     option.textContent = file.name;
                     optgroup.appendChild(option);
+
+                    console.log(`  - ${file.name} (${file.path})`); // 各ファイルをログ出力
+
+                    // Main.xamlを見つけたらパスを保存
+                    if (file.name === 'Main.xaml') {
+                        mainXamlPath = file.path;
+                        console.log('  → Main.xaml発見！');
+                    }
                 });
 
                 select.appendChild(optgroup);
                 console.log(`${xamlFiles.length}個のXAMLファイルを読み込みました`);
+
+                // Main.xamlが存在すればデフォルト選択
+                if (mainXamlPath) {
+                    select.value = mainXamlPath;
+                    console.log('✓ Main.xamlをデフォルト選択しました:', mainXamlPath);
+                    console.log('  現在の選択値:', select.value);
+                } else {
+                    console.warn('⚠ Main.xamlが見つかりませんでした');
+                }
             } else {
                 console.warn('XAMLファイルが見つかりませんでした');
             }
@@ -298,6 +316,75 @@
             document.getElementById('detail-panel').style.display = 'none';
         }
 
+        // デバッグ情報をクリップボードにコピー
+        async function copyDebugInfo() {
+            try {
+                // 選択されたファイル情報を取得
+                const select = document.getElementById('xaml-select');
+                const selectedFile = select.options[select.selectedIndex];
+                const fileName = selectedFile ? selectedFile.textContent : 'Not Selected';
+                const filePath = selectedFile ? selectedFile.value : 'N/A';
+
+                // 表示エリアの内容を取得
+                const visualView = document.getElementById('visual-view');
+                const rawView = document.getElementById('raw-view');
+                const treeContent = document.getElementById('tree-content');
+
+                // 表示モードを確認
+                const viewMode = isVisualMode ? 'Visual Mode' : 'Raw XML Mode';
+
+                // パース済みデータを文字列化
+                let parsedStructure = 'No XAML loaded';
+                if (currentXaml) {
+                    try {
+                        const parsedData = parser.parse(currentXaml);
+                        parsedStructure = JSON.stringify(parsedData, null, 2);
+                    } catch (e) {
+                        parsedStructure = 'Parse error: ' + e.message;
+                    }
+                }
+
+                // 表示されているHTML内容を取得
+                const renderedHTML = isVisualMode
+                    ? visualView.innerHTML
+                    : rawView.innerHTML;
+
+                // デバッグ情報を整形
+                const debugInfo = `=== XAML Visualizer Debug Info ===
+File: ${fileName}
+Path: ${filePath}
+View Mode: ${viewMode}
+
+[Parsed Structure]
+${parsedStructure}
+
+[Rendered HTML (selected area only)]
+${renderedHTML}
+
+[Tree View Content]
+${treeContent.innerHTML}
+
+[XAML Source (first 500 chars)]
+${currentXaml ? currentXaml.substring(0, 500) + '...' : 'Not loaded'}
+`;
+
+                // クリップボードにコピー
+                await navigator.clipboard.writeText(debugInfo);
+
+                // コピー成功のフィードバック表示
+                const statusDiv = document.getElementById('copy-status');
+                statusDiv.style.display = 'block';
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 2000);
+
+                console.log('デバッグ情報をクリップボードにコピーしました');
+            } catch (error) {
+                console.error('コピーエラー:', error);
+                showError('クリップボードへのコピーに失敗しました', error);
+            }
+        }
+
         // イベントリスナー
         // Loadボタンをクリック
         document.getElementById('load-btn').addEventListener('click', () => {
@@ -321,6 +408,7 @@
         document.getElementById('toggle-view').addEventListener('click', toggleView);
         document.getElementById('toggle-tree').addEventListener('click', toggleTreeView);
         document.getElementById('close-panel').addEventListener('click', closeDetailPanel);
+        document.getElementById('copy-debug').addEventListener('click', copyDebugInfo); // デバッグ情報コピーボタン
 
         // ページ読み込み時にXAMLファイルをスキャン
         window.addEventListener('DOMContentLoaded', async () => {

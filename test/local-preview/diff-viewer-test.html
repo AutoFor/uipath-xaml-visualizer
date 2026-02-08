@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UiPath XAML Diff Viewer - Local Test</title>
+    <link rel="stylesheet" href="../../dist/styles/main.css">
+    <link rel="stylesheet" href="../../dist/styles/diff.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ヘッダー -->
+        <header class="viewer-header">
+            <h1>UiPath XAML Diff Viewer - ローカルテスト</h1>
+            <div class="header-actions">
+                <button id="summary-view" class="btn active">サマリー</button>
+                <button id="detail-view" class="btn">詳細</button>
+                <select id="filter-type" class="select">
+                    <option value="all">すべて表示</option>
+                    <option value="added">追加のみ</option>
+                    <option value="removed">削除のみ</option>
+                    <option value="modified">変更のみ</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- ファイル選択 -->
+        <section class="file-selection" style="background: #f0f0f0; padding: 20px; margin: 20px;">
+            <h2 style="margin-top: 0;">XAMLファイル選択</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                <div>
+                    <label for="before-file" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                        Before XAML:
+                    </label>
+                    <select id="before-file" class="select" style="width: 100%; padding: 8px; margin-bottom: 8px;">
+                        <option value="">-- Select File --</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="after-file" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                        After XAML:
+                    </label>
+                    <select id="after-file" class="select" style="width: 100%; padding: 8px; margin-bottom: 8px;">
+                        <option value="">-- Select File --</option>
+                    </select>
+                </div>
+            </div>
+            <button id="load-diff-btn" class="btn" style="width: 100%; padding: 12px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; font-weight: bold;">
+                差分を表示
+            </button>
+        </section>
+
+        <!-- 変更サマリー -->
+        <section class="diff-summary">
+            <div class="summary-card">
+                <span class="summary-label">追加</span>
+                <span id="added-count" class="count added">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">削除</span>
+                <span id="removed-count" class="count removed">0</span>
+            </div>
+            <div class="summary-card">
+                <span class="summary-label">変更</span>
+                <span id="modified-count" class="count modified">0</span>
+            </div>
+        </section>
+
+        <!-- 差分表示エリア -->
+        <main class="diff-container">
+            <div id="diff-content" class="diff-content">
+                <div style="text-align: center; padding: 48px; color: #666;">
+                    <h2>XAMLファイルを選択してください</h2>
+                    <p>BeforeとAfterのXAMLファイルを選択し、「差分を表示」ボタンをクリックしてください。</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- ローディング表示 -->
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>差分を計算中...</p>
+        </div>
+
+        <!-- エラー表示 -->
+        <div id="error" class="error" style="display: none;">
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <!-- ローカルテスト用のスクリプト -->
+    <script src="test-viewer.js"></script>
+    <script>
+        // グローバル変数からクラスを取得
+        const { XamlParser, DiffCalculator, DiffRenderer } = XamlViewer;
+
+        const parser = new XamlParser();
+        const diffCalculator = new DiffCalculator();
+        const diffRenderer = new DiffRenderer();
+        let currentFilter = 'all';
+
+        // JSONからXAMLファイルリストを取得
+        async function loadXamlFileList() {
+            try {
+                console.log('XAMLファイルリストを読み込み中...');
+                const response = await fetch('../projects/sample/files.json');
+                if (!response.ok) {
+                    throw new Error(`files.jsonの読み込みに失敗: ${response.status}`);
+                }
+                const data = await response.json();
+                return data.files;
+            } catch (error) {
+                console.error('ファイルリスト読み込みエラー:', error);
+                return [];
+            }
+        }
+
+        // セレクトボックスにファイルリストを追加
+        async function populateFileSelects() {
+            const files = await loadXamlFileList();
+            const beforeSelect = document.getElementById('before-file');
+            const afterSelect = document.getElementById('after-file');
+
+            files.forEach(filename => {
+                const beforeOption = document.createElement('option');
+                beforeOption.value = `../projects/sample/${filename}`;
+                beforeOption.textContent = filename;
+                beforeSelect.appendChild(beforeOption);
+
+                const afterOption = document.createElement('option');
+                afterOption.value = `../projects/sample/${filename}`;
+                afterOption.textContent = filename;
+                afterSelect.appendChild(afterOption);
+            });
+
+            // デフォルト選択（Main.xamlがあれば）
+            if (files.includes('Main.xaml')) {
+                afterSelect.value = '../projects/sample/Main.xaml';
+            }
+
+            console.log(`${files.length}個のファイルを読み込みました`);
+        }
+
+        // ローディング表示
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        // エラー表示
+        function showError(message, error = null) {
+            console.error('エラー発生:', message);
+            if (error) {
+                console.error('詳細:', error);
+            }
+
+            const errorDiv = document.getElementById('error');
+            const errorMessage = document.getElementById('error-message');
+
+            let displayMessage = message;
+            if (error) {
+                displayMessage += '\n\n詳細: ' + error.toString();
+            }
+
+            errorMessage.textContent = displayMessage;
+            errorMessage.style.whiteSpace = 'pre-wrap';
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 10000);
+        }
+
+        // XAMLファイルを読み込み
+        async function loadXamlFile(filePath) {
+            console.log('ファイル読み込み:', filePath);
+            const response = await fetch(filePath);
+            if (!response.ok) {
+                throw new Error(`ファイルの読み込みに失敗しました: ${response.status}`);
+            }
+            return await response.text();
+        }
+
+        // サマリー情報を更新
+        function updateSummary(added, removed, modified) {
+            const addedCount = document.getElementById('added-count');
+            const removedCount = document.getElementById('removed-count');
+            const modifiedCount = document.getElementById('modified-count');
+
+            if (addedCount) addedCount.textContent = added.toString();
+            if (removedCount) removedCount.textContent = removed.toString();
+            if (modifiedCount) modifiedCount.textContent = modified.toString();
+        }
+
+        // フィルタを適用
+        function applyFilter() {
+            const items = document.querySelectorAll('.diff-item');
+            items.forEach(item => {
+                const element = item;
+                if (currentFilter === 'all') {
+                    element.style.display = 'block';
+                } else {
+                    element.style.display = element.classList.contains(`diff-${currentFilter}`)
+                        ? 'block'
+                        : 'none';
+                }
+            });
+        }
+
+        // サマリービューを表示
+        function showSummaryView() {
+            const detailElements = document.querySelectorAll('.property-diff-detail');
+            detailElements.forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        // 詳細ビューを表示
+        function showDetailView() {
+            const detailElements = document.querySelectorAll('.property-diff-detail');
+            detailElements.forEach(el => {
+                el.style.display = 'block';
+            });
+        }
+
+        // 差分を計算して表示
+        async function loadAndShowDiff() {
+            try {
+                showLoading(true);
+
+                const beforeFile = document.getElementById('before-file').value;
+                const afterFile = document.getElementById('after-file').value;
+
+                console.log('Before:', beforeFile);
+                console.log('After:', afterFile);
+
+                // XAMLファイルを読み込み
+                const beforeXaml = await loadXamlFile(beforeFile);
+                const afterXaml = await loadXamlFile(afterFile);
+
+                console.log('Before XAML読み込み完了:', beforeXaml.length, '文字');
+                console.log('After XAML読み込み完了:', afterXaml.length, '文字');
+
+                // XAMLをパース
+                const beforeData = parser.parse(beforeXaml);
+                const afterData = parser.parse(afterXaml);
+
+                console.log('パース完了');
+
+                // 差分を計算
+                const diff = diffCalculator.calculate(beforeData, afterData);
+
+                console.log('差分計算完了:', diff);
+
+                // サマリーを更新
+                updateSummary(diff.added.length, diff.removed.length, diff.modified.length);
+
+                // 差分を表示
+                const diffContent = document.getElementById('diff-content');
+                if (diffContent) {
+                    diffRenderer.render(diff, diffContent);
+                }
+
+                // フィルタを適用
+                applyFilter();
+
+                showLoading(false);
+            } catch (error) {
+                console.error('差分表示エラー:', error);
+                showError('差分の計算に失敗しました', error);
+                showLoading(false);
+            }
+        }
+
+        // イベントリスナー
+        document.getElementById('load-diff-btn').addEventListener('click', loadAndShowDiff);
+
+        // フィルタ選択
+        document.getElementById('filter-type').addEventListener('change', (e) => {
+            currentFilter = e.target.value;
+            applyFilter();
+        });
+
+        // サマリー/詳細ビュー切替
+        document.getElementById('summary-view').addEventListener('click', function() {
+            this.classList.add('active');
+            document.getElementById('detail-view').classList.remove('active');
+            showSummaryView();
+        });
+
+        document.getElementById('detail-view').addEventListener('click', function() {
+            this.classList.add('active');
+            document.getElementById('summary-view').classList.remove('active');
+            showDetailView();
+        });
+
+        // ページ読み込み時にファイルリストを読み込み
+        window.addEventListener('DOMContentLoaded', async () => {
+            console.log('ページ読み込み完了 - ファイルリストを読み込みます');
+            await populateFileSelects();
+        });
+    </script>
+</body>
+</html>
