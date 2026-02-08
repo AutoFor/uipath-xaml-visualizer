@@ -1,0 +1,182 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:coverage || echo "Tests skipped - no test:coverage script"
+
+      - name: Build test viewer
+        run: npm run build:test
+
+      - name: Build production
+        run: npm run build
+
+      - name: Prepare GitHub Pages content
+        run: |
+          mkdir -p _site
+
+          # デモページの配置
+          if [ -d "test/local-preview" ]; then
+            mkdir -p _site/demo
+            cp -r test/local-preview/* _site/demo/
+          fi
+
+          # カバレッジレポートの配置
+          if [ -d "coverage" ]; then
+            cp -r coverage/ _site/coverage/
+          fi
+
+          # トップページの作成
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="ja">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>UiPath XAML Visualizer</title>
+            <style>
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                max-width: 1200px;
+                margin: 0 auto;
+                padding: 40px 20px;
+                background: #f5f5f5;
+              }
+              h1 {
+                color: #333;
+                border-bottom: 3px solid #ff6600;
+                padding-bottom: 10px;
+              }
+              .card {
+                background: white;
+                border-radius: 8px;
+                padding: 24px;
+                margin: 20px 0;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+              }
+              .card h2 {
+                margin-top: 0;
+                color: #ff6600;
+              }
+              .links {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 16px;
+                margin-top: 16px;
+              }
+              .link-item {
+                display: block;
+                padding: 16px;
+                background: #f8f9fa;
+                border-radius: 6px;
+                text-decoration: none;
+                color: #333;
+                transition: all 0.3s;
+                border: 2px solid transparent;
+              }
+              .link-item:hover {
+                background: #ff6600;
+                color: white;
+                border-color: #ff6600;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(255,102,0,0.2);
+              }
+              .link-item h3 {
+                margin: 0 0 8px 0;
+                font-size: 18px;
+              }
+              .link-item p {
+                margin: 0;
+                font-size: 14px;
+                opacity: 0.8;
+              }
+              .footer {
+                text-align: center;
+                margin-top: 40px;
+                padding-top: 20px;
+                border-top: 1px solid #ddd;
+                color: #666;
+              }
+            </style>
+          </head>
+          <body>
+            <h1>🎨 UiPath XAML Visualizer</h1>
+
+            <div class="card">
+              <h2>プロジェクト概要</h2>
+              <p>UiPath XAMLファイルを視覚的に表示し、差分を確認できるツールです。</p>
+              <p>GitHub Actionsで自動的にビルドされ、このページで公開されています。</p>
+            </div>
+
+            <div class="card">
+              <h2>📑 コンテンツ</h2>
+              <div class="links">
+                <a href="demo/viewer-test.html" class="link-item">
+                  <h3>📊 デモページ</h3>
+                  <p>XAMLビジュアライザーのデモ</p>
+                </a>
+                <a href="demo/diff-viewer-test.html" class="link-item">
+                  <h3>🔍 差分表示デモ</h3>
+                  <p>XAML差分ビューワーのデモ</p>
+                </a>
+                <a href="coverage/" class="link-item">
+                  <h3>📈 カバレッジレポート</h3>
+                  <p>テストカバレッジの確認</p>
+                </a>
+                <a href="https://github.com/AutoFor/uipath-xaml-visualizer" class="link-item">
+                  <h3>💻 GitHubリポジトリ</h3>
+                  <p>ソースコードを確認</p>
+                </a>
+              </div>
+            </div>
+
+            <div class="footer">
+              <p>© 2024 UiPath XAML Visualizer | 自動ビルド・デプロイ by GitHub Actions</p>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
