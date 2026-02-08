@@ -49,6 +49,12 @@ jobs:
             cp -r test/local-preview/* _site/demo/
           fi
 
+          # サンプルXAMLファイルの配置
+          if [ -d "test/projects" ]; then
+            mkdir -p _site/demo/projects
+            cp -r test/projects/* _site/demo/projects/
+          fi
+
           # カバレッジレポートの配置
           if [ -d "coverage" ]; then
             cp -r coverage/ _site/coverage/
