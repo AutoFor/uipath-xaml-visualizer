@@ -1,45 +1,47 @@
-name: Deploy to GitHub Pages
+name: Deploy Dev to GitHub Pages
 
+# dev/featureブランチへのpush時に開発用Pagesへ自動デプロイ
 on:
   push:
-    branches: [main, master]
-  workflow_dispatch:
+    branches-ignore: [main, master] # 本番ブランチ以外すべて
+  workflow_dispatch: # 手動実行も可能
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: read # リポジトリの読み取り権限
+  pages: write # GitHub Pagesへの書き込み権限
+  id-token: write # IDトークンの発行権限
 
+# 同時実行制御：開発用は dev-pages グループで管理
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "dev-pages"
+  cancel-in-progress: true # 新しいビルドが来たら古いものをキャンセル
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Ubuntu環境で実行
     steps:
-      - name: Checkout
+      - name: Checkout # ソースコードをチェックアウト
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js # Node.js環境をセットアップ
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '20' # Node.js 20を使用
+          cache: 'npm' # npmキャッシュを有効化
 
-      - name: Install dependencies
+      - name: Install dependencies # 依存関係をインストール
         run: npm ci
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage # テストとカバレッジを実行
         run: npm run test:coverage || echo "Tests skipped - no test:coverage script"
 
-      - name: Build test viewer
+      - name: Build test viewer # テスト用ビルドを実行
         run: npm run build:test
 
-      - name: Build production
+      - name: Build production # 本番用ビルドを実行
         run: npm run build
 
-      - name: Prepare GitHub Pages content
+      - name: Prepare GitHub Pages content # GitHub Pages用コンテンツを準備
         run: |
           mkdir -p _site
 
@@ -60,14 +62,14 @@ jobs:
             cp -r coverage/ _site/coverage/
           fi
 
-          # トップページの作成
+          # 開発用トップページの作成（ブランチ名を表示）
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="ja">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>UiPath XAML Visualizer</title>
+            <title>UiPath XAML Visualizer - Dev Preview</title>
             <style>
               body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
@@ -78,8 +80,26 @@ jobs:
               }
               h1 {
                 color: #333;
-                border-bottom: 3px solid #ff6600;
+                border-bottom: 3px solid #4CAF50;
                 padding-bottom: 10px;
+              }
+              .dev-notice {
+                background: #fff3cd;
+                border-left: 4px solid #ffc107;
+                padding: 16px;
+                margin: 20px 0;
+                border-radius: 4px;
+              }
+              .dev-notice strong {
+                color: #856404;
+              }
+              .branch-info {
+                background: #e3f2fd;
+                border-left: 4px solid #2196F3;
+                padding: 16px;
+                margin: 20px 0;
+                border-radius: 4px;
+                font-family: monospace;
               }
               .card {
                 background: white;
@@ -90,7 +110,7 @@ jobs:
               }
               .card h2 {
                 margin-top: 0;
-                color: #ff6600;
+                color: #4CAF50;
               }
               .links {
                 display: grid;
@@ -109,11 +129,11 @@ jobs:
                 border: 2px solid transparent;
               }
               .link-item:hover {
-                background: #ff6600;
+                background: #4CAF50;
                 color: white;
-                border-color: #ff6600;
+                border-color: #4CAF50;
                 transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(255,102,0,0.2);
+                box-shadow: 0 4px 12px rgba(76,175,80,0.2);
               }
               .link-item h3 {
                 margin: 0 0 8px 0;
@@ -134,12 +154,24 @@ jobs:
             </style>
           </head>
           <body>
-            <h1>🎨 UiPath XAML Visualizer</h1>
+            <h1>🚧 UiPath XAML Visualizer - 開発プレビュー</h1>
+
+            <div class="dev-notice">
+              <strong>⚠️ これは開発用のプレビュー環境です</strong><br>
+              このページは開発中のブランチから自動的にビルド・デプロイされています。<br>
+              本番環境ではありませんので、動作が不安定な場合があります。
+            </div>
+
+            <div class="branch-info">
+              <strong>ブランチ:</strong> ${{ github.ref_name }}<br>
+              <strong>コミット:</strong> ${{ github.sha }}<br>
+              <strong>ビルド日時:</strong> $(date -u '+%Y-%m-%d %H:%M:%S UTC')
+            </div>
 
             <div class="card">
               <h2>プロジェクト概要</h2>
               <p>UiPath XAMLファイルを視覚的に表示し、差分を確認できるツールです。</p>
-              <p>GitHub Actionsで自動的にビルドされ、このページで公開されています。</p>
+              <p>このページは開発用に自動デプロイされており、最新の開発状況を確認できます。</p>
             </div>
 
             <div class="card">
@@ -165,24 +197,24 @@ jobs:
             </div>
 
             <div class="footer">
-              <p>© 2024 UiPath XAML Visualizer | 自動ビルド・デプロイ by GitHub Actions</p>
+              <p>© 2024 UiPath XAML Visualizer | 開発用自動ビルド by GitHub Actions</p>
             </div>
           </body>
           </html>
           EOF
 
-      - name: Upload artifact
+      - name: Upload artifact # ビルド成果物をアップロード
         uses: actions/upload-pages-artifact@v3
         with:
           path: '_site'
 
   deploy:
     environment:
-      name: github-pages
+      name: github-pages-dev # 開発用の環境名
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
+    runs-on: ubuntu-latest # Ubuntu環境で実行
+    needs: build # buildジョブの完了を待つ
     steps:
-      - name: Deploy to GitHub Pages
+      - name: Deploy to GitHub Pages # GitHub Pagesへデプロイ
         id: deployment
         uses: actions/deploy-pages@v4
