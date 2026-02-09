@@ -147,29 +147,22 @@ npm run test:coverage
 - TryCatch
 - その他多数
 
-## 開発用プレビューページ（CI専用）
+## GitHub Pages
 
-このリポジトリでは、`dev`や`feature`ブランチへのpush時に、自動的に開発用GitHub Pagesへデプロイされます。
+このリポジトリでは、`main`/`master`ブランチへのマージ時に、自動的にGitHub Pagesへデプロイされます。
 
-### アクセス方法
+- **公開ページ**: https://autofor.github.io/uipath-xaml-visualizer/
 
-- **開発用ページ**: https://autofor.github.io/uipath-xaml-visualizer/dev/
-- **本番用ページ**: https://autofor.github.io/uipath-xaml-visualizer/
+### ローカル開発環境
 
-### 特徴
+開発中の動作確認はローカルサーバーで行います：
 
-- **プルリク不要**: dev/featureブランチへpushするだけで自動デプロイ
-- **目視確認**: 最新の開発成果をブラウザで即座に確認可能
-- **承認フロー**: レビュー担当者が開発用ページで動作確認
-- **本番分離**: 本番環境（main/masterブランチ）とは完全に分離
+```bash
+npm run build:test  # テスト用にビルド
+npm run serve       # http://localhost:8080 でサーバー起動
+```
 
-### 運用フロー
-
-1. dev/featureブランチで開発
-2. pushすると自動的に開発用Pagesへデプロイ
-3. デプロイされたページで動作確認・目視チェック
-4. 問題なければmainブランチへマージ
-5. 本番用Pagesへ自動デプロイ
+ブラウザで http://localhost:8080/test/local-preview/viewer-test.html にアクセスして動作確認できます。
 
 ## GitHub統合（Claude Code）
 
