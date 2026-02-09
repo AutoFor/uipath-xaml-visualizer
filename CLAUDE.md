@@ -38,36 +38,62 @@
 
 3. **PRとイシューを紐づけ**
    - PRの本文に `Closes #イシュー番号` を追加
-   - または `gh pr edit <PR番号> --body` で編集
+   - `gh pr edit <PR番号> --body` で編集
 
-4. **masterブランチに戻る**
+4. **ユーザーに確認を依頼**
+   - PRとイシューの内容に問題がないか確認を求める
+   - ユーザーの承認を待つ
+
+5. **PR承認とマージ**（ユーザー承認後）
+   ```bash
+   gh pr merge <PR番号> --squash  # または --merge, --rebase
+   ```
+
+6. **イシュークローズ**
+   ```bash
+   gh issue close <イシュー番号>
+   ```
+   - 注意: PRに `Closes #XX` が含まれていれば自動でクローズされる
+
+7. **masterブランチに戻る**
    ```bash
    git checkout master
    ```
 
-5. **リモートの最新状態を取得**
+8. **リモートの最新状態を取得と不要ブランチ削除**
    ```bash
-   git fetch
    git pull
+   git fetch --prune
    ```
 
 ### 完了フローの例
 ```bash
 # 1. PRを作成
 gh pr create --title "機能追加: XAMLビジュアライザー改善" --body "詳細な変更内容"
+# 出力例: https://github.com/AutoFor/uipath-xaml-visualizer/pull/44
 
 # 2. イシューを作成
 gh issue create --title "XAMLビジュアライザーの表示改善" --body "背景と目的"
+# 出力例: https://github.com/AutoFor/uipath-xaml-visualizer/issues/45
 
 # 3. PRとイシューを紐づけ（PRの本文に追記）
-gh pr edit <PR番号> --body "変更内容\n\nCloses #<イシュー番号>"
+gh pr edit 44 --body "変更内容\n\nCloses #45"
 
-# 4. masterブランチに戻る
+# 4. ユーザーに確認
+# → Claudeがユーザーに「PRとイシューを確認してください。問題なければ承認します。」と聞く
+
+# 5. PR承認とマージ（ユーザー承認後）
+gh pr merge 44 --squash
+
+# 6. イシュークローズ（通常は自動だが念のため）
+gh issue close 45
+
+# 7. masterブランチに戻る
 git checkout master
 
-# 5. 最新状態を取得
-git fetch
+# 8. 最新状態を取得と不要ブランチ削除
 git pull
+git fetch --prune
 ```
 
 ---
