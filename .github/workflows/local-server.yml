@@ -24,12 +24,12 @@ jobs:
       - name: Start local preview server
         run: |
           # 既存の8080ポートプロセスを停止
-          $processes = netstat -ano | Select-String ':8080' | ForEach-Object {
+          $portProcesses = netstat -ano | Select-String ':8080' | ForEach-Object {
             ($_ -split '\s+')[-1]
           } | Sort-Object -Unique
-          foreach ($pid in $processes) {
-            if ($pid -match '^\d+$' -and $pid -ne '0') {
-              Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+          foreach ($procId in $portProcesses) {
+            if ($procId -match '^\d+$' -and $procId -ne '0') {
+              Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
             }
           }
 
