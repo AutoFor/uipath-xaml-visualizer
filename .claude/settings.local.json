@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object -First 10 FullName)"
+      "Bash(Select-Object -First 10 FullName)",
+      "Bash(gh pr create:*)"
     ],
     "deny": [],
     "ask": []
