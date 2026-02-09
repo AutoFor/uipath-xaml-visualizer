@@ -7,7 +7,10 @@
       "Bash(gh run view:*)",
       "Read(//c/Users/SeiyaKawashima/**)",
       "Bash(gh issue list:*)",
-      "Bash(gh issue create:*)"
+      "Bash(gh issue create:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh pr view:*)",
+      "Bash(git remote get-url:*)"
     ],
     "deny": [],
     "ask": []
