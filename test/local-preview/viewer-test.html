@@ -93,7 +93,7 @@
         async function scanXamlFiles() {
             try {
                 console.log('XAMLファイルをスキャン中...');
-                const response = await fetch('projects/sample/files.json');
+                const response = await fetch('../projects/sample/files.json');
 
                 if (!response.ok) {
                     throw new Error(`files.jsonの読み込みに失敗: ${response.status}`);
@@ -102,7 +102,7 @@
                 const data = await response.json();
                 const xamlFiles = data.files.map(filename => ({
                     name: filename,
-                    path: `projects/sample/${filename}`
+                    path: `../projects/sample/${filename}`
                 }));
 
                 console.log('検出されたXAMLファイル:', xamlFiles);

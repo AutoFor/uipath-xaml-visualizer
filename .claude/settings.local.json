@@ -1,23 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(Select-Object Id,ProcessName,StartTime)",
-      "Bash(Format-Table)",
-      "Bash(npm run build:test:*)",
-      "Bash(./restart-server.bat)",
-      "Bash(git checkout:*)",
-      "Bash(tree:*)",
-      "Bash(gh issue view:*)",
-      "Bash(git add:*)",
-      "Bash(git update-index:*)",
-      "Bash(git hash-object:*)",
-      "Bash(git ls-tree:*)",
-      "Bash(gh workflow:*)",
-      "Bash(gh run list:*)",
-      "Bash(timeout 60 bash:*)",
-      "Bash(gh run watch:*)",
-      "Bash(gh api:*)",
-      "Bash(git pull:*)"
+      "Bash(Select-Object -First 10 FullName)",
+      "Bash(gh pr create:*)",
+      "Bash(cat:*)",
+      "Bash(gh run view:*)"
     ],
     "deny": [],
     "ask": []
