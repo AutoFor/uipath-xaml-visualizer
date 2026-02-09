@@ -8,63 +8,62 @@
 - ブランチ名の命名規則: `feature/機能名` または `fix/修正内容`
 
 ### 作業フロー
-1. **ブランチ作成**: `git checkout -b feature/xxx` または `git checkout -b fix/xxx`
-2. **コード修正**: 新しいブランチ上で作業
-3. **コミット**: 変更をコミット
-4. **プッシュ**: リモートリポジトリにプッシュ
-5. **プルリクエスト**: masterブランチへのマージはPR経由で行う
 
-### 例外
-- ドキュメントの軽微な修正（README.md、CLAUDE.mdなど）
-- 設定ファイルの更新（.claude/settings.local.jsonなど）
-
-### 🌳 Git Worktree を使った並行作業
-
-複数のブランチで同時に作業する場合、`git worktree` を使用する：
-
-#### Worktree 作成フロー
-
-1. **Worktree を作成**
+1. **Git Worktree でブランチ作成**
    ```bash
-   git worktree add ../uipath-xaml-visualizer-feature feature/新機能名
+   git worktree add ../uipath-xaml-visualizer-feature feature/機能名
+   # または
+   git worktree add ../uipath-xaml-visualizer-fix fix/修正内容
    ```
    - メインリポジトリと同じ階層に新しいディレクトリが作成される
-   - 新しいブランチが自動的に作成される
+   - 新しいブランチが自動的に作成され、そのブランチにチェックアウトされる
+   - Worktree ディレクトリ名の命名規則: `uipath-xaml-visualizer-{ブランチ名}`
 
 2. **Worktree ディレクトリに移動**
    ```bash
    cd ../uipath-xaml-visualizer-feature
    ```
 
-3. **作業を実施**
-   - 通常通りコード修正・コミット・プッシュ
+3. **コード修正**: 新しいWorktree内で作業
 
-4. **Worktree 一覧を確認**
+4. **コミット**: 変更をコミット
+
+5. **プッシュ**: リモートリポジトリにプッシュ
+   ```bash
+   git push -u origin feature/機能名
+   ```
+
+6. **プルリクエスト**: masterブランチへのマージはPR経由で行う
+
+7. **作業完了後、メインリポジトリに戻る**
+   ```bash
+   cd ../uipath-github-xaml-visualizer
+   ```
+
+8. **Worktree を削除**（PR マージ後）
+   ```bash
+   git worktree remove ../uipath-xaml-visualizer-feature
+   ```
+
+9. **Worktree 一覧を確認**（必要に応じて）
    ```bash
    git worktree list
    ```
 
-5. **作業完了後、Worktree を削除**
-   ```bash
-   # メインリポジトリに戻る
-   cd ../uipath-github-xaml-visualizer
-
-   # Worktree を削除
-   git worktree remove ../uipath-xaml-visualizer-feature
-
-   # ブランチも削除する場合
-   git branch -d feature/新機能名
-   ```
-
 #### Worktree のメリット
-- 複数のブランチを同時に開いて作業できる
-- ブランチ切り替え時のビルドやnode_modules再構築が不要
+- ブランチ切り替え時のファイル変更が不要
+- ビルドやnode_modules再構築が不要
 - 緊急対応が入っても作業中のコードを退避する必要がない
+- 複数の作業を並行して進められる
 
 #### 注意事項
-- 同じブランチを複数のWorktreeで開くことはできない
 - Worktreeを削除する前にコミット・プッシュを忘れずに
 - `.git` フォルダは元のリポジトリで共有される
+- PRマージ後は忘れずにWorktreeを削除する
+
+### 例外
+- ドキュメントの軽微な修正（README.md、CLAUDE.mdなど）は通常の `git checkout -b` でも可
+- 設定ファイルの更新（.claude/settings.local.jsonなど）は通常の `git checkout -b` でも可
 
 ---
 
