@@ -4,7 +4,8 @@
       "Bash(Select-Object -First 10 FullName)",
       "Bash(gh pr create:*)",
       "Bash(cat:*)",
-      "Bash(gh run view:*)"
+      "Bash(gh run view:*)",
+      "Read(//c/Users/SeiyaKawashima/**)"
     ],
     "deny": [],
     "ask": []
