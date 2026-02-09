@@ -7,7 +7,13 @@
       "Bash(./restart-server.bat)",
       "Bash(git checkout:*)",
       "Bash(tree:*)",
-      "Bash(gh issue view:*)"
+      "Bash(gh issue view:*)",
+      "Bash(git add:*)",
+      "Bash(git update-index:*)",
+      "Bash(git hash-object:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run list:*)"
     ],
     "deny": [],
     "ask": []
