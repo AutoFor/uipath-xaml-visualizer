@@ -19,7 +19,9 @@
       "Bash(gh api:*)",
       "Bash(git pull:*)",
       "Bash(git push:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh help:*)"
     ],
     "deny": [],
     "ask": []
