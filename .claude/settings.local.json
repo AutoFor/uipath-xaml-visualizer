@@ -17,7 +17,8 @@
       "Bash(timeout 60 bash:*)",
       "Bash(gh run watch:*)",
       "Bash(gh api:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
