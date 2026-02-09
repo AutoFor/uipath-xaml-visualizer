@@ -8,7 +8,9 @@
       "Bash(cat:*)",
       "Bash(gh run view:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Read(//c/Users/SeiyaKawashima/OneDrive - AutoFor/画像/スクリーンショット/**)"
     ],
     "deny": [],
     "ask": []
