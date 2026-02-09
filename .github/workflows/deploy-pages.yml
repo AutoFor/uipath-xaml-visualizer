@@ -40,28 +40,30 @@ jobs:
         run: npm run build
 
       - name: Prepare GitHub Pages content
+        shell: pwsh  # PowerShellで実行
         run: |
-          mkdir -p _site
+          # _siteディレクトリ作成
+          New-Item -ItemType Directory -Force -Path _site | Out-Null
 
           # デモページの配置
-          if [ -d "test/local-preview" ]; then
-            mkdir -p _site/demo
-            cp -r test/local-preview/* _site/demo/
-          fi
+          if (Test-Path "test/local-preview") {
+            New-Item -ItemType Directory -Force -Path _site/demo | Out-Null
+            Copy-Item -Path "test/local-preview/*" -Destination "_site/demo/" -Recurse -Force
+          }
 
           # サンプルXAMLファイルの配置
-          if [ -d "test/projects" ]; then
-            mkdir -p _site/demo/projects
-            cp -r test/projects/* _site/demo/projects/
-          fi
+          if (Test-Path "test/projects") {
+            New-Item -ItemType Directory -Force -Path _site/demo/projects | Out-Null
+            Copy-Item -Path "test/projects/*" -Destination "_site/demo/projects/" -Recurse -Force
+          }
 
           # カバレッジレポートの配置
-          if [ -d "coverage" ]; then
-            cp -r coverage/ _site/coverage/
-          fi
+          if (Test-Path "coverage") {
+            Copy-Item -Path "coverage/" -Destination "_site/coverage/" -Recurse -Force
+          }
 
           # トップページの作成
-          cat > _site/index.html << 'EOF'
+          @'
           <!DOCTYPE html>
           <html lang="ja">
           <head>
