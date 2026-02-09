@@ -1,86 +1,92 @@
 # UiPath XAML Visualizer プロジェクトルール
 
-## 📚 Claude Code Skills について
+## 📖 プロジェクト概要
 
-このプロジェクトでは、繰り返し実行される作業を **Claude Code Skills** として定義しています。
+UiPath の XAML ワークフローファイルをビジュアル化するツールです。
 
-### 利用可能なスキル
-
-| スキル名 | 説明 | 呼び出し方法 |
-|---------|------|------------|
-| `/git-worktree-branch` | Git Worktree を使った新規ブランチ作成 | 「新しい機能を追加したい」「作業を開始したい」 |
-| `/github-finish` | 作業完了時の PR・Issue 作成フロー | 「作業が完了した」「PRを作成したい」 |
-| `/japanese-comments` | TypeScript/JavaScript コードに日本語コメント追加 | 「コードを書いて」「実装して」 |
-
-### スキルの場所
-
-スキルは [.claude/skills/](.claude/skills/) ディレクトリに保存されています。
-
-- [.claude/skills/git-worktree-branch/SKILL.md](.claude/skills/git-worktree-branch/SKILL.md)
-- [.claude/skills/github-finish/SKILL.md](.claude/skills/github-finish/SKILL.md)
-- [.claude/skills/japanese-comments/SKILL.md](.claude/skills/japanese-comments/SKILL.md)
-
-## 🔒 Git ブランチ運用ルール（概要）
-
-詳細は `/git-worktree-branch` スキルを参照してください。
-
-### ⚠️ 重要な原則
-- **masterブランチで直接コード修正を行わない**
-- 改修作業を開始する前に、必ず新しいブランチを作成する
-- ブランチ名の命名規則: `feature/機能名` または `fix/修正内容`
-
-### 基本フロー
-
-1. Git Worktree でブランチ作成
-2. Worktree ディレクトリに移動
-3. コード修正
-4. コミット & プッシュ
-5. プルリクエスト & Issue 作成
-6. PR マージ後に Worktree 削除
-
-**📌 詳細な手順は `/git-worktree-branch` スキルで確認できます。**
+### 主な機能
+- XAML ワークフローの構造を視覚的に表示
+- VSCode 拡張機能として動作
+- リアルタイムプレビュー
 
 ---
 
-## 📋 GitHub運用ルール（概要）
+## 🛠️ 技術スタック
 
-詳細は `/github-finish` スキルを参照してください。
-
-### 作業完了後の必須手順
-
-作業（テーマ）が完了したら、以下の順序で実行：
-
-1. プルリクエスト作成
-2. イシュー作成
-3. PR と Issue を紐づけ
-4. ユーザーに確認を依頼
-5. PR 承認とマージ（ユーザー承認後）
-6. Issue クローズ
-7. master ブランチに戻る
-8. リモートの最新状態を取得
-
-**📌 詳細な手順とコマンド例は `/github-finish` スキルで確認できます。**
+- **言語**: TypeScript
+- **フレームワーク**: VSCode Extension API
+- **対応フォーマット**: UiPath XAML
+- **ビルドツール**: npm, webpack
 
 ---
 
-## 💻 開発ルール（概要）
+## 📁 ファイル構造
 
-詳細は `/japanese-comments` スキルを参照してください。
-
-### コーディング規約
-- TypeScript/JavaScriptコードには日本語の行末コメントを追加
-- 初心者にも理解できる平易な説明を心がける
-- すべての重要な行にコメントを付ける
-
-**📌 コメントの書き方とパターンは `/japanese-comments` スキルで確認できます。**
-
-### ファイル構造
 ```
 uipath-github-xaml-visualizer/
-├── docs/              # ドキュメント
-├── src/               # ソースコード
-│   ├── extension/    # VSCode拡張機能
-│   └── server/       # プレビューサーバー
-├── CLAUDE.md         # プロジェクトルール
-└── README.md         # プロジェクト説明
+├── docs/                    # ドキュメント
+├── src/                     # ソースコード
+│   ├── shared/             # 共通ライブラリ
+│   ├── extension/          # VSCode拡張機能
+│   │   ├── extension.ts   # エントリーポイント
+│   │   └── preview/       # プレビュー機能
+│   └── server/            # プレビューサーバー
+├── test/                   # テストファイル
+│   └── projects/          # テスト用XAMLプロジェクト
+├── .claude/               # Claude Code 設定
+├── CLAUDE.md             # このファイル
+├── package.json          # npm設定
+└── README.md             # プロジェクト説明
 ```
+
+---
+
+## 🚀 開発コマンド
+
+### ビルド
+```bash
+npm install                    # 依存関係インストール
+npm run build:shared          # 共通ライブラリビルド
+npm run build                 # 全体ビルド
+```
+
+### テスト
+```bash
+npm test                      # テスト実行
+```
+
+### 開発
+```bash
+npm run watch                 # 開発モード（自動リビルド）
+```
+
+---
+
+## 📋 GitHub リポジトリ情報
+
+- **Owner**: AutoFor
+- **Repository**: uipath-xaml-visualizer
+- **Base Branch**: master
+
+---
+
+## 💡 プロジェクト固有のルール
+
+### XAML パース
+- UiPath 固有の XAML 要素を正しく認識する
+- 名前空間の扱いに注意（`xmlns:ui`, `xmlns:sap` など）
+
+### プレビュー表示
+- ワークフローの階層構造を維持して表示
+- アクティビティの種類ごとに適切なアイコンを表示
+
+---
+
+## 📚 共通ルール
+
+Git Worktree 運用、GitHub PR/Issue フロー、コーディング規約などの共通ルールは、グローバル設定（`~/.claude/CLAUDE.md`）を参照してください。
+
+利用可能なスキル：
+- `/git-worktree-branch` - ブランチ作成
+- `/github-finish` - 作業完了フロー
+- `/japanese-comments` - 日本語コメント追加
