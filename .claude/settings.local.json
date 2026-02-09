@@ -22,7 +22,8 @@
       "Bash(git branch:*)",
       "Bash(gh issue create:*)",
       "Bash(gh help:*)",
-      "Bash(npm run serve:*)"
+      "Bash(npm run serve:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
