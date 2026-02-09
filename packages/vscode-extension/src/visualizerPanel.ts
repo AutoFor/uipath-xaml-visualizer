@@ -1,6 +1,6 @@
 import * as vscode from 'vscode'; // VSCode API
 import * as path from 'path'; // パス操作
-import { parseXaml, renderSequence, renderTreeView } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, SequenceRenderer, TreeViewRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
 
 /**
  * XAMLビジュアライザーパネルを管理するクラス
@@ -88,7 +88,8 @@ export class VisualizerPanel {
 		try {
 			// XAMLを解析
 			const xamlContent = document.getText(); // ドキュメントの内容を取得
-			const workflowData = parseXaml(xamlContent); // XAML解析
+			const parser = new XamlParser();
+			const workflowData = parser.parse(xamlContent); // XAML解析
 
 			// HTMLを生成
 			this._panel.webview.html = this._getHtmlForWebview(webview, workflowData);

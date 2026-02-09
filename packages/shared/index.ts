@@ -1,12 +1,12 @@
 // XAMLパーサーのエクスポート
-export { parseXaml } from './parser/xaml-parser'; // XAML解析関数
-export { calculateDiff } from './parser/diff-calculator'; // 差分計算関数
+export { XamlParser } from './parser/xaml-parser'; // XAML解析クラス
+export { DiffCalculator } from './parser/diff-calculator'; // 差分計算クラス
 
 // レンダラーのエクスポート
-export { renderSequence } from './renderer/sequence-renderer'; // Sequenceレンダリング関数
-export { renderTreeView } from './renderer/tree-view-renderer'; // ツリービューレンダリング関数
-export { renderDiff } from './renderer/diff-renderer'; // 差分表示レンダリング関数
+export { SequenceRenderer } from './renderer/sequence-renderer'; // Sequenceレンダリングクラス
+export { TreeViewRenderer } from './renderer/tree-view-renderer'; // ツリービュークラス
+export { DiffRenderer } from './renderer/diff-renderer'; // 差分表示レンダリングクラス
 
-// 型定義のエクスポート（必要に応じて追加）
-export type { Activity, WorkflowData } from './parser/xaml-parser'; // 型定義
-export type { DiffResult, DiffItem } from './parser/diff-calculator'; // 差分型定義
+// 型定義のエクスポート
+export type { Activity, ParsedXaml, Variable, Argument } from './parser/xaml-parser'; // 型定義
+export type { DiffResult, DiffActivity, DiffType, PropertyChange } from './parser/diff-calculator'; // 差分型定義

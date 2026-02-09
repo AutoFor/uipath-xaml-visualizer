@@ -1,5 +1,5 @@
 import * as vscode from 'vscode'; // VSCode API
-import { parseXaml, calculateDiff, renderDiff } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, DiffCalculator, DiffRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
 
 /**
  * XAML差分表示パネルを管理するクラス
@@ -83,11 +83,13 @@ export class DiffPanel {
 			const headXaml = headContent || ''; // 空文字列の場合は空
 
 			// XAML解析
-			const currentData = parseXaml(currentXaml); // 現在のXAML
-			const headData = headXaml ? parseXaml(headXaml) : null; // HEADのXAML
+			const parser = new XamlParser();
+			const currentData = parser.parse(currentXaml); // 現在のXAML
+			const headData = headXaml ? parser.parse(headXaml) : null; // HEADのXAML
 
 			// 差分計算
-			const diffResult = headData ? calculateDiff(headData, currentData) : null; // 差分
+			const calculator = new DiffCalculator();
+			const diffResult = headData ? calculator.calculate(headData, currentData) : null; // 差分
 
 			// HTMLを生成
 			this._panel.webview.html = this._getHtmlForWebview(webview, diffResult);

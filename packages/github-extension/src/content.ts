@@ -1,4 +1,4 @@
-import { parseXaml, renderSequence, renderTreeView } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, SequenceRenderer, TreeViewRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
 
 /**
  * GitHub上のXAMLファイルを視覚化するコンテンツスクリプト
@@ -57,7 +57,8 @@ async function showVisualizer() {
 		const xamlContent = await fetchXamlContent(); // XAML内容を取得
 
 		// XAMLを解析
-		const workflowData = parseXaml(xamlContent); // XAML解析
+		const parser = new XamlParser();
+		const workflowData = parser.parse(xamlContent); // XAML解析
 
 		// ビジュアライザーパネルを表示
 		displayVisualizerPanel(workflowData); // パネル表示
