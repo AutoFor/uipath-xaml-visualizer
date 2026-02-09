@@ -38,17 +38,32 @@
 
 3. **PRとイシューを紐づけ**
    - PRの本文に `Closes #イシュー番号` を追加
-   - または `gh pr edit <PR番号> --body` で編集
+   - `gh pr edit <PR番号> --body` で編集
 
-4. **masterブランチに戻る**
+4. **ユーザーに確認を依頼**
+   - PRとイシューの内容に問題がないか確認を求める
+   - ユーザーの承認を待つ
+
+5. **PR承認とマージ**（ユーザー承認後）
+   ```bash
+   gh pr merge <PR番号> --squash  # または --merge, --rebase
+   ```
+
+6. **イシュークローズ**
+   ```bash
+   gh issue close <イシュー番号>
+   ```
+   - 注意: PRに `Closes #XX` が含まれていれば自動でクローズされる
+
+7. **masterブランチに戻る**
    ```bash
    git checkout master
    ```
 
-5. **リモートの最新状態を取得**
+8. **リモートの最新状態を取得と不要ブランチ削除**
    ```bash
-   git fetch
    git pull
+   git fetch --prune
    ```
 
 ### 完了フローの例
