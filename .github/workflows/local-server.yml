@@ -1,0 +1,46 @@
+name: Start Local Preview Server
+
+on:
+  workflow_dispatch:  # GitHub UIから手動実行
+
+jobs:
+  start-server:
+    runs-on: self-hosted  # セルフホストランナー（Windows）で実行
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build test viewer
+        run: npm run build:test
+
+      - name: Start local preview server
+        run: |
+          # 既存の8080ポートプロセスを停止
+          $portProcesses = netstat -ano | Select-String ':8080' | ForEach-Object {
+            ($_ -split '\s+')[-1]
+          } | Sort-Object -Unique
+          foreach ($procId in $portProcesses) {
+            if ($procId -match '^\d+$' -and $procId -ne '0') {
+              Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+            }
+          }
+
+          # サーバーをバックグラウンドで起動
+          Start-Process -FilePath "npx" -ArgumentList "http-server -p 8080 -c-1" -WindowStyle Normal
+
+          Start-Sleep -Seconds 2
+
+          # ブラウザでプレビューページを開く
+          Start-Process "http://localhost:8080/test/local-preview/viewer-test.html"
+
+          Write-Host "Server started at http://localhost:8080"
+          Write-Host "Preview: http://localhost:8080/test/local-preview/viewer-test.html"
+        shell: pwsh
