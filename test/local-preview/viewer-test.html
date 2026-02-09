@@ -102,7 +102,7 @@
                 const data = await response.json();
                 const xamlFiles = data.files.map(filename => ({
                     name: filename,
-                    path: `projects/sample/${filename}`
+                    path: `../projects/sample/${filename}`
                 }));
 
                 console.log('検出されたXAMLファイル:', xamlFiles);
