@@ -36,3 +36,6 @@ coverage/
 
 # Azure DevOps extension
 *.vsix.manifest
+
+# Claude Code個人設定（ローカル環境のみ）
+.claude/settings.local.json
