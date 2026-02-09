@@ -13,7 +13,9 @@
       "Bash(git hash-object:*)",
       "Bash(git ls-tree:*)",
       "Bash(gh workflow:*)",
-      "Bash(gh run list:*)"
+      "Bash(gh run list:*)",
+      "Bash(timeout 60 bash:*)",
+      "Bash(gh run watch:*)"
     ],
     "deny": [],
     "ask": []
