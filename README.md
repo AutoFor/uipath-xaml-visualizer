@@ -1,10 +1,16 @@
-# UiPath XAML Visualizer for Azure DevOps
+# UiPath XAML Visualizer
 
-Azure DevOps上でUiPath XAMLワークフローファイルを視覚的に表示する拡張機能です。
+UiPath XAMLワークフローファイルを視覚的に表示するツール群です。Azure DevOps、VSCode、GitHubに対応しています。
 
 ## 概要
 
-この拡張機能は、Azure DevOpsのリポジトリ内のUiPath XAMLファイルを、生のXMLコードではなく、視覚的に理解しやすい形式で表示します。
+このプロジェクトは、UiPath XAMLファイルを、生のXMLコードではなく、視覚的に理解しやすい形式で表示する複数の拡張機能を提供します。
+
+### 対応プラットフォーム
+
+- **Azure DevOps**: Azure DevOps上でXAMLファイルを視覚化
+- **VSCode**: VSCodeエディタおよびソース管理画面でXAMLファイルを視覚化
+- **GitHub**: GitHub上のXAMLファイルをChrome拡張機能で視覚化
 
 ### 主な機能
 
@@ -16,22 +22,20 @@ Azure DevOps上でUiPath XAMLワークフローファイルを視覚的に表示
 
 ## インストール
 
+### Azure DevOps拡張機能
+
 1. Azure DevOps Marketplaceから拡張機能をインストール
 2. リポジトリの設定で拡張機能を有効化
 
-## 使い方
+### VSCode拡張機能
 
-### XAMLファイルの表示
+1. VSCode Marketplaceから「UiPath XAML Visualizer」をインストール
+2. XAMLファイルを開くと自動的に有効化
 
-1. Azure DevOpsのリポジトリで`.xaml`ファイルを開く
-2. 自動的にビジュアルビューが表示される
-3. 「Raw XML」ボタンで生のXMLに切り替え可能
+### GitHub拡張機能（Chrome）
 
-### 差分表示
-
-1. Pull Requestまたはコミット差分ページで`.xaml`ファイルの変更を確認
-2. 「Visual Diff」ボタンをクリック
-3. アクティビティレベルでの追加・削除・変更が表示される
+1. Chrome Web Storeから拡張機能をインストール
+2. GitHubのXAMLファイルページでボタンが表示される
 
 ## 開発
 
@@ -57,41 +61,49 @@ npm run build
 npm run package
 ```
 
-### プロジェクト構成
+### プロジェクト構成（モノレポ）
 
 ```
-uipath-github-xaml-visualizer/
-├── src/
-│   ├── parser/              # XAMLパーサー（本番・テスト共通）
-│   │   ├── xaml-parser.ts   # XAML解析
-│   │   └── diff-calculator.ts # 差分計算
-│   ├── renderer/            # レンダラー（本番・テスト共通）
-│   │   ├── sequence-renderer.ts  # Sequenceレンダリング
-│   │   ├── tree-view-renderer.ts # ツリービュー
-│   │   └── diff-renderer.ts      # 差分表示
-│   ├── styles/              # スタイルシート（本番・テスト共通）
-│   │   ├── main.css         # メインスタイル
-│   │   └── diff.css         # 差分表示スタイル
-│   ├── viewer.ts            # 本番用エントリーポイント（Azure DevOps拡張機能）
-│   ├── viewer.html          # 本番用HTML
-│   ├── diff-viewer.ts       # 差分ビューアメイン（本番用）
-│   ├── diff-viewer.html     # 差分ビューアHTML（本番用）
-│   └── test-viewer-standalone.ts # テスト用エントリーポイント（ローカル開発）
-├── test/
-│   ├── local-preview/       # ローカルテスト環境
-│   │   ├── viewer-test.html # テスト用HTML（スタンドアロン）
-│   │   └── test-viewer.js   # ビルド済みテストビューア
-│   └── projects/
-│       └── sample/          # サンプルXAMLプロジェクト
-│           ├── Main.xaml
-│           └── .screenshots/ # スクリーンショット画像
-├── dist/                    # ビルド結果
-├── spec.md                  # プロジェクト仕様書
-├── package.json
-├── tsconfig.json
-├── webpack.config.js        # 本番用ビルド設定
-├── webpack.test.config.js   # テスト用ビルド設定
-└── vss-extension.json       # Azure DevOps拡張機能マニフェスト
+uipath-xaml-visualizer/
+├── packages/
+│   ├── shared/                    # 共通ライブラリ
+│   │   ├── parser/                # XAMLパーサー
+│   │   │   ├── xaml-parser.ts     # XAML解析
+│   │   │   └── diff-calculator.ts # 差分計算
+│   │   ├── renderer/              # レンダラー
+│   │   │   ├── sequence-renderer.ts  # Sequenceレンダリング
+│   │   │   ├── tree-view-renderer.ts # ツリービュー
+│   │   │   └── diff-renderer.ts      # 差分表示
+│   │   ├── styles/                # スタイルシート
+│   │   ├── index.ts               # エクスポート
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── azdo-extension/            # Azure DevOps拡張機能
+│   │   ├── src/
+│   │   │   ├── viewer.ts          # メインビューア
+│   │   │   ├── viewer.html
+│   │   │   ├── diff-viewer.ts     # 差分ビューア
+│   │   │   └── diff-viewer.html
+│   │   ├── package.json
+│   │   ├── webpack.config.js
+│   │   └── vss-extension.json
+│   ├── vscode-extension/          # VSCode拡張機能
+│   │   ├── src/
+│   │   │   ├── extension.ts       # メインエントリー
+│   │   │   ├── visualizerPanel.ts # ビジュアライザーパネル
+│   │   │   └── diffPanel.ts       # 差分パネル
+│   │   ├── package.json
+│   │   ├── tsconfig.json
+│   │   └── webpack.config.js
+│   └── github-extension/          # GitHub拡張機能（Chrome）
+│       ├── src/
+│       │   ├── content.ts         # コンテンツスクリプト
+│       │   └── background.ts      # バックグラウンドスクリプト
+│       ├── manifest.json
+│       └── package.json
+├── test/                          # テスト用サンプル
+├── package.json                   # ルートパッケージ
+└── README.md
 ```
 
 ### 本番とテストの違い
