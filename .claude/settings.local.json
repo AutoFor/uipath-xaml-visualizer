@@ -15,7 +15,8 @@
       "Bash(gh workflow:*)",
       "Bash(gh run list:*)",
       "Bash(timeout 60 bash:*)",
-      "Bash(gh run watch:*)"
+      "Bash(gh run watch:*)",
+      "Bash(gh api:*)"
     ],
     "deny": [],
     "ask": []
