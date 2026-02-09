@@ -3,6 +3,10 @@
  * XAMLファイルをパースして構造化データに変換
  */
 
+import { DOMParser } from '@xmldom/xmldom'; // Node.js環境用のXMLパーサー
+import * as fs from 'fs'; // ファイルシステム
+import * as path from 'path'; // パス操作
+
 // UiPath固有の名前空間（将来の拡張用に定義）
 // const UIPATH_NS = 'http://schemas.uipath.com/workflow/activities';
 // const XAML_NS = 'http://schemas.microsoft.com/winfx/2006/xaml';
@@ -54,30 +58,140 @@ export interface Argument {
  */
 export class XamlParser {
   private activityIdCounter: number = 0;        // アクティビティID生成用カウンター
+  private enableLogging: boolean = true;        // ログ出力フラグ
+  private logFilePath: string;                  // ログファイルパス
+  private logBuffer: string[] = [];             // ログバッファ
+
+  constructor() {
+    // ログファイルパスを設定（ユーザーのホームディレクトリ/.uipath-xaml-visualizer/logs）
+    const homeDir = process.env.HOME || process.env.USERPROFILE || '.';
+    const logDir = path.join(homeDir, '.uipath-xaml-visualizer', 'logs');
+
+    // ログディレクトリを作成
+    try {
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+    } catch (error) {
+      console.error('ログディレクトリの作成に失敗:', error);
+    }
+
+    // ログファイル名（日時付き）
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    this.logFilePath = path.join(logDir, `xaml-parser-${timestamp}.log`);
+
+    this.log('ログファイル初期化', this.logFilePath);
+  }
+
+  /**
+   * ログ出力メソッド
+   */
+  private log(message: string, ...args: any[]): void {
+    if (this.enableLogging) {
+      const timestamp = new Date().toISOString();
+      const logMessage = `[${timestamp}] [XamlParser] ${message}`;
+      const fullMessage = args.length > 0
+        ? `${logMessage} ${JSON.stringify(args)}`
+        : logMessage;
+
+      // コンソールに出力
+      console.log(fullMessage);
+
+      // バッファに追加
+      this.logBuffer.push(fullMessage);
+
+      // バッファが100行を超えたらファイルに書き込み
+      if (this.logBuffer.length >= 100) {
+        this.flushLog();
+      }
+    }
+  }
+
+  /**
+   * エラーログ出力メソッド
+   */
+  private logError(message: string, error?: any): void {
+    const timestamp = new Date().toISOString();
+    const errorMessage = `[${timestamp}] [XamlParser ERROR] ${message}`;
+    const fullMessage = error
+      ? `${errorMessage}\n${error.stack || error}`
+      : errorMessage;
+
+    // コンソールに出力
+    console.error(fullMessage);
+
+    // バッファに追加
+    this.logBuffer.push(fullMessage);
+
+    // エラーは即座にファイルに書き込み
+    this.flushLog();
+  }
+
+  /**
+   * ログバッファをファイルに書き込み
+   */
+  private flushLog(): void {
+    if (this.logBuffer.length === 0) return;
+
+    try {
+      const logContent = this.logBuffer.join('\n') + '\n';
+      fs.appendFileSync(this.logFilePath, logContent, 'utf8');
+      this.logBuffer = [];
+    } catch (error) {
+      console.error('ログファイルへの書き込みに失敗:', error);
+    }
+  }
+
+  /**
+   * パース完了時にログをフラッシュ
+   */
+  private finalize(): void {
+    this.flushLog();
+    this.log('パース完了 - ログファイル:', this.logFilePath);
+    this.flushLog(); // 最後のメッセージも確実に書き込み
+  }
 
   /**
    * XAMLテキストをパースして構造化データに変換
    */
   parse(xamlText: string): ParsedXaml {
+    this.log('パース開始', `XAML長: ${xamlText.length}文字`);
+
     // XMLをパース
     const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xamlText, 'text/xml');
+    this.log('DOMParser インスタンス作成完了');
 
-    // パースエラーチェック
-    const parseError = xmlDoc.querySelector('parsererror');
-    if (parseError) {
-      throw new Error('XAML解析エラー: ' + parseError.textContent);
+    const xmlDoc = parser.parseFromString(xamlText, 'text/xml');
+    this.log('XML パース完了');
+
+    // パースエラーチェック（getElementsByTagNameを使用）
+    const parseErrors = xmlDoc.getElementsByTagName('parsererror');
+    if (parseErrors.length > 0) {
+      const errorMsg = 'XAML解析エラー: ' + parseErrors[0].textContent;
+      this.logError(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // ルート要素を取得
     const root = xmlDoc.documentElement;
+    this.log('ルート要素取得', `タグ名: ${root.tagName}`);
 
     // 変数と引数を抽出
+    this.log('変数抽出開始');
     const variables = this.extractVariables(root);
+    this.log('変数抽出完了', `${variables.length}個の変数`);
+
+    this.log('引数抽出開始');
     const argumentsData = this.extractArguments(root);
+    this.log('引数抽出完了', `${argumentsData.length}個の引数`);
 
     // ルートアクティビティをパース
+    this.log('ルートアクティビティのパース開始');
     const rootActivity = this.parseActivity(root);
+    this.log('ルートアクティビティのパース完了', `ID: ${rootActivity.id}`);
+
+    // ログをフラッシュ
+    this.finalize();
 
     return {
       rootActivity,
@@ -95,17 +209,27 @@ export class XamlParser {
     const displayName = element.getAttribute('DisplayName') || type;
     const namespace = element.prefix || undefined;
 
+    this.log(`アクティビティをパース: ${displayName} (type: ${type}, id: ${id})`);
+
     // プロパティを抽出
     const properties = this.extractProperties(element);
+    this.log(`  プロパティ数: ${Object.keys(properties).length}`);
 
     // InformativeScreenshot属性を取得
     const informativeScreenshot = element.getAttribute('InformativeScreenshot') || undefined;
+    if (informativeScreenshot) {
+      this.log(`  スクリーンショット: ${informativeScreenshot}`);
+    }
 
     // アノテーションを取得
     const annotations = this.extractAnnotations(element);
+    if (annotations) {
+      this.log(`  アノテーション: ${annotations.substring(0, 50)}...`);
+    }
 
     // 子アクティビティをパース
     const children = this.parseChildren(element);
+    this.log(`  子アクティビティ数: ${children.length}`);
 
     return {
       id,
@@ -125,23 +249,41 @@ export class XamlParser {
   private extractProperties(element: Element): Record<string, any> {
     const properties: Record<string, any> = {};
 
+    this.log(`プロパティ抽出開始 - 要素: ${element.localName}`);
+
     // 属性からプロパティを取得
-    Array.from(element.attributes).forEach(attr => {
-      if (attr.name !== 'DisplayName' && attr.name !== 'InformativeScreenshot') {
-        properties[attr.name] = attr.value;
-      }
-    });
+    if (element.attributes) {
+      this.log(`  属性数: ${element.attributes.length}`);
+      Array.from(element.attributes).forEach(attr => {
+        if (attr.name !== 'DisplayName' && attr.name !== 'InformativeScreenshot') {
+          properties[attr.name] = attr.value;
+        }
+      });
+    } else {
+      this.log(`  警告: attributes が undefined`);
+    }
 
     // 子要素からプロパティを取得（Assign.To, Assign.Value等）
-    Array.from(element.children).forEach(child => {
-      const childName = child.localName;
+    if (element.childNodes) {
+      let childElementCount = 0;
+      for (let i = 0; i < element.childNodes.length; i++) {
+        const child = element.childNodes[i];
+        if (child.nodeType !== 1) continue; // Element nodeのみ処理
+        childElementCount++;
 
-      // プロパティ要素（タイプ名.プロパティ名形式）
-      if (childName.includes('.')) {
-        const [, propName] = childName.split('.');
-        properties[propName] = this.extractPropertyValue(child);
+        const childElem = child as Element;
+        const childName = childElem.localName;
+
+        // プロパティ要素（タイプ名.プロパティ名形式）
+        if (childName && childName.includes('.')) {
+          const [, propName] = childName.split('.');
+          properties[propName] = this.extractPropertyValue(childElem);
+        }
       }
-    });
+      this.log(`  子要素数: ${childElementCount}`);
+    } else {
+      this.log(`  警告: childNodes が undefined`);
+    }
 
     return properties;
   }
@@ -156,11 +298,23 @@ export class XamlParser {
     }
 
     // 子要素があれば構造化して返す
-    const children = Array.from(element.children);
+    if (!element.childNodes) {
+      return null;
+    }
+
+    // Element nodeのみ取得
+    const children: Element[] = [];
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType === 1) {
+        children.push(child as Element);
+      }
+    }
+
     if (children.length === 1) {
       const child = children[0];
       // OutArgument, InArgument等の場合は中身を返す
-      if (child.localName.includes('Argument')) {
+      if (child.localName && child.localName.includes('Argument')) {
         return child.textContent?.trim() || '';
       }
       // Selector等の複雑な構造の場合
@@ -179,12 +333,29 @@ export class XamlParser {
     };
 
     // 属性を追加
-    Array.from(element.attributes).forEach(attr => {
-      obj[attr.name] = attr.value;
-    });
+    if (element.attributes) {
+      Array.from(element.attributes).forEach(attr => {
+        obj[attr.name] = attr.value;
+      });
+    }
 
     // 子要素を再帰的に処理
-    const children = Array.from(element.children);
+    if (!element.childNodes) {
+      if (element.textContent?.trim()) {
+        obj.value = element.textContent.trim();
+      }
+      return obj;
+    }
+
+    // Element nodeのみ取得
+    const children: Element[] = [];
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType === 1) {
+        children.push(child as Element);
+      }
+    }
+
     if (children.length > 0) {
       obj.children = children.map(child => this.elementToObject(child));
     } else if (element.textContent?.trim()) {
@@ -200,34 +371,45 @@ export class XamlParser {
   private parseChildren(element: Element): Activity[] {
     const children: Activity[] = [];
 
-    Array.from(element.children).forEach(child => {
+    if (!element.childNodes) {
+      this.log(`子要素なし（childNodes が undefined）`);
+      return children;
+    }
+
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const node = element.childNodes[i];
+      if (node.nodeType !== 1) continue; // Element nodeのみ処理
+
+      const child = node as Element;
       const childName = child.localName;
+
+      if (!childName) continue;
 
       // プロパティ要素は除外（例: NApplicationCard.Body）
       if (childName.includes('.')) {
         // ただし、プロパティ要素の中身は再帰的に処理
         const nestedActivities = this.parseChildren(child);
         children.push(...nestedActivities);
-        return;
+        continue;
       }
 
       // ActivityActionなどのラッパー要素は、中身を再帰的に処理
       if (this.isWrapperElement(child)) {
         const nestedActivities = this.parseChildren(child);
         children.push(...nestedActivities);
-        return;
+        continue;
       }
 
       // メタデータ要素を除外
       if (this.isMetadataElement(child)) {
-        return;
+        continue;
       }
 
       // アクティビティとして解析
       if (this.isActivity(child)) {
         children.push(this.parseActivity(child));
       }
-    });
+    }
 
     return children;
   }
@@ -313,13 +495,30 @@ export class XamlParser {
   private extractVariables(root: Element): Variable[] {
     const variables: Variable[] = [];
 
-    // <Sequence.Variables> 等を探索
-    const variableElements = root.querySelectorAll('[x\\:TypeArguments]');
+    // 全要素を再帰的に探索してx:TypeArguments属性を持つ要素を探す
+    this.findVariableElements(root, variables);
 
-    variableElements.forEach(elem => {
-      const name = elem.getAttribute('Name');
-      const type = elem.getAttribute('x:TypeArguments');
-      const defaultValue = elem.querySelector('Default')?.textContent?.trim();
+    return variables;
+  }
+
+  /**
+   * 変数要素を再帰的に探索
+   */
+  private findVariableElements(element: Element, variables: Variable[]): void {
+    // x:TypeArguments属性を持つ要素を探す
+    if (element.hasAttribute('x:TypeArguments')) {
+      const name = element.getAttribute('Name');
+      const type = element.getAttribute('x:TypeArguments');
+
+      // Default子要素を探す
+      let defaultValue: string | undefined;
+      for (let i = 0; i < element.childNodes.length; i++) {
+        const child = element.childNodes[i];
+        if (child.nodeType === 1 && (child as Element).localName === 'Default') {
+          defaultValue = child.textContent?.trim();
+          break;
+        }
+      }
 
       if (name && type) {
         variables.push({
@@ -328,9 +527,15 @@ export class XamlParser {
           default: defaultValue
         });
       }
-    });
+    }
 
-    return variables;
+    // 子要素を再帰的に探索
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType === 1) { // Element node
+        this.findVariableElements(child as Element, variables);
+      }
+    }
   }
 
   /**
@@ -339,12 +544,20 @@ export class XamlParser {
   private extractArguments(root: Element): Argument[] {
     const argumentsData: Argument[] = [];
 
-    // <x:Property> 要素を探索
-    const propertyElements = root.querySelectorAll('x\\:Property');
+    // x:Property要素を再帰的に探索
+    this.findPropertyElements(root, argumentsData);
 
-    propertyElements.forEach(elem => {
-      const name = elem.getAttribute('Name');
-      const type = elem.getAttribute('Type');
+    return argumentsData;
+  }
+
+  /**
+   * x:Property要素を再帰的に探索
+   */
+  private findPropertyElements(element: Element, argumentsData: Argument[]): void {
+    // x:Property要素を探す
+    if (element.localName === 'Property' && element.namespaceURI?.includes('winfx/2006/xaml')) {
+      const name = element.getAttribute('Name');
+      const type = element.getAttribute('Type');
 
       if (name && type) {
         // Type属性から方向とデータ型を抽出（例: InArgument(x:String)）
@@ -357,16 +570,50 @@ export class XamlParser {
           });
         }
       }
-    });
+    }
 
-    return argumentsData;
+    // 子要素を再帰的に探索
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType === 1) { // Element node
+        this.findPropertyElements(child as Element, argumentsData);
+      }
+    }
   }
 
   /**
    * アノテーションを抽出
    */
   private extractAnnotations(element: Element): string | undefined {
-    const annotationElem = element.querySelector('sap\\:WorkflowViewStateService\\.ViewState > scg\\:Dictionary > x\\:String[x\\:Key="Annotation"]');
-    return annotationElem?.textContent?.trim();
+    // WorkflowViewStateService.ViewState を探す
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType === 1) {
+        const childElem = child as Element;
+        if (childElem.localName === 'WorkflowViewStateService.ViewState' ||
+            childElem.localName === 'WorkflowViewStateService') {
+          // Dictionary を探す
+          for (let j = 0; j < childElem.childNodes.length; j++) {
+            const dictChild = childElem.childNodes[j];
+            if (dictChild.nodeType === 1) {
+              const dictElem = dictChild as Element;
+              if (dictElem.localName === 'Dictionary') {
+                // x:Key="Annotation" を持つString要素を探す
+                for (let k = 0; k < dictElem.childNodes.length; k++) {
+                  const strChild = dictElem.childNodes[k];
+                  if (strChild.nodeType === 1) {
+                    const strElem = strChild as Element;
+                    if (strElem.localName === 'String' && strElem.getAttribute('x:Key') === 'Annotation') {
+                      return strElem.textContent?.trim();
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    return undefined;
   }
 }

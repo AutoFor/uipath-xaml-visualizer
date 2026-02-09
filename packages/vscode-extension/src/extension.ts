@@ -6,25 +6,33 @@ import { DiffPanel } from './diffPanel'; // 差分表示パネル
  * 拡張機能のアクティベーション時に呼ばれる関数
  */
 export function activate(context: vscode.ExtensionContext) {
-	console.log('UiPath XAML Visualizer がアクティベートされました'); // ログ出力
+	const activateTime = new Date().toISOString();
+	console.log(`[${activateTime}] [Extension] UiPath XAML Visualizer がアクティベートされました`); // ログ出力
 
 	// ビジュアライザーを開くコマンドを登録
 	const openVisualizerCommand = vscode.commands.registerCommand(
 		'uipath-xaml-visualizer.openVisualizer',
 		() => {
+			console.log(`[${new Date().toISOString()}] [Extension] openVisualizer コマンド実行`);
+
 			const editor = vscode.window.activeTextEditor; // アクティブなエディタを取得
 			if (!editor) {
+				console.error(`[${new Date().toISOString()}] [Extension ERROR] アクティブなエディタがありません`);
 				vscode.window.showErrorMessage('アクティブなエディタがありません'); // エラー表示
 				return;
 			}
 
 			const document = editor.document; // ドキュメントを取得
+			console.log(`[${new Date().toISOString()}] [Extension] ドキュメント取得: ${document.fileName}`);
+
 			if (!document.fileName.endsWith('.xaml')) {
+				console.warn(`[${new Date().toISOString()}] [Extension WARN] XAMLファイルではありません: ${document.fileName}`);
 				vscode.window.showWarningMessage('XAMLファイルではありません'); // 警告表示
 				return;
 			}
 
 			// ビジュアライザーパネルを表示
+			console.log(`[${new Date().toISOString()}] [Extension] ビジュアライザーパネルを表示`);
 			VisualizerPanel.createOrShow(context.extensionUri, document);
 		}
 	);
