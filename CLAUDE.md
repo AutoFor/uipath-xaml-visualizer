@@ -70,19 +70,30 @@
 ```bash
 # 1. PRを作成
 gh pr create --title "機能追加: XAMLビジュアライザー改善" --body "詳細な変更内容"
+# 出力例: https://github.com/AutoFor/uipath-xaml-visualizer/pull/44
 
 # 2. イシューを作成
 gh issue create --title "XAMLビジュアライザーの表示改善" --body "背景と目的"
+# 出力例: https://github.com/AutoFor/uipath-xaml-visualizer/issues/45
 
 # 3. PRとイシューを紐づけ（PRの本文に追記）
-gh pr edit <PR番号> --body "変更内容\n\nCloses #<イシュー番号>"
+gh pr edit 44 --body "変更内容\n\nCloses #45"
 
-# 4. masterブランチに戻る
+# 4. ユーザーに確認
+# → Claudeがユーザーに「PRとイシューを確認してください。問題なければ承認します。」と聞く
+
+# 5. PR承認とマージ（ユーザー承認後）
+gh pr merge 44 --squash
+
+# 6. イシュークローズ（通常は自動だが念のため）
+gh issue close 45
+
+# 7. masterブランチに戻る
 git checkout master
 
-# 5. 最新状態を取得
-git fetch
+# 8. 最新状態を取得と不要ブランチ削除
 git pull
+git fetch --prune
 ```
 
 ---
