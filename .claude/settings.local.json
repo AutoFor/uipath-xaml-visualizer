@@ -16,7 +16,9 @@
       "Bash(git rm:*)",
       "Bash(git ls-tree:*)",
       "Bash(gh issue create:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(gh issue close:*)"
     ],
     "deny": [],
     "ask": []

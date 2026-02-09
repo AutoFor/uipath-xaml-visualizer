@@ -18,6 +18,54 @@
 - ドキュメントの軽微な修正（README.md、CLAUDE.mdなど）
 - 設定ファイルの更新（.claude/settings.local.jsonなど）
 
+### 🌳 Git Worktree を使った並行作業
+
+複数のブランチで同時に作業する場合、`git worktree` を使用する：
+
+#### Worktree 作成フロー
+
+1. **Worktree を作成**
+   ```bash
+   git worktree add ../uipath-xaml-visualizer-feature feature/新機能名
+   ```
+   - メインリポジトリと同じ階層に新しいディレクトリが作成される
+   - 新しいブランチが自動的に作成される
+
+2. **Worktree ディレクトリに移動**
+   ```bash
+   cd ../uipath-xaml-visualizer-feature
+   ```
+
+3. **作業を実施**
+   - 通常通りコード修正・コミット・プッシュ
+
+4. **Worktree 一覧を確認**
+   ```bash
+   git worktree list
+   ```
+
+5. **作業完了後、Worktree を削除**
+   ```bash
+   # メインリポジトリに戻る
+   cd ../uipath-github-xaml-visualizer
+
+   # Worktree を削除
+   git worktree remove ../uipath-xaml-visualizer-feature
+
+   # ブランチも削除する場合
+   git branch -d feature/新機能名
+   ```
+
+#### Worktree のメリット
+- 複数のブランチを同時に開いて作業できる
+- ブランチ切り替え時のビルドやnode_modules再構築が不要
+- 緊急対応が入っても作業中のコードを退避する必要がない
+
+#### 注意事項
+- 同じブランチを複数のWorktreeで開くことはできない
+- Worktreeを削除する前にコミット・プッシュを忘れずに
+- `.git` フォルダは元のリポジトリで共有される
+
 ---
 
 ## 📋 GitHub運用ルール
