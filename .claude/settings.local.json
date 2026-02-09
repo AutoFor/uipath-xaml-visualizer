@@ -5,7 +5,8 @@
       "Bash(gh pr create:*)",
       "Bash(cat:*)",
       "Bash(gh run view:*)",
-      "Read(//c/Users/SeiyaKawashima/**)"
+      "Read(//c/Users/SeiyaKawashima/**)",
+      "Bash(gh issue list:*)"
     ],
     "deny": [],
     "ask": []
