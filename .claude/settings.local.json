@@ -18,7 +18,8 @@
       "Bash(gh run watch:*)",
       "Bash(gh api:*)",
       "Bash(git pull:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git branch:*)"
     ],
     "deny": [],
     "ask": []
