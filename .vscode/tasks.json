@@ -1,0 +1,42 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "dev",
+      "path": "packages/vscode-extension",
+      "label": "npm: dev - packages/vscode-extension",
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "webpack",
+        "pattern": {
+          "regexp": "^([^\\s].*)\\((\\d+),(\\d+)\\):\\s+(warning|error)\\s+(TS\\d+)\\s*:\\s*(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "code": 5,
+          "message": 6
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "^webpack \\d+\\.\\d+\\.\\d+",
+          "endsPattern": "^(webpack \\d+\\.\\d+\\.\\d+ compiled|Compiled)"
+        }
+      }
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "path": "packages/vscode-extension",
+      "label": "npm: build - packages/vscode-extension",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$tsc"
+      ]
+    }
+  ]
+}

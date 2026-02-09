@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2020", // 出力するJavaScriptのバージョン
+    "module": "commonjs", // モジュールシステム
+    "lib": ["ES2020", "DOM"], // 使用するライブラリ
+    "declaration": true, // 型定義ファイル（.d.ts）を生成
+    "declarationMap": true, // 型定義ファイルのソースマップを生成
+    "outDir": "./dist", // 出力ディレクトリ
+    "rootDir": "./", // ソースコードのルートディレクトリ
+    "strict": true, // 厳格な型チェック
+    "esModuleInterop": true, // CommonJSとESモジュール間の互換性
+    "skipLibCheck": true, // ライブラリの型チェックをスキップ
+    "forceConsistentCasingInFileNames": true, // ファイル名の大文字小文字を厳格にチェック
+    "moduleResolution": "node", // モジュール解決戦略
+    "resolveJsonModule": true, // JSONファイルのインポートを許可
+    "sourceMap": true // ソースマップを生成
+  },
+  "include": [
+    "**/*.ts" // すべてのTypeScriptファイルを含める
+  ],
+  "exclude": [
+    "node_modules", // node_modulesを除外
+    "dist" // distディレクトリを除外
+  ]
+}
