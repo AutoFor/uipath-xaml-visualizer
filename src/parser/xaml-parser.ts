@@ -285,7 +285,7 @@ export class XamlParser {
 
     // よくあるアクティビティタイプ（基本）
     const activityTypes = [
-      'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'If', 'While',
+      'Activity', 'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'If', 'While',
       'ForEach', 'Switch', 'TryCatch', 'Click', 'TypeInto', 'GetText',
       'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay',
       // UiPath UIAutomation Next アクティビティ
