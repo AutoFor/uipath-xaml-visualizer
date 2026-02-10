@@ -1,4 +1,4 @@
-import { XamlParser, SequenceRenderer, TreeViewRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
 
 /**
  * GitHub上のXAMLファイルを視覚化するコンテンツスクリプト
