@@ -1,9 +1,7 @@
 import * as SDK from 'azure-devops-extension-sdk';
-import { XamlParser } from './parser/xaml-parser';
-import { DiffCalculator } from './parser/diff-calculator';
-import { DiffRenderer } from './renderer/diff-renderer';
-import './styles/main.css';
-import './styles/diff.css';
+import { XamlParser, DiffCalculator, DiffRenderer } from '@uipath-xaml-visualizer/shared';
+import '../../src/styles/main.css';
+import '../../src/styles/diff.css';
 
 /**
  * XAML差分ビューアのメインクラス

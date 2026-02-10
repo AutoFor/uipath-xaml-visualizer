@@ -3,8 +3,8 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 module.exports = {
   entry: {
-    viewer: './src/viewer.ts',           // XAMLファイルビューアのエントリポイント
-    'diff-viewer': './src/diff-viewer.ts' // 差分ビューアのエントリポイント
+    viewer: './viewer.ts',           // XAMLファイルビューアのエントリポイント
+    'diff-viewer': './diff-viewer.ts' // 差分ビューアのエントリポイント
   },
   output: {
     path: path.resolve(__dirname, 'dist'), // 出力先ディレクトリ
@@ -15,6 +15,10 @@ module.exports = {
     extensions: ['.ts', '.tsx', '.js'],    // 解決する拡張子
     alias: {
       '@': path.resolve(__dirname, 'src')  // @でsrcフォルダを参照可能に
+    },
+    fallback: {
+      "fs": false,  // ブラウザ環境ではfsは使用不可
+      "path": false  // ブラウザ環境ではpathは使用不可
     }
   },
   module: {
@@ -33,9 +37,9 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'src/viewer.html', to: 'viewer.html' },           // HTMLファイルをコピー
-        { from: 'src/diff-viewer.html', to: 'diff-viewer.html' }, // 差分ビューアHTMLをコピー
-        { from: 'src/styles', to: 'styles' }                      // スタイルシートをコピー
+        { from: 'viewer.html', to: 'viewer.html' },           // HTMLファイルをコピー
+        { from: 'diff-viewer.html', to: 'diff-viewer.html' }, // 差分ビューアHTMLをコピー
+        { from: '../../src/styles', to: 'styles' }            // スタイルシートをコピー
       ]
     })
   ],

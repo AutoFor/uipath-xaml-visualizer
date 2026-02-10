@@ -1,8 +1,6 @@
 import * as SDK from 'azure-devops-extension-sdk';
-import { XamlParser } from './parser/xaml-parser';
-import { SequenceRenderer } from './renderer/sequence-renderer';
-import { TreeViewRenderer } from './renderer/tree-view-renderer';
-import './styles/main.css';
+import { XamlParser, SequenceRenderer, TreeViewRenderer } from '@uipath-xaml-visualizer/shared';
+import '../../src/styles/main.css';
 
 // Azure DevOps SDK を初期化
 SDK.init();
