@@ -17,7 +17,7 @@ body {
   display: flex;
   justify-content: space-between;               /* 左右に要素を配置 */
   align-items: center;
-  padding: 16px 24px;
+  padding: 8px 12px;
   background-color: #0078d4;                    /* Azure DevOps テーマカラー */
   color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -57,7 +57,7 @@ body {
 /* ビューアコンテナ */
 .viewer-container {
   display: flex;
-  height: calc(100vh - 64px);                   /* ヘッダーを除いた高さ */
+  height: calc(100vh - 40px);                   /* ヘッダーを除いた高さ */
   overflow: hidden;
 }
 
@@ -67,7 +67,7 @@ body {
   background-color: white;
   border-right: 1px solid #ddd;
   overflow-y: auto;                             /* 縦スクロール有効 */
-  padding: 16px;
+  padding: 8px;
 }
 
 .tree-view.hidden {
@@ -116,7 +116,7 @@ body {
 .main-view {
   flex: 1;
   overflow-y: auto;                             /* 縦スクロール有効 */
-  padding: 24px;
+  padding: 12px;
   background-color: #fafafa;
 }
 
@@ -143,8 +143,8 @@ body {
   background-color: white;
   border: 2px solid #e0e0e0;
   border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 8px;
+  margin-bottom: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: border-color 0.2s, box-shadow 0.2s; /* アニメーション */
 }
@@ -330,7 +330,7 @@ body {
   background-color: white;
   border-left: 1px solid #ddd;
   overflow-y: auto;                             /* 縦スクロール有効 */
-  padding: 16px;
+  padding: 8px;
 }
 
 .panel-header {
