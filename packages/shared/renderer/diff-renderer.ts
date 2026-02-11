@@ -1,4 +1,5 @@
 import { DiffResult, DiffActivity, DiffType, PropertyChange } from '../parser/diff-calculator';
+import { Activity } from '../parser/xaml-parser';
 
 /**
  * 差分レンダラー
@@ -51,10 +52,22 @@ export class DiffRenderer {
     header.appendChild(title);
     card.appendChild(header);
 
+    // Assignアクティビティの代入式を表示（追加・削除の場合）
+    if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
+        && diffActivity.activity.type === 'Assign') {
+      const expr = this.renderAssignExpression(diffActivity.activity, diffActivity.diffType);
+      if (expr) card.appendChild(expr);          // 代入式があれば表示
+    }
+
     // 変更内容を表示（変更の場合のみ）
     if (diffActivity.diffType === DiffType.MODIFIED && diffActivity.changes) {
-      const changesDiv = this.renderPropertyChanges(diffActivity.changes);
-      card.appendChild(changesDiv);
+      if (diffActivity.activity.type === 'Assign') {
+        const assignChanges = this.renderAssignChanges(diffActivity);  // Assign専用の変更表示
+        card.appendChild(assignChanges);
+      } else {
+        const changesDiv = this.renderPropertyChanges(diffActivity.changes);
+        card.appendChild(changesDiv);
+      }
     }
 
     // スクリーンショット変更を表示
@@ -168,6 +181,91 @@ export class DiffRenderer {
   }
 
   /**
+   * Assignアクティビティの代入式をレンダリング
+   */
+  private renderAssignExpression(activity: Activity, diffType: DiffType): HTMLElement | null {
+    const to = activity.properties['To'];        // 代入先（左辺）
+    const value = activity.properties['Value'];  // 代入値（右辺）
+    if (!to && !value) return null;              // 両方なければ表示しない
+
+    const div = document.createElement('div');
+    const isAdded = diffType === DiffType.ADDED;  // 追加か削除かで表示を切替
+    div.className = isAdded ? 'diff-after' : 'diff-before';
+    const prefix = isAdded ? '+' : '-';
+    div.textContent = `${prefix} ${this.formatValue(to)} = ${this.formatValue(value)}`;
+    return div;
+  }
+
+  /**
+   * Assignアクティビティの変更詳細をレンダリング
+   */
+  private renderAssignChanges(diffActivity: DiffActivity): HTMLElement {
+    const container = document.createElement('div');
+    container.className = 'property-changes';
+
+    // To/Valueの変更を「左辺/右辺」ラベル付きでGitHub風diff表示
+    const assignChanges = diffActivity.changes?.filter(
+      c => c.propertyName === 'To' || c.propertyName === 'Value'
+    ) || [];
+
+    assignChanges.forEach(change => {
+      const item = document.createElement('div');
+      item.className = 'property-change-item';
+
+      // 左辺/右辺のラベル
+      const sideLabel = document.createElement('span');
+      const isLeft = change.propertyName === 'To';  // Toは左辺、Valueは右辺
+      sideLabel.className = `assign-change-side ${isLeft ? 'left' : 'right'}`;
+      sideLabel.textContent = isLeft ? '左辺' : '右辺';
+
+      const propLabel = document.createElement('span');
+      propLabel.className = 'assign-change-label';
+      propLabel.textContent = ` (${change.propertyName}):`;
+
+      // 変更前の値（赤）
+      const beforeValue = document.createElement('div');
+      beforeValue.className = 'diff-before';
+      beforeValue.textContent = `- ${this.formatValue(change.before)}`;
+
+      // 変更後の値（緑）
+      const afterValue = document.createElement('div');
+      afterValue.className = 'diff-after';
+      afterValue.textContent = `+ ${this.formatValue(change.after)}`;
+
+      item.appendChild(sideLabel);
+      item.appendChild(propLabel);
+      item.appendChild(beforeValue);
+      item.appendChild(afterValue);
+      container.appendChild(item);
+    });
+
+    // To/Value以外のプロパティ変更は通常通り表示
+    const otherChanges = diffActivity.changes?.filter(
+      c => c.propertyName !== 'To' && c.propertyName !== 'Value'
+    ) || [];
+
+    if (otherChanges.length > 0) {
+      const otherDiv = this.renderPropertyChanges(otherChanges);
+      container.appendChild(otherDiv);
+    }
+
+    return container;
+  }
+
+  /**
+   * XMLエンティティをデコード
+   */
+  private decodeXmlEntities(text: string): string {
+    return text
+      .replace(/&amp;/g, '&')                   // アンパサンド
+      .replace(/&lt;/g, '<')                     // 小なり
+      .replace(/&gt;/g, '>')                     // 大なり
+      .replace(/&quot;/g, '"')                   // ダブルクォート
+      .replace(/&apos;/g, "'")                   // シングルクォート
+      .replace(/&nbsp;/g, ' ');                  // ノーブレークスペース
+  }
+
+  /**
    * 値をフォーマット
    */
   private formatValue(value: any): string {
@@ -176,10 +274,10 @@ export class DiffRenderer {
     }
 
     if (typeof value === 'object') {
-      return JSON.stringify(value);             // オブジェクトはJSON文字列化
+      return this.decodeXmlEntities(JSON.stringify(value));  // オブジェクトはJSON文字列化してデコード
     }
 
-    return String(value);
+    return this.decodeXmlEntities(String(value));  // 文字列化してXMLエンティティをデコード
   }
 
   /**
