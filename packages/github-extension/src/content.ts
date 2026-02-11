@@ -562,8 +562,37 @@ function createPanel(): HTMLElement {
 	closeButton.className = 'btn btn-sm'; // ボタンスタイル
 	closeButton.addEventListener('click', () => panel.remove()); // クリックで閉じる
 
+	// Copy HTMLボタン（デバッグ用）
+	const copyHtmlButton = document.createElement('button'); // コピーボタン
+	copyHtmlButton.textContent = 'Copy HTML'; // ボタンテキスト
+	copyHtmlButton.className = 'btn btn-sm panel-copy-btn'; // スタイル適用
+	copyHtmlButton.addEventListener('click', () => { // クリックイベント
+		const originalText = copyHtmlButton.textContent; // 元のテキストを保存
+		navigator.clipboard.writeText(content.innerHTML) // コンテンツのHTMLをクリップボードにコピー
+			.then(() => {
+				copyHtmlButton.textContent = 'Copied!'; // 成功表示
+				copyHtmlButton.classList.add('panel-copy-btn-success'); // 成功スタイル
+			})
+			.catch(() => {
+				copyHtmlButton.textContent = 'Failed'; // 失敗表示
+				copyHtmlButton.classList.add('panel-copy-btn-error'); // 失敗スタイル
+			})
+			.finally(() => {
+				setTimeout(() => { // 1.5秒後に元に戻す
+					copyHtmlButton.textContent = originalText; // テキスト復元
+					copyHtmlButton.classList.remove('panel-copy-btn-success', 'panel-copy-btn-error'); // スタイル復元
+				}, 1500);
+			});
+	});
+
+	// ヘッダーボタングループ
+	const headerButtons = document.createElement('div'); // ボタンコンテナ
+	headerButtons.className = 'panel-header-buttons'; // スタイル適用
+	headerButtons.appendChild(copyHtmlButton); // コピーボタン追加
+	headerButtons.appendChild(closeButton); // 閉じるボタン追加
+
 	header.appendChild(titleArea);
-	header.appendChild(closeButton);
+	header.appendChild(headerButtons);
 
 	// コンテンツ部分
 	const content = document.createElement('div'); // コンテンツ
