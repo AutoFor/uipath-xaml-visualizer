@@ -444,3 +444,35 @@
 #uipath-visualizer-panel .diff-content {
   max-width: 100%;
 }
+
+/* ========== ヘッダーボタングループ ========== */
+
+/* ボタンコンテナ */
+#uipath-visualizer-panel .panel-header-buttons {
+  display: flex;                            /* フレックスボックス */
+  align-items: center;                      /* 縦方向中央揃え */
+  gap: 8px;                                 /* ボタン間の間隔 */
+}
+
+/* Copy HTMLボタン（デバッグ用・控えめ表示） */
+#uipath-visualizer-panel .panel-copy-btn {
+  opacity: 0.7;                             /* 控えめな透明度 */
+  font-size: 12px;                          /* 小さめのフォント */
+  transition: opacity 0.2s;                 /* フェードアニメーション */
+}
+
+#uipath-visualizer-panel .panel-copy-btn:hover {
+  opacity: 1;                               /* ホバーで完全表示 */
+}
+
+/* コピー成功時のスタイル */
+#uipath-visualizer-panel .panel-copy-btn-success {
+  color: var(--diff-added-fg);              /* 緑色テキスト */
+  opacity: 1;                               /* 完全表示 */
+}
+
+/* コピー失敗時のスタイル */
+#uipath-visualizer-panel .panel-copy-btn-error {
+  color: var(--panel-error-fg);             /* 赤色テキスト */
+  opacity: 1;                               /* 完全表示 */
+}
