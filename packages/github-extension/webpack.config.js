@@ -1,4 +1,5 @@
 const path = require('path');  // パス操作用モジュール
+const webpack = require('webpack');  // webpack本体（DefinePlugin用）
 const CopyWebpackPlugin = require('copy-webpack-plugin');  // ファイルコピー用プラグイン
 
 module.exports = {
@@ -23,10 +24,18 @@ module.exports = {
         test: /\.tsx?$/,  // .tsまたは.tsxファイルに対して
         use: 'ts-loader',  // ts-loaderを使用
         exclude: /node_modules/  // node_modulesは除外
+      },
+      {
+        test: /\.css$/,  // CSSファイルに対して
+        use: ['style-loader', 'css-loader']  // style-loaderとcss-loaderを使用
       }
     ]
   },
   plugins: [
+    new webpack.DefinePlugin({
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString()),  // ビルド日時を埋め込み
+      __VERSION__: JSON.stringify(require('./package.json').version)  // バージョンを埋め込み
+    }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'manifest.json', to: 'manifest.json' },  // manifest.jsonをコピー

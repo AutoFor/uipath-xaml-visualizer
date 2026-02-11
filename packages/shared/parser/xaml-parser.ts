@@ -4,8 +4,16 @@
  */
 
 import { DOMParser } from '@xmldom/xmldom'; // Node.js環境用のXMLパーサー
-import * as fs from 'fs'; // ファイルシステム
-import * as path from 'path'; // パス操作
+
+// ブラウザ環境ではfs/pathが存在しないため、条件付きでインポート
+let fs: any = null; // ファイルシステム（Node.js環境のみ）
+let path: any = null; // パス操作（Node.js環境のみ）
+try {
+  fs = require('fs'); // ブラウザ環境ではwebpack fallbackでfalseになる
+  path = require('path'); // ブラウザ環境ではwebpack fallbackでfalseになる
+} catch {
+  // ブラウザ環境ではrequireが失敗するため無視
+}
 
 // UiPath固有の名前空間（将来の拡張用に定義）
 // const UIPATH_NS = 'http://schemas.uipath.com/workflow/activities';
@@ -62,7 +70,27 @@ export class XamlParser {
   private logFilePath: string;                  // ログファイルパス
   private logBuffer: string[] = [];             // ログバッファ
 
+  private canWriteFile: boolean = false; // ファイル書き込みが可能かどうか
+
   constructor() {
+    // ブラウザ環境チェック（fs/path/processが利用可能か判定）
+    const isBrowser = typeof process === 'undefined'
+      || !fs
+      || typeof fs.existsSync !== 'function'
+      || !path
+      || typeof path.join !== 'function'; // ブラウザ環境判定
+
+    if (isBrowser) {
+      // ブラウザ環境ではファイルログを無効化
+      this.logFilePath = '';
+      this.canWriteFile = false;
+      this.log('ブラウザ環境で実行中 - ファイルログ無効');
+      return;
+    }
+
+    // Node.js環境ではファイルログを有効化
+    this.canWriteFile = true;
+
     // ログファイルパスを設定（ユーザーのホームディレクトリ/.uipath-xaml-visualizer/logs）
     const homeDir = process.env.HOME || process.env.USERPROFILE || '.';
     const logDir = path.join(homeDir, '.uipath-xaml-visualizer', 'logs');
@@ -132,6 +160,12 @@ export class XamlParser {
    */
   private flushLog(): void {
     if (this.logBuffer.length === 0) return;
+
+    // ブラウザ環境ではファイル書き込みをスキップ
+    if (!this.canWriteFile) {
+      this.logBuffer = []; // バッファをクリアするだけ
+      return;
+    }
 
     try {
       const logContent = this.logBuffer.join('\n') + '\n';

@@ -1,0 +1,232 @@
+/* GitHub拡張機能パネル用スコープ付きスタイル */
+/* main.cssのグローバルリセットを避け、パネル内でのみ適用 */
+
+/* アクティビティカード */
+#uipath-visualizer-panel .activity-card {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin-bottom: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: border-color 0.2s, box-shadow 0.2s; /* アニメーション */
+}
+
+#uipath-visualizer-panel .activity-card:hover {
+  border-color: #0078d4;                        /* ホバー時のボーダー色 */
+  box-shadow: 0 2px 6px rgba(0, 120, 212, 0.2);
+}
+
+#uipath-visualizer-panel .activity-card.highlighted {
+  border-color: #ffa500;                        /* ハイライト時のボーダー色 */
+  background-color: #fff8e1;
+}
+
+#uipath-visualizer-panel .activity-header {
+  display: flex;                                /* フレックスボックスで横並び */
+  align-items: center;                          /* 縦方向中央揃え */
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+/* 折りたたみボタン */
+#uipath-visualizer-panel .collapse-btn {
+  background: none;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px;
+  margin-right: 4px;
+  color: #0078d4;
+  transition: transform 0.2s;                   /* 回転アニメーション */
+}
+
+#uipath-visualizer-panel .collapse-btn:hover {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+#uipath-visualizer-panel .activity-properties {
+  margin-top: 4px;
+  padding: 4px 6px;
+  background-color: #f9f9f9;
+  border-radius: 4px;
+}
+
+#uipath-visualizer-panel .property-item {
+  display: flex;
+  margin-bottom: 2px;
+}
+
+#uipath-visualizer-panel .property-key {
+  font-weight: 600;
+  margin-right: 4px;
+  color: #555;
+}
+
+#uipath-visualizer-panel .property-value {
+  color: #0078d4;
+  word-break: break-all;                        /* 長い値を折り返す */
+}
+
+/* 子アクティビティ */
+#uipath-visualizer-panel .activity-children {
+  margin-left: 12px;
+  margin-top: 4px;
+  padding-left: 8px;
+  border-left: 2px solid #e0e0e0;               /* 左側に線を表示 */
+}
+
+/* 折りたたまれた状態 */
+#uipath-visualizer-panel .activity-card.collapsed > .activity-children {
+  display: none;                                /* 子要素を非表示 */
+}
+
+#uipath-visualizer-panel .activity-card.collapsed > .activity-properties,
+#uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot {
+  display: none;                                /* プロパティとスクリーンショットも非表示 */
+}
+
+/* 差分サマリー */
+#uipath-visualizer-panel .diff-summary {
+  display: flex;
+  gap: 16px;                                    /* カード間の間隔 */
+  padding: 16px;
+  background-color: white;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+}
+
+#uipath-visualizer-panel .summary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+#uipath-visualizer-panel .summary-label {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+#uipath-visualizer-panel .count {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+#uipath-visualizer-panel .count.added {
+  color: #28a745;                               /* 緑: 追加 */
+}
+
+#uipath-visualizer-panel .count.removed {
+  color: #d73a49;                               /* 赤: 削除 */
+}
+
+#uipath-visualizer-panel .count.modified {
+  color: #ffa500;                               /* オレンジ: 変更 */
+}
+
+/* 差分アイテム */
+#uipath-visualizer-panel .diff-item {
+  margin-bottom: 16px;
+}
+
+#uipath-visualizer-panel .diff-item.diff-added {
+  border-left: 4px solid #28a745;               /* 緑のボーダー */
+  background-color: #f0fff4;                    /* 薄い緑の背景 */
+}
+
+#uipath-visualizer-panel .diff-item.diff-removed {
+  border-left: 4px solid #d73a49;               /* 赤のボーダー */
+  background-color: #ffeef0;                    /* 薄い赤の背景 */
+}
+
+#uipath-visualizer-panel .diff-item.diff-modified {
+  border-left: 4px solid #ffa500;               /* オレンジのボーダー */
+  background-color: #fff8e1;                    /* 薄いオレンジの背景 */
+}
+
+/* バッジ */
+#uipath-visualizer-panel .badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+}
+
+#uipath-visualizer-panel .badge-added {
+  background-color: #28a745;
+  color: white;
+}
+
+#uipath-visualizer-panel .badge-removed {
+  background-color: #d73a49;
+  color: white;
+}
+
+#uipath-visualizer-panel .badge-modified {
+  background-color: #ffa500;
+  color: white;
+}
+
+/* プロパティ変更 */
+#uipath-visualizer-panel .property-changes {
+  margin-top: 12px;
+  padding: 12px;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+#uipath-visualizer-panel .changes-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+#uipath-visualizer-panel .property-diff-detail {
+  margin-top: 8px;
+}
+
+#uipath-visualizer-panel .property-change-item {
+  margin-bottom: 12px;
+  padding: 8px;
+  background-color: #fafafa;
+  border-radius: 4px;
+}
+
+#uipath-visualizer-panel .prop-name {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #555;
+}
+
+#uipath-visualizer-panel .diff-before {
+  color: #d73a49;                               /* 赤: 削除された値 */
+  font-family: 'Courier New', monospace;
+  padding: 4px;
+  background-color: #ffeef0;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
+
+#uipath-visualizer-panel .diff-after {
+  color: #28a745;                               /* 緑: 追加された値 */
+  font-family: 'Courier New', monospace;
+  padding: 4px;
+  background-color: #f0fff4;
+  border-radius: 4px;
+}
+
+/* 差分コンテンツエリア */
+#uipath-visualizer-panel .diff-content {
+  max-width: 100%;
+}

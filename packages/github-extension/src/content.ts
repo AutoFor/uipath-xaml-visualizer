@@ -1,100 +1,543 @@
-import { XamlParser } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, DiffCalculator, DiffRenderer, SequenceRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
  * GitHub上のXAMLファイルを視覚化するコンテンツスクリプト
+ * - blob-xaml: 個別ファイル表示ページ（既存機能）
+ * - pr-diff: PR差分ページ（新機能）
  */
 
-// ページロード時の処理
-function init() {
-	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
+// ========== ビルド情報（webpackのDefinePluginで注入） ==========
 
-	// XAMLファイルかどうかを判定
-	if (!isXamlFile()) {
-		return; // XAMLファイルでなければ終了
-	}
+declare const __BUILD_DATE__: string; // ビルド日時
+declare const __VERSION__: string;    // バージョン
 
-	// ビジュアライザーボタンを追加
-	addVisualizerButton();
+// ========== 型定義 ==========
+
+type PageType = 'blob-xaml' | 'pr-diff' | 'unknown'; // ページタイプ
+
+interface PrInfo {
+	owner: string;   // リポジトリオーナー
+	repo: string;    // リポジトリ名
+	prNumber: number; // PR番号
 }
 
+interface PrRefs {
+	baseSha: string; // ベースブランチのSHA
+	headSha: string; // ヘッドブランチのSHA
+}
+
+// ========== モジュールレベルのキャッシュ ==========
+
+let cachedPrRefs: PrRefs | null = null; // PR refs キャッシュ（同一PR内で1回だけAPI呼び出し）
+let lastUrl: string = ''; // 前回のURL（URL変更検出用）
+let debounceTimer: ReturnType<typeof setTimeout> | null = null; // デバウンスタイマー
+
+// ========== ページタイプ検出 ==========
+
 /**
- * XAMLファイルかどうかを判定
+ * 現在のページタイプを検出
  */
-function isXamlFile(): boolean {
+function detectPageType(): PageType {
 	const url = window.location.href; // 現在のURL
-	return url.includes('.xaml'); // .xamlを含むかチェック
-}
 
-/**
- * ビジュアライザーボタンを追加
- */
-function addVisualizerButton() {
-	// GitHub のファイルビューアーのツールバーを取得
-	const toolbar = document.querySelector('.file-actions'); // ツールバー要素
-
-	if (!toolbar) {
-		console.log('ツールバーが見つかりません'); // ログ出力
-		return;
+	if (url.includes('.xaml')) {
+		return 'blob-xaml'; // 個別XAMLファイルページ
 	}
 
-	// ボタンを作成
-	const button = document.createElement('button'); // ボタン要素
-	button.textContent = 'View as Workflow'; // ボタンテキスト
-	button.className = 'btn btn-sm'; // GitHubのボタンスタイル
-	button.style.marginLeft = '8px'; // 左マージン
-	button.addEventListener('click', showVisualizer); // クリックイベント
+	if (/\/pull\/\d+\/files/.test(url)) {
+		return 'pr-diff'; // PR差分ページ
+	}
 
-	// ツールバーにボタンを追加
-	toolbar.appendChild(button);
+	return 'unknown'; // その他のページ
+}
+
+// ========== デバッグ情報収集 ==========
+
+/**
+ * デバッグ情報を収集してログ配列として返す
+ */
+function collectDebugInfo(): string[] {
+	const info: string[] = []; // デバッグ情報の配列
+
+	// A. script[type="application/json"] タグの個数
+	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON埋め込みスクリプト
+	info.push(`[A] script[type="application/json"] タグ数: ${jsonScripts.length}`);
+
+	// B. 各タグ内に 40文字16進数（SHA候補）が含まれるかチェック
+	const shaPattern = /[a-f0-9]{40}/g; // 40文字の16進数パターン
+	let totalShaCandidates = 0; // SHA候補の合計数
+	jsonScripts.forEach((script, idx) => {
+		const text = script.textContent || ''; // スクリプト内容
+		const matches = text.match(shaPattern); // SHA候補を検索
+		if (matches && matches.length > 0) {
+			totalShaCandidates += matches.length; // 候補数を加算
+			// 最初のSHA候補の前後30文字のコンテキストを記録
+			const firstMatch = matches[0]; // 最初のSHA候補
+			const pos = text.indexOf(firstMatch); // 位置
+			const contextStart = Math.max(0, pos - 30); // コンテキスト開始位置
+			const contextEnd = Math.min(text.length, pos + 40 + 30); // コンテキスト終了位置
+			const context = text.substring(contextStart, contextEnd); // コンテキスト文字列
+			info.push(`  [B] scriptタグ#${idx}: SHA候補 ${matches.length}個, コンテキスト: ...${context.replace(/</g, '&lt;').replace(/>/g, '&gt;')}...`);
+		}
+	});
+	info.push(`[B] SHA候補合計: ${totalShaCandidates}個`);
+
+	// C. インラインスクリプトで "Oid", "sha", "Sha" を含むものの個数
+	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // インラインスクリプト
+	let oidCount = 0; // Oid含有数
+	let shaKeyCount = 0; // sha含有数
+	inlineScripts.forEach(script => {
+		const text = script.textContent || ''; // スクリプト内容
+		if (text.includes('Oid') || text.includes('sha') || text.includes('Sha')) {
+			oidCount++; // カウント
+		}
+		if (text.includes('baseRefOid') || text.includes('headRefOid')) {
+			shaKeyCount++; // SHA関連キー含有数
+		}
+	});
+	info.push(`[C] インラインスクリプト合計: ${inlineScripts.length}個, Oid/sha/Sha含有: ${oidCount}個, baseRefOid/headRefOid含有: ${shaKeyCount}個`);
+
+	// D. hidden input (comparison_start_oid, comparison_end_oid) の存在
+	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // 比較開始OID
+	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // 比較終了OID
+	info.push(`[D] hidden input: comparison_start_oid=${startOid ? startOid.value : '(なし)'}, comparison_end_oid=${endOid ? endOid.value : '(なし)'}`);
+
+	// E. blob リンク (a[href*="/blob/"]) の個数と最初の href
+	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blobリンク
+	const firstBlobHref = blobLinks.length > 0 ? (blobLinks[0] as HTMLAnchorElement).href : '(なし)'; // 最初のhref
+	info.push(`[E] blob リンク数: ${blobLinks.length}個, 最初: ${firstBlobHref}`);
+
+	// blobリンクからSHA候補を抽出してみる
+	if (blobLinks.length > 0) {
+		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
+		const blobShaMatches = firstBlobHref.match(blobShaPattern); // SHA候補を検索
+		info.push(`  [E] blob リンクからSHA抽出: ${blobShaMatches ? blobShaMatches[1] : '(パターン不一致)'}`);
+	}
+
+	// F. .commit-ref, [data-branch-name] 等のブランチ情報要素
+	const commitRefs = document.querySelectorAll('.commit-ref'); // コミット参照要素
+	const branchNames = document.querySelectorAll('[data-branch-name]'); // ブランチ名要素
+	info.push(`[F] .commit-ref: ${commitRefs.length}個, [data-branch-name]: ${branchNames.length}個`);
+	commitRefs.forEach((el, idx) => {
+		info.push(`  [F] .commit-ref#${idx}: "${el.textContent?.trim()}"`); // 内容を記録
+	});
+
+	// G. ページURL情報
+	info.push(`[G] URL: ${window.location.href}`);
+	info.push(`[G] pathname: ${window.location.pathname}`);
+
+	return info;
+}
+
+// ========== PR情報の取得 ==========
+
+/**
+ * URLからPR情報を抽出
+ */
+function parsePrUrl(): PrInfo | null {
+	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/); // URL解析
+	if (!match) return null;
+
+	return {
+		owner: match[1],   // オーナー名
+		repo: match[2],    // リポジトリ名
+		prNumber: parseInt(match[3], 10) // PR番号
+	};
 }
 
 /**
- * ビジュアライザーを表示
+ * テキストからbase/head SHAのペアを抽出（複数パターン対応）
  */
-async function showVisualizer() {
+function extractShasFromText(text: string): PrRefs | null {
+	// パターン1: baseRefOid / headRefOid（GitHub React埋め込みデータ）
+	let base = text.match(/"baseRefOid"\s*:\s*"([a-f0-9]{40})"/);
+	let head = text.match(/"headRefOid"\s*:\s*"([a-f0-9]{40})"/);
+	if (base && head) return { baseSha: base[1], headSha: head[1] };
+
+	// パターン2: baseSha / headSha
+	base = text.match(/"baseSha"\s*:\s*"([a-f0-9]{40})"/);
+	head = text.match(/"headSha"\s*:\s*"([a-f0-9]{40})"/);
+	if (base && head) return { baseSha: base[1], headSha: head[1] };
+
+	// パターン3: "base":{"sha":"..."} / "head":{"sha":"..."}（REST API形式）
+	base = text.match(/"base"\s*:\s*\{[^}]*"sha"\s*:\s*"([a-f0-9]{40})"/);
+	head = text.match(/"head"\s*:\s*\{[^}]*"sha"\s*:\s*"([a-f0-9]{40})"/);
+	if (base && head) return { baseSha: base[1], headSha: head[1] };
+
+	// パターン4: comparison_start_oid / comparison_end_oid（GitHub diff hidden input）
+	base = text.match(/"comparison_start_oid"\s*:\s*"([a-f0-9]{40})"/);
+	head = text.match(/"comparison_end_oid"\s*:\s*"([a-f0-9]{40})"/);
+	if (base && head) return { baseSha: base[1], headSha: head[1] };
+
+	// パターン5: oid フィールド（GitHub GraphQL形式）
+	base = text.match(/"baseOid"\s*:\s*"([a-f0-9]{40})"/);
+	head = text.match(/"headOid"\s*:\s*"([a-f0-9]{40})"/);
+	if (base && head) return { baseSha: base[1], headSha: head[1] };
+
+	return null;
+}
+
+/**
+ * 現在のページのDOMからbase/head SHAを抽出
+ */
+function extractShasFromDom(): PrRefs | null {
+	// 方法A: <script type="application/json"> タグ（GitHub React埋め込みデータ）
+	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON埋め込みスクリプト
+	console.log(`UiPath Visualizer: DOM抽出: JSON scriptタグ ${jsonScripts.length}個検出`);
+	let shaCount = 0; // SHA候補カウンタ
+	for (let i = 0; i < jsonScripts.length; i++) {
+		const text = jsonScripts[i].textContent || '';
+		const refs = extractShasFromText(text);
+		if (refs) {
+			console.log('UiPath Visualizer: JSON scriptタグからSHA取得成功');
+			return refs;
+		}
+		// SHA候補があるか確認（デバッグ用）
+		const shaMatches = text.match(/[a-f0-9]{40}/g); // 40文字16進数を検索
+		if (shaMatches) shaCount += shaMatches.length; // 候補をカウント
+	}
+	console.log(`UiPath Visualizer: DOM抽出: JSON scriptタグ ${jsonScripts.length}個検出, SHA候補 ${shaCount}個`);
+
+	// 方法B: インラインスクリプト（src属性なし、type属性なし）
+	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // インラインスクリプト
+	for (let i = 0; i < inlineScripts.length; i++) {
+		const text = inlineScripts[i].textContent || '';
+		if (text.length > 100 && (text.includes('Oid') || text.includes('sha') || text.includes('Sha'))) {
+			const refs = extractShasFromText(text);
+			if (refs) {
+				console.log('UiPath Visualizer: インラインscriptタグからSHA取得成功');
+				return refs;
+			}
+		}
+	}
+
+	// 方法C: hidden input要素
+	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // 比較開始OID
+	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // 比較終了OID
+	if (startOid?.value && endOid?.value) {
+		console.log('UiPath Visualizer: hidden inputからSHA取得成功');
+		return { baseSha: startOid.value, headSha: endOid.value };
+	}
+
+	// 方法D: blob リンクから head SHA を抽出
+	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blobリンク
+	if (blobLinks.length > 0) {
+		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
+		for (const link of blobLinks) {
+			const href = (link as HTMLAnchorElement).href; // リンクURL
+			const match = href.match(blobShaPattern); // SHA候補を検索
+			if (match) {
+				console.log(`UiPath Visualizer: blobリンクからhead SHA候補取得: ${match[1]}`);
+				// blobリンクからはheadSHAのみ取得可能 → baseSHAは別途必要なので単独では使えない
+				// ただし、後でbaseSHA取得と組み合わせるために記録しておく
+				break;
+			}
+		}
+	}
+
+	// 方法E: ページ全体のHTMLからSHAペアを検索（最終手段）
+	const fullHtml = document.documentElement.innerHTML; // ページ全体のHTML
+	// まずキーワードの存在を確認してから正規表現を適用（パフォーマンス対策）
+	if (fullHtml.indexOf('baseRefOid') !== -1 || fullHtml.indexOf('headRefOid') !== -1 ||
+		fullHtml.indexOf('baseSha') !== -1 || fullHtml.indexOf('headSha') !== -1 ||
+		fullHtml.indexOf('baseOid') !== -1 || fullHtml.indexOf('headOid') !== -1 ||
+		fullHtml.indexOf('comparison_start_oid') !== -1) {
+		console.log('UiPath Visualizer: ページ全体HTMLからSHAキーワード検出、正規表現で検索中...');
+		const refs = extractShasFromText(fullHtml); // ページ全体から抽出
+		if (refs) {
+			console.log('UiPath Visualizer: ページ全体HTMLからSHA取得成功');
+			return refs;
+		}
+		console.log('UiPath Visualizer: ページ全体HTMLにSHAキーワードあるがペア抽出失敗');
+	}
+
+	return null;
+}
+
+/**
+ * PRのbase/head SHAを取得（DOM抽出 → 同一オリジンfetch → API フォールバック）
+ */
+async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
+	// キャッシュがあればそれを返す
+	if (cachedPrRefs) {
+		return cachedPrRefs;
+	}
+
+	// 方法1: 現在のページのDOMから直接SHA抽出（最速・最も信頼性が高い）
+	const domRefs = extractShasFromDom();
+	if (domRefs) {
+		cachedPrRefs = domRefs;
+		return cachedPrRefs;
+	}
+	console.log('UiPath Visualizer: DOMからSHA取得できず、fetch にフォールバック');
+
+	// 方法2: PRページをHTMLとして取得してSHA抽出（同一オリジン → Cookie送信）
+	const prPageUrl = `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.prNumber}`; // PRページURL
+
+	// 2a: credentials: 'same-origin' で試行
 	try {
-		// XAMLファイルの内容を取得
-		const xamlContent = await fetchXamlContent(); // XAML内容を取得
+		console.log(`UiPath Visualizer: HTML fetch (same-origin) 開始: ${prPageUrl}`);
+		const response = await fetch(prPageUrl, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		console.log(`UiPath Visualizer: HTML fetch: status=${response.status}`);
+		if (response.ok) {
+			const html = await response.text(); // HTMLテキスト
+			console.log(`UiPath Visualizer: HTML fetch: length=${html.length}, SHA候補あり=${html.indexOf('baseRefOid') !== -1 || html.indexOf('baseSha') !== -1}`);
+			const refs = extractShasFromText(html);
+			if (refs) {
+				console.log('UiPath Visualizer: fetch HTML (same-origin) からSHA取得成功');
+				cachedPrRefs = refs;
+				return cachedPrRefs;
+			}
+			console.warn('UiPath Visualizer: HTMLにSHAパターンが見つかりません (HTML length:', html.length, ')');
+		} else {
+			console.warn('UiPath Visualizer: PRページ取得失敗 (same-origin):', response.status);
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: PRページfetchエラー (same-origin):', e);
+	}
 
-		// XAMLを解析
-		const parser = new XamlParser();
-		const workflowData = parser.parse(xamlContent); // XAML解析
+	// 2b: credentials: 'include' で再試行（Chrome拡張でのCookie送信挙動の違いに対応）
+	try {
+		console.log(`UiPath Visualizer: HTML fetch (include) 開始: ${prPageUrl}`);
+		const response = await fetch(prPageUrl, { credentials: 'include' }); // Cookie含むリクエスト
+		console.log(`UiPath Visualizer: HTML fetch (include): status=${response.status}`);
+		if (response.ok) {
+			const html = await response.text(); // HTMLテキスト
+			console.log(`UiPath Visualizer: HTML fetch (include): length=${html.length}`);
+			const refs = extractShasFromText(html);
+			if (refs) {
+				console.log('UiPath Visualizer: fetch HTML (include) からSHA取得成功');
+				cachedPrRefs = refs;
+				return cachedPrRefs;
+			}
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: PRページfetchエラー (include):', e);
+	}
 
-		// ビジュアライザーパネルを表示
-		displayVisualizerPanel(workflowData); // パネル表示
+	// 方法3: GitHub REST API（パブリックリポジトリ用フォールバック）
+	try {
+		const apiUrl = `https://api.github.com/repos/${pr.owner}/${pr.repo}/pulls/${pr.prNumber}`; // API URL
+		console.log(`UiPath Visualizer: API fetch 開始: ${apiUrl}`);
+		const apiResponse = await fetch(apiUrl, {
+			headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
+		});
+		console.log(`UiPath Visualizer: API fetch: status=${apiResponse.status}`);
+		if (apiResponse.ok) {
+			const data = await apiResponse.json(); // レスポンスをパース
+			cachedPrRefs = { baseSha: data.base.sha, headSha: data.head.sha };
+			console.log('UiPath Visualizer: GitHub APIからSHA取得成功');
+			return cachedPrRefs;
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: GitHub APIフォールバック失敗:', e);
+	}
+
+	throw new Error('PR の base/head SHA を取得できません。コンソールログを確認してください。'); // エラー
+}
+
+/**
+ * ファイル内容を取得（同一オリジン経由でプライベートリポジトリにも対応）
+ */
+async function fetchRawContent(owner: string, repo: string, sha: string, filePath: string): Promise<string> {
+	// 方法1: github.com の同一オリジンから取得（セッションCookieが送信される → プライベートリポジトリ対応）
+	const sameOriginUrl = `https://github.com/${owner}/${repo}/raw/${sha}/${filePath}`; // 同一オリジンURL
+	const response = await fetch(sameOriginUrl, { credentials: 'same-origin' }); // Cookie付きリクエスト
+
+	if (response.status === 404) {
+		return ''; // ファイルが存在しない場合は空文字（新規追加/削除ファイル対応）
+	}
+
+	if (response.ok) {
+		return await response.text(); // テキストとして返す
+	}
+
+	// 方法2: raw.githubusercontent.com にフォールバック（パブリックリポジトリ用）
+	const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${sha}/${filePath}`; // Raw URL
+	const fallbackResponse = await fetch(rawUrl); // HTTP リクエスト
+
+	if (fallbackResponse.status === 404) {
+		return ''; // ファイルが存在しない場合は空文字
+	}
+
+	if (!fallbackResponse.ok) {
+		throw new Error(`Raw content 取得エラー: ${fallbackResponse.status}`); // エラー
+	}
+
+	return await fallbackResponse.text(); // テキストとして返す
+}
+
+// ========== PR diff ページのDOM操作 ==========
+
+/**
+ * PR diff ページをスキャンしてXAMLファイルにボタンを注入
+ */
+function scanAndInjectDiffButtons(): void {
+	// GitHub PRのdiffページで各ファイルのdivを取得
+	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // ファイルコンテナ
+
+	fileContainers.forEach(container => {
+		const filePath = container.getAttribute('data-tagsearch-path'); // ファイルパス
+		if (!filePath || !filePath.endsWith('.xaml')) return; // XAMLファイルのみ処理
+
+		// 既にボタンが追加済みかチェック
+		if (container.querySelector('.uipath-visualizer-btn')) return; // 重複防止
+
+		// ツールバーを探す（ファイルヘッダーのアクションエリア）
+		const toolbar = container.querySelector('.file-actions, .js-file-header-dropdown'); // ツールバー
+
+		if (!toolbar) return; // ツールバーが見つからない場合はスキップ
+
+		// 「View as Workflow」ボタンを作成
+		const button = document.createElement('button'); // ボタン要素
+		button.textContent = 'View as Workflow'; // ボタンテキスト
+		button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHubスタイル + 識別クラス
+		button.style.marginLeft = '8px'; // 左マージン
+		button.addEventListener('click', (e) => {
+			e.preventDefault(); // デフォルト動作を防止
+			e.stopPropagation(); // イベント伝播を停止
+			showDiffVisualizer(filePath); // 差分ビジュアライザーを表示
+		});
+
+		toolbar.appendChild(button); // ツールバーにボタンを追加
+	});
+}
+
+// ========== 差分ビジュアライゼーション ==========
+
+/**
+ * 差分ビジュアライザーを表示
+ */
+async function showDiffVisualizer(filePath: string): Promise<void> {
+	// 既存パネルを削除
+	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
+	if (existingPanel) existingPanel.remove();
+
+	// ローディングパネルを表示
+	const panel = createPanel(); // パネル作成
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
+	contentArea.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">読み込み中...</div>'; // ローディング表示
+	document.body.appendChild(panel); // ページに追加
+
+	try {
+		const pr = parsePrUrl(); // PR情報を取得
+		if (!pr) throw new Error('PR情報を取得できません');
+
+		const refs = await fetchPrRefs(pr); // base/head SHAを取得
+
+		// before/afterのXAMLを並列で取得
+		const [beforeXaml, afterXaml] = await Promise.all([
+			fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath), // ベース版
+			fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath)  // ヘッド版
+		]);
+
+		const parser = new XamlParser(); // パーサーを初期化
+
+		if (beforeXaml && afterXaml) {
+			// 変更ファイル: 差分表示
+			const beforeData = parser.parse(beforeXaml); // ベース版をパース
+			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
+
+			const diffCalc = new DiffCalculator(); // 差分計算
+			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
+
+			// サマリーを表示
+			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
+			contentArea.innerHTML = ''; // クリア
+			contentArea.appendChild(summaryHtml); // サマリーを追加
+
+			// 差分詳細を表示
+			const diffContainer = document.createElement('div'); // 差分コンテナ
+			diffContainer.className = 'diff-content'; // クラス設定
+			const diffRenderer = new DiffRenderer(); // 差分レンダラー
+			diffRenderer.render(diffResult, diffContainer); // 差分をレンダリング
+			contentArea.appendChild(diffContainer); // コンテンツに追加
+
+		} else if (afterXaml) {
+			// 新規ファイル: after のみ表示
+			const afterData = parser.parse(afterXaml); // パース
+			contentArea.innerHTML = '<div style="padding:12px;color:#28a745;font-weight:600;">新規ファイル</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer); // レンダリング
+			contentArea.appendChild(seqContainer); // 追加
+
+		} else if (beforeXaml) {
+			// 削除ファイル: before のみ表示
+			const beforeData = parser.parse(beforeXaml); // パース
+			contentArea.innerHTML = '<div style="padding:12px;color:#d73a49;font-weight:600;">削除されたファイル</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(beforeData, seqContainer); // レンダリング
+			contentArea.appendChild(seqContainer); // 追加
+
+		} else {
+			contentArea.innerHTML = '<div style="padding:20px;color:#666;">XAMLコンテンツが見つかりません</div>'; // エラー表示
+		}
+
 	} catch (error) {
-		console.error('ビジュアライザー表示エラー:', error); // エラーログ
-		alert('XAMLファイルの解析に失敗しました'); // アラート表示
+		console.error('差分ビジュアライザーエラー:', error); // エラーログ
+
+		// デバッグ情報を収集してパネルに表示
+		const debugInfo = collectDebugInfo(); // デバッグ情報収集
+		contentArea.innerHTML = `
+			<div style="padding:20px;">
+				<div style="color:#d73a49;font-weight:600;margin-bottom:12px;">
+					エラー: ${(error as Error).message}
+				</div>
+				<div style="font-size:12px;font-family:monospace;background:#f6f8fa;
+								padding:12px;border-radius:4px;white-space:pre-wrap;max-height:60vh;overflow:auto;">
+					${debugInfo.join('\n')}
+				</div>
+			</div>`; // エラーとデバッグ情報を表示
 	}
 }
 
 /**
- * XAMLファイルの内容を取得
+ * 差分サマリーを作成
  */
-async function fetchXamlContent(): Promise<string> {
-	// GitHub の Raw ボタンのリンクを取得
-	const rawButton = document.querySelector('a[data-testid="raw-button"]') as HTMLAnchorElement; // Raw ボタン
+function createDiffSummary(diffResult: any): HTMLElement {
+	const summary = document.createElement('div'); // サマリー要素
+	summary.className = 'diff-summary'; // クラス設定
 
-	if (!rawButton) {
-		throw new Error('Rawボタンが見つかりません'); // エラー
-	}
+	// 追加カード
+	const addedCard = document.createElement('div'); // 追加カード
+	addedCard.className = 'summary-card';
+	addedCard.innerHTML = `
+		<span class="summary-label">追加</span>
+		<span class="count added">${diffResult.added.length}</span>
+	`;
 
-	const rawUrl = rawButton.href; // Raw URL
+	// 削除カード
+	const removedCard = document.createElement('div'); // 削除カード
+	removedCard.className = 'summary-card';
+	removedCard.innerHTML = `
+		<span class="summary-label">削除</span>
+		<span class="count removed">${diffResult.removed.length}</span>
+	`;
 
-	// Rawファイルを取得
-	const response = await fetch(rawUrl); // HTTP リクエスト
-	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`); // エラー
-	}
+	// 変更カード
+	const modifiedCard = document.createElement('div'); // 変更カード
+	modifiedCard.className = 'summary-card';
+	modifiedCard.innerHTML = `
+		<span class="summary-label">変更</span>
+		<span class="count modified">${diffResult.modified.length}</span>
+	`;
 
-	return await response.text(); // テキストとして返す
+	summary.appendChild(addedCard);
+	summary.appendChild(removedCard);
+	summary.appendChild(modifiedCard);
+
+	return summary;
 }
 
+// ========== パネルUI ==========
+
 /**
- * ビジュアライザーパネルを表示
+ * ビジュアライザーパネルを作成
  */
-function displayVisualizerPanel(workflowData: any) {
-	// パネルを作成
+function createPanel(): HTMLElement {
 	const panel = document.createElement('div'); // パネル要素
 	panel.id = 'uipath-visualizer-panel'; // ID設定
 	panel.style.position = 'fixed'; // 固定位置
@@ -106,27 +549,155 @@ function displayVisualizerPanel(workflowData: any) {
 	panel.style.boxShadow = '-2px 0 5px rgba(0,0,0,0.1)'; // 影
 	panel.style.zIndex = '10000'; // 最前面
 	panel.style.overflow = 'auto'; // スクロール
-	panel.style.padding = '20px'; // パディング
+	panel.style.display = 'flex'; // フレックスボックス
+	panel.style.flexDirection = 'column'; // 縦方向
 
-	// 閉じるボタンを作成
+	// ヘッダー部分
+	const header = document.createElement('div'); // ヘッダー
+	header.style.padding = '12px 20px'; // パディング
+	header.style.borderBottom = '1px solid #e0e0e0'; // 下線
+	header.style.display = 'flex'; // フレックスボックス
+	header.style.justifyContent = 'space-between'; // 両端揃え
+	header.style.alignItems = 'center'; // 縦方向中央
+	header.style.flexShrink = '0'; // 縮小しない
+
+	const titleArea = document.createElement('div'); // タイトルエリア
+
+	const title = document.createElement('span'); // タイトル
+	title.textContent = 'UiPath Workflow Visualizer'; // タイトルテキスト
+	title.style.fontWeight = '600'; // 太字
+	title.style.fontSize = '16px'; // フォントサイズ
+
+	const buildInfo = document.createElement('div'); // ビルド情報
+	const buildDate = new Date(__BUILD_DATE__); // ビルド日時をDateに変換
+	const formattedDate = buildDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // 日本時間でフォーマット
+	buildInfo.textContent = `v${__VERSION__} | Build: ${formattedDate}`; // バージョンとビルド日時
+	buildInfo.style.fontSize = '11px'; // 小さめのフォント
+	buildInfo.style.color = '#888'; // グレー色
+	buildInfo.style.marginTop = '2px'; // 上マージン
+
+	titleArea.appendChild(title);
+	titleArea.appendChild(buildInfo);
+
 	const closeButton = document.createElement('button'); // 閉じるボタン
-	closeButton.textContent = '✕ 閉じる'; // テキスト
+	closeButton.textContent = '✕'; // テキスト
 	closeButton.className = 'btn btn-sm'; // ボタンスタイル
-	closeButton.style.marginBottom = '10px'; // 下マージン
-	closeButton.addEventListener('click', () => {
-		panel.remove(); // パネルを削除
-	});
+	closeButton.addEventListener('click', () => panel.remove()); // クリックで閉じる
 
-	// コンテンツを作成
-	const content = document.createElement('pre'); // コンテンツ要素
-	content.textContent = JSON.stringify(workflowData, null, 2); // ワークフローデータをJSON表示
+	header.appendChild(titleArea);
+	header.appendChild(closeButton);
 
-	// パネルに追加
-	panel.appendChild(closeButton);
+	// コンテンツ部分
+	const content = document.createElement('div'); // コンテンツ
+	content.className = 'panel-content'; // クラス設定
+	content.style.flex = '1'; // 残りの空間を埋める
+	content.style.overflow = 'auto'; // スクロール
+	content.style.padding = '20px'; // パディング
+
+	panel.appendChild(header);
 	panel.appendChild(content);
 
-	// ページに追加
-	document.body.appendChild(panel);
+	return panel;
+}
+
+// ========== 既存機能: 個別XAMLファイルページ ==========
+
+/**
+ * 個別XAMLファイルページにビジュアライザーボタンを追加
+ */
+function addVisualizerButton(): void {
+	const toolbar = document.querySelector('.file-actions'); // ツールバー要素
+
+	if (!toolbar) {
+		console.log('ツールバーが見つかりません'); // ログ出力
+		return;
+	}
+
+	// 重複防止
+	if (toolbar.querySelector('.uipath-visualizer-btn')) return;
+
+	const button = document.createElement('button'); // ボタン要素
+	button.textContent = 'View as Workflow'; // ボタンテキスト
+	button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHubのボタンスタイル + 識別クラス
+	button.style.marginLeft = '8px'; // 左マージン
+	button.addEventListener('click', showBlobVisualizer); // クリックイベント
+
+	toolbar.appendChild(button); // ツールバーにボタンを追加
+}
+
+/**
+ * 個別ファイルのビジュアライザーを表示
+ */
+async function showBlobVisualizer(): Promise<void> {
+	try {
+		const xamlContent = await fetchXamlContent(); // XAML内容を取得
+		const parser = new XamlParser(); // パーサー初期化
+		const workflowData = parser.parse(xamlContent); // XAML解析
+
+		displayBlobVisualizerPanel(workflowData); // パネル表示
+	} catch (error) {
+		console.error('ビジュアライザー表示エラー:', error); // エラーログ
+		alert('XAMLファイルの解析に失敗しました'); // アラート表示
+	}
+}
+
+/**
+ * XAMLファイルの内容を取得（Rawボタン経由）
+ */
+async function fetchXamlContent(): Promise<string> {
+	const rawButton = document.querySelector('a[data-testid="raw-button"]') as HTMLAnchorElement; // Raw ボタン
+
+	if (!rawButton) {
+		throw new Error('Rawボタンが見つかりません'); // エラー
+	}
+
+	const rawUrl = rawButton.href; // Raw URL
+	const response = await fetch(rawUrl); // HTTP リクエスト
+	if (!response.ok) {
+		throw new Error(`HTTP error! status: ${response.status}`); // エラー
+	}
+
+	return await response.text(); // テキストとして返す
+}
+
+/**
+ * 個別ファイル用ビジュアライザーパネルを表示
+ */
+function displayBlobVisualizerPanel(workflowData: any): void {
+	// 既存パネルを削除
+	const existingPanel = document.getElementById('uipath-visualizer-panel');
+	if (existingPanel) existingPanel.remove();
+
+	const panel = createPanel(); // パネル作成
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
+
+	// SequenceRendererでレンダリング
+	const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+	seqRenderer.render(workflowData, contentArea); // レンダリング
+
+	document.body.appendChild(panel); // ページに追加
+}
+
+// ========== 初期化とMutationObserver ==========
+
+/**
+ * メイン初期化関数
+ */
+function init(): void {
+	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
+
+	const pageType = detectPageType(); // ページタイプを検出
+
+	switch (pageType) {
+		case 'blob-xaml':
+			addVisualizerButton(); // 個別ファイルページにボタン追加
+			break;
+		case 'pr-diff':
+			scanAndInjectDiffButtons(); // PR diff ページにボタン注入
+			break;
+		default:
+			break; // その他のページでは何もしない
+	}
 }
 
 // ページロード時に初期化
@@ -136,14 +707,30 @@ if (document.readyState === 'loading') {
 	init(); // すでにロード済みなら即座に初期化
 }
 
-// GitHub の SPA ナビゲーションに対応
+// 現在のURLを記録
+lastUrl = window.location.href;
+
+// GitHub の SPA ナビゲーションに対応（デバウンス付きMutationObserver）
 const observer = new MutationObserver(() => {
-	if (isXamlFile()) {
-		init(); // XAMLファイルなら初期化
-	}
+	// デバウンス: 300ms以内の連続変更をまとめる
+	if (debounceTimer) clearTimeout(debounceTimer);
+
+	debounceTimer = setTimeout(() => {
+		const currentUrl = window.location.href; // 現在のURL
+
+		if (currentUrl !== lastUrl) {
+			// URL変更 → キャッシュクリアして再初期化
+			cachedPrRefs = null; // PRキャッシュをクリア
+			lastUrl = currentUrl; // URLを更新
+			init(); // 再初期化
+		} else if (detectPageType() === 'pr-diff') {
+			// 同一URLでDOM変更 → lazy-loaded diffsに対応してボタンを再スキャン
+			scanAndInjectDiffButtons();
+		}
+	}, 300); // 300msデバウンス
 });
 
 observer.observe(document.body, {
 	childList: true, // 子要素の変更を監視
-	subtree: true // サブツリーも監視
+	subtree: true    // サブツリーも監視
 });
