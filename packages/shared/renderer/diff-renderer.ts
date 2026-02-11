@@ -132,7 +132,7 @@ export class DiffRenderer {
 
     const header = document.createElement('div');
     header.className = 'screenshot-header';
-    header.textContent = '📷 Screenshot 変更:';
+    header.textContent = 'Screenshot 変更:';
 
     const compareContainer = document.createElement('div');
     compareContainer.className = 'compare-container';
@@ -187,9 +187,9 @@ export class DiffRenderer {
    */
   private getDiffBadge(diffType: DiffType): string {
     const badgeMap: Record<DiffType, string> = {
-      [DiffType.ADDED]: '<span class="badge badge-added">🆕 追加</span>',
-      [DiffType.REMOVED]: '<span class="badge badge-removed">🗑️ 削除</span>',
-      [DiffType.MODIFIED]: '<span class="badge badge-modified">🟡 変更</span>'
+      [DiffType.ADDED]: '<span class="badge badge-added">+ 追加</span>',
+      [DiffType.REMOVED]: '<span class="badge badge-removed">- 削除</span>',
+      [DiffType.MODIFIED]: '<span class="badge badge-modified">~ 変更</span>'
     };
 
     return badgeMap[diffType];
@@ -200,21 +200,21 @@ export class DiffRenderer {
    */
   private getActivityIcon(type: string): string {
     const iconMap: Record<string, string> = {
-      'Sequence': '🔄',
-      'Flowchart': '📊',
-      'Assign': '📝',
-      'If': '🔀',
-      'While': '🔁',
-      'ForEach': '🔁',
-      'Click': '🖱️',
-      'TypeInto': '⌨️',
-      'GetText': '📄',
-      'LogMessage': '📋',
-      'InvokeWorkflowFile': '📤',
-      'TryCatch': '⚠️',
-      'Delay': '⏱️'
+      'Sequence': '[Seq]',
+      'Flowchart': '[Flow]',
+      'Assign': '[=]',
+      'If': '[?]',
+      'While': '[Loop]',
+      'ForEach': '[Loop]',
+      'Click': '[Click]',
+      'TypeInto': '[Type]',
+      'GetText': '[Get]',
+      'LogMessage': '[Log]',
+      'InvokeWorkflowFile': '[Invoke]',
+      'TryCatch': '[Try]',
+      'Delay': '[Wait]'
     };
 
-    return iconMap[type] || '📦';               // デフォルトアイコン
+    return iconMap[type] || '[Act]';            // デフォルトアイコン
   }
 }
