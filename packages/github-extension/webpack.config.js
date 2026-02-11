@@ -2,10 +2,12 @@ const path = require('path');  // パス操作用モジュール
 const CopyWebpackPlugin = require('copy-webpack-plugin');  // ファイルコピー用プラグイン
 
 module.exports = {
-  entry: './src/content.ts',  // エントリポイント（GitHub拡張機能のコンテンツスクリプト）
+  entry: {
+    content: './src/content.ts'  // エントリポイント（将来 background.ts 等を追加可能）
+  },
   output: {
     path: path.resolve(__dirname, 'dist'),  // 出力先ディレクトリ
-    filename: 'content.js',  // 出力ファイル名
+    filename: '[name].js',  // エントリ名をファイル名に使用（content.js 等）
     clean: true  // ビルド前にdistフォルダをクリーンアップ
   },
   resolve: {
@@ -27,7 +29,9 @@ module.exports = {
   plugins: [
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'manifest.json', to: 'manifest.json' }  // manifest.jsonをコピー
+        { from: 'manifest.json', to: 'manifest.json' },  // manifest.jsonをコピー
+        { from: 'icons', to: 'icons', noErrorOnMissing: true },  // アイコンをコピー（未作成でもOK）
+        { from: 'popup.html', to: 'popup.html', noErrorOnMissing: true }  // ポップアップHTMLをコピー（未作成でもOK）
       ]
     })
   ],
