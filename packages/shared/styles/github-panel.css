@@ -1,34 +1,217 @@
 /* GitHub拡張機能パネル用スコープ付きスタイル */
 /* main.cssのグローバルリセットを避け、パネル内でのみ適用 */
 
-/* アクティビティカード */
+/* ========== CSS カスタムプロパティ（テーマ変数） ========== */
+
+/* ライトモード（デフォルト） */
+#uipath-visualizer-panel {
+  --panel-bg: #ffffff;
+  --panel-bg-secondary: #f9f9f9;
+  --panel-bg-tertiary: #fafafa;
+  --panel-bg-code: #f6f8fa;
+  --panel-border: #e0e0e0;
+  --panel-border-light: #ddd;
+  --panel-text-primary: #333;
+  --panel-text-secondary: #555;
+  --panel-text-tertiary: #666;
+  --panel-text-muted: #888;
+  --panel-accent: #0078d4;
+  --panel-accent-hover: #005a9e;
+  --panel-hover-bg: #f0f0f0;
+  --panel-shadow: rgba(0, 0, 0, 0.1);
+  --diff-added-fg: #28a745;
+  --diff-added-bg: #f0fff4;
+  --diff-removed-fg: #d73a49;
+  --diff-removed-bg: #ffeef0;
+  --diff-modified-fg: #ffa500;
+  --diff-modified-bg: #fff8e1;
+  --panel-error-fg: #d13438;
+  --panel-error-bg: #fef0f0;
+  --screenshot-bg: #f0f7ff;
+  --screenshot-border: #b3d9ff;
+}
+
+/* ダークモード（GitHub Primer dark パレット準拠） */
+[data-color-mode="dark"] #uipath-visualizer-panel {
+  --panel-bg: #0d1117;
+  --panel-bg-secondary: #161b22;
+  --panel-bg-tertiary: #1c2128;
+  --panel-bg-code: #161b22;
+  --panel-border: #30363d;
+  --panel-border-light: #21262d;
+  --panel-text-primary: #e6edf3;
+  --panel-text-secondary: #c9d1d9;
+  --panel-text-tertiary: #8b949e;
+  --panel-text-muted: #6e7681;
+  --panel-accent: #58a6ff;
+  --panel-accent-hover: #79c0ff;
+  --panel-hover-bg: #1c2128;
+  --panel-shadow: rgba(0, 0, 0, 0.4);
+  --diff-added-fg: #3fb950;
+  --diff-added-bg: #122117;
+  --diff-removed-fg: #f85149;
+  --diff-removed-bg: #2d1115;
+  --diff-modified-fg: #d29922;
+  --diff-modified-bg: #2d2208;
+  --panel-error-fg: #f85149;
+  --panel-error-bg: #2d1115;
+  --screenshot-bg: #0d1f3c;
+  --screenshot-border: #1f3d5c;
+}
+
+/* Auto モード（システム設定に従う） */
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="auto"] #uipath-visualizer-panel {
+    --panel-bg: #0d1117;
+    --panel-bg-secondary: #161b22;
+    --panel-bg-tertiary: #1c2128;
+    --panel-bg-code: #161b22;
+    --panel-border: #30363d;
+    --panel-border-light: #21262d;
+    --panel-text-primary: #e6edf3;
+    --panel-text-secondary: #c9d1d9;
+    --panel-text-tertiary: #8b949e;
+    --panel-text-muted: #6e7681;
+    --panel-accent: #58a6ff;
+    --panel-accent-hover: #79c0ff;
+    --panel-hover-bg: #1c2128;
+    --panel-shadow: rgba(0, 0, 0, 0.4);
+    --diff-added-fg: #3fb950;
+    --diff-added-bg: #122117;
+    --diff-removed-fg: #f85149;
+    --diff-removed-bg: #2d1115;
+    --diff-modified-fg: #d29922;
+    --diff-modified-bg: #2d2208;
+    --panel-error-fg: #f85149;
+    --panel-error-bg: #2d1115;
+    --screenshot-bg: #0d1f3c;
+    --screenshot-border: #1f3d5c;
+  }
+}
+
+/* ========== パネル本体レイアウト ========== */
+
+#uipath-visualizer-panel {
+  position: fixed;                          /* 固定位置 */
+  top: 0;                                   /* 上端 */
+  right: 0;                                 /* 右端 */
+  width: 50%;                               /* 幅 */
+  height: 100%;                             /* 高さ */
+  background-color: var(--panel-bg);        /* 背景色 */
+  box-shadow: -2px 0 5px var(--panel-shadow); /* 影 */
+  z-index: 10000;                           /* 最前面 */
+  overflow: auto;                           /* スクロール */
+  display: flex;                            /* フレックスボックス */
+  flex-direction: column;                   /* 縦方向 */
+  color: var(--panel-text-primary);         /* テキスト色 */
+}
+
+/* ヘッダー */
+#uipath-visualizer-panel .panel-header {
+  padding: 12px 20px;                       /* パディング */
+  border-bottom: 1px solid var(--panel-border); /* 下線 */
+  display: flex;                            /* フレックスボックス */
+  justify-content: space-between;           /* 両端揃え */
+  align-items: center;                      /* 縦方向中央 */
+  flex-shrink: 0;                           /* 縮小しない */
+}
+
+/* タイトル */
+#uipath-visualizer-panel .panel-title {
+  font-weight: 600;                         /* 太字 */
+  font-size: 16px;                          /* フォントサイズ */
+}
+
+/* ビルド情報 */
+#uipath-visualizer-panel .panel-build-info {
+  font-size: 11px;                          /* 小さめのフォント */
+  color: var(--panel-text-muted);           /* グレー色 */
+  margin-top: 2px;                          /* 上マージン */
+}
+
+/* コンテンツエリア */
+#uipath-visualizer-panel .panel-content {
+  flex: 1;                                  /* 残りの空間を埋める */
+  overflow: auto;                           /* スクロール */
+  padding: 20px;                            /* パディング */
+}
+
+/* ========== ステータス・メッセージ用クラス ========== */
+
+/* ローディング・空メッセージ */
+#uipath-visualizer-panel .status-message {
+  text-align: center;                       /* 中央揃え */
+  padding: 40px;                            /* パディング */
+  color: var(--panel-text-tertiary);        /* テキスト色 */
+}
+
+/* 新規ファイルラベル */
+#uipath-visualizer-panel .status-new-file {
+  padding: 12px;                            /* パディング */
+  color: var(--diff-added-fg);              /* 緑色 */
+  font-weight: 600;                         /* 太字 */
+}
+
+/* 削除ファイルラベル */
+#uipath-visualizer-panel .status-deleted-file {
+  padding: 12px;                            /* パディング */
+  color: var(--diff-removed-fg);            /* 赤色 */
+  font-weight: 600;                         /* 太字 */
+}
+
+/* エラーメッセージ */
+#uipath-visualizer-panel .error-message {
+  padding: 20px;                            /* パディング */
+}
+
+#uipath-visualizer-panel .error-message .error-title {
+  color: var(--panel-error-fg);             /* エラー色 */
+  font-weight: 600;                         /* 太字 */
+  margin-bottom: 12px;                      /* 下マージン */
+}
+
+/* デバッグ情報 */
+#uipath-visualizer-panel .debug-info {
+  font-size: 12px;                          /* フォントサイズ */
+  font-family: 'Courier New', monospace;    /* 等幅フォント */
+  background: var(--panel-bg-code);         /* コード背景 */
+  padding: 12px;                            /* パディング */
+  border-radius: 4px;                       /* 角丸 */
+  white-space: pre-wrap;                    /* 折り返し */
+  max-height: 60vh;                         /* 最大高さ */
+  overflow: auto;                           /* スクロール */
+  color: var(--panel-text-secondary);       /* テキスト色 */
+}
+
+/* ========== アクティビティカード ========== */
+
 #uipath-visualizer-panel .activity-card {
-  background-color: white;
-  border: 1px solid #e0e0e0;
+  background-color: var(--panel-bg);        /* 背景色 */
+  border: 1px solid var(--panel-border);    /* ボーダー */
   border-radius: 4px;
   padding: 4px 6px;
   margin-bottom: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 2px var(--panel-shadow); /* 影 */
   transition: border-color 0.2s, box-shadow 0.2s; /* アニメーション */
 }
 
 #uipath-visualizer-panel .activity-card:hover {
-  border-color: #0078d4;                        /* ホバー時のボーダー色 */
+  border-color: var(--panel-accent);        /* ホバー時のボーダー色 */
   box-shadow: 0 2px 6px rgba(0, 120, 212, 0.2);
 }
 
 #uipath-visualizer-panel .activity-card.highlighted {
-  border-color: #ffa500;                        /* ハイライト時のボーダー色 */
-  background-color: #fff8e1;
+  border-color: var(--diff-modified-fg);    /* ハイライト時のボーダー色 */
+  background-color: var(--diff-modified-bg); /* ハイライト背景 */
 }
 
 #uipath-visualizer-panel .activity-header {
-  display: flex;                                /* フレックスボックスで横並び */
-  align-items: center;                          /* 縦方向中央揃え */
+  display: flex;                            /* フレックスボックスで横並び */
+  align-items: center;                      /* 縦方向中央揃え */
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 4px;
-  color: #333;
+  color: var(--panel-text-primary);         /* テキスト色 */
 }
 
 /* 折りたたみボタン */
@@ -39,19 +222,19 @@
   cursor: pointer;
   padding: 2px;
   margin-right: 4px;
-  color: #0078d4;
-  transition: transform 0.2s;                   /* 回転アニメーション */
+  color: var(--panel-accent);               /* アクセント色 */
+  transition: transform 0.2s;               /* 回転アニメーション */
 }
 
 #uipath-visualizer-panel .collapse-btn:hover {
-  background-color: #f0f0f0;
+  background-color: var(--panel-hover-bg);  /* ホバー背景 */
   border-radius: 4px;
 }
 
 #uipath-visualizer-panel .activity-properties {
   margin-top: 4px;
   padding: 4px 6px;
-  background-color: #f9f9f9;
+  background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
   border-radius: 4px;
 }
 
@@ -63,12 +246,12 @@
 #uipath-visualizer-panel .property-key {
   font-weight: 600;
   margin-right: 4px;
-  color: #555;
+  color: var(--panel-text-secondary);       /* テキスト色 */
 }
 
 #uipath-visualizer-panel .property-value {
-  color: #0078d4;
-  word-break: break-all;                        /* 長い値を折り返す */
+  color: var(--panel-accent);               /* アクセント色 */
+  word-break: break-all;                    /* 長い値を折り返す */
 }
 
 /* 子アクティビティ */
@@ -76,26 +259,27 @@
   margin-left: 12px;
   margin-top: 4px;
   padding-left: 8px;
-  border-left: 2px solid #e0e0e0;               /* 左側に線を表示 */
+  border-left: 2px solid var(--panel-border); /* 左側に線を表示 */
 }
 
 /* 折りたたまれた状態 */
 #uipath-visualizer-panel .activity-card.collapsed > .activity-children {
-  display: none;                                /* 子要素を非表示 */
+  display: none;                            /* 子要素を非表示 */
 }
 
 #uipath-visualizer-panel .activity-card.collapsed > .activity-properties,
 #uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot {
-  display: none;                                /* プロパティとスクリーンショットも非表示 */
+  display: none;                            /* プロパティとスクリーンショットも非表示 */
 }
 
-/* 差分サマリー */
+/* ========== 差分サマリー ========== */
+
 #uipath-visualizer-panel .diff-summary {
   display: flex;
-  gap: 16px;                                    /* カード間の間隔 */
+  gap: 16px;                                /* カード間の間隔 */
   padding: 16px;
-  background-color: white;
-  border-bottom: 1px solid #ddd;
+  background-color: var(--panel-bg);        /* 背景色 */
+  border-bottom: 1px solid var(--panel-border-light); /* 下線 */
   margin-bottom: 16px;
 }
 
@@ -104,14 +288,14 @@
   flex-direction: column;
   align-items: center;
   padding: 12px 20px;
-  background-color: #f9f9f9;
+  background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--panel-border);    /* ボーダー */
 }
 
 #uipath-visualizer-panel .summary-label {
   font-size: 14px;
-  color: #666;
+  color: var(--panel-text-tertiary);        /* テキスト色 */
   margin-bottom: 8px;
 }
 
@@ -121,38 +305,40 @@
 }
 
 #uipath-visualizer-panel .count.added {
-  color: #28a745;                               /* 緑: 追加 */
+  color: var(--diff-added-fg);              /* 緑: 追加 */
 }
 
 #uipath-visualizer-panel .count.removed {
-  color: #d73a49;                               /* 赤: 削除 */
+  color: var(--diff-removed-fg);            /* 赤: 削除 */
 }
 
 #uipath-visualizer-panel .count.modified {
-  color: #ffa500;                               /* オレンジ: 変更 */
+  color: var(--diff-modified-fg);           /* オレンジ: 変更 */
 }
 
-/* 差分アイテム */
+/* ========== 差分アイテム ========== */
+
 #uipath-visualizer-panel .diff-item {
   margin-bottom: 16px;
 }
 
 #uipath-visualizer-panel .diff-item.diff-added {
-  border-left: 4px solid #28a745;               /* 緑のボーダー */
-  background-color: #f0fff4;                    /* 薄い緑の背景 */
+  border-left: 4px solid var(--diff-added-fg); /* 緑のボーダー */
+  background-color: var(--diff-added-bg);   /* 薄い緑の背景 */
 }
 
 #uipath-visualizer-panel .diff-item.diff-removed {
-  border-left: 4px solid #d73a49;               /* 赤のボーダー */
-  background-color: #ffeef0;                    /* 薄い赤の背景 */
+  border-left: 4px solid var(--diff-removed-fg); /* 赤のボーダー */
+  background-color: var(--diff-removed-bg); /* 薄い赤の背景 */
 }
 
 #uipath-visualizer-panel .diff-item.diff-modified {
-  border-left: 4px solid #ffa500;               /* オレンジのボーダー */
-  background-color: #fff8e1;                    /* 薄いオレンジの背景 */
+  border-left: 4px solid var(--diff-modified-fg); /* オレンジのボーダー */
+  background-color: var(--diff-modified-bg); /* 薄いオレンジの背景 */
 }
 
-/* バッジ */
+/* ========== バッジ ========== */
+
 #uipath-visualizer-panel .badge {
   display: inline-block;
   padding: 4px 8px;
@@ -163,33 +349,61 @@
 }
 
 #uipath-visualizer-panel .badge-added {
-  background-color: #28a745;
+  background-color: var(--diff-added-fg);   /* 追加バッジ */
   color: white;
 }
 
 #uipath-visualizer-panel .badge-removed {
-  background-color: #d73a49;
+  background-color: var(--diff-removed-fg); /* 削除バッジ */
   color: white;
 }
 
 #uipath-visualizer-panel .badge-modified {
-  background-color: #ffa500;
+  background-color: var(--diff-modified-fg); /* 変更バッジ */
   color: white;
 }
 
-/* プロパティ変更 */
+/* ダークモード用バッジ色（GitHub Primer 準拠） */
+[data-color-mode="dark"] #uipath-visualizer-panel .badge-added {
+  background-color: #238636;                /* ダーク用追加バッジ */
+}
+
+[data-color-mode="dark"] #uipath-visualizer-panel .badge-removed {
+  background-color: #da3633;                /* ダーク用削除バッジ */
+}
+
+[data-color-mode="dark"] #uipath-visualizer-panel .badge-modified {
+  background-color: #9e6a03;                /* ダーク用変更バッジ */
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="auto"] #uipath-visualizer-panel .badge-added {
+    background-color: #238636;              /* Auto ダーク用追加バッジ */
+  }
+
+  [data-color-mode="auto"] #uipath-visualizer-panel .badge-removed {
+    background-color: #da3633;              /* Auto ダーク用削除バッジ */
+  }
+
+  [data-color-mode="auto"] #uipath-visualizer-panel .badge-modified {
+    background-color: #9e6a03;              /* Auto ダーク用変更バッジ */
+  }
+}
+
+/* ========== プロパティ変更 ========== */
+
 #uipath-visualizer-panel .property-changes {
   margin-top: 12px;
   padding: 12px;
-  background-color: white;
+  background-color: var(--panel-bg);        /* 背景色 */
   border-radius: 4px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--panel-border);    /* ボーダー */
 }
 
 #uipath-visualizer-panel .changes-header {
   font-weight: 600;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--panel-text-primary);         /* テキスト色 */
 }
 
 #uipath-visualizer-panel .property-diff-detail {
@@ -199,30 +413,30 @@
 #uipath-visualizer-panel .property-change-item {
   margin-bottom: 12px;
   padding: 8px;
-  background-color: #fafafa;
+  background-color: var(--panel-bg-tertiary); /* ターシャリ背景 */
   border-radius: 4px;
 }
 
 #uipath-visualizer-panel .prop-name {
   font-weight: 600;
   margin-bottom: 4px;
-  color: #555;
+  color: var(--panel-text-secondary);       /* テキスト色 */
 }
 
 #uipath-visualizer-panel .diff-before {
-  color: #d73a49;                               /* 赤: 削除された値 */
+  color: var(--diff-removed-fg);            /* 赤: 削除された値 */
   font-family: 'Courier New', monospace;
   padding: 4px;
-  background-color: #ffeef0;
+  background-color: var(--diff-removed-bg); /* 薄い赤の背景 */
   border-radius: 4px;
   margin-bottom: 4px;
 }
 
 #uipath-visualizer-panel .diff-after {
-  color: #28a745;                               /* 緑: 追加された値 */
+  color: var(--diff-added-fg);              /* 緑: 追加された値 */
   font-family: 'Courier New', monospace;
   padding: 4px;
-  background-color: #f0fff4;
+  background-color: var(--diff-added-bg);   /* 薄い緑の背景 */
   border-radius: 4px;
 }
 

@@ -417,7 +417,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
-	contentArea.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">読み込み中...</div>'; // ローディング表示
+	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
 	document.body.appendChild(panel); // ページに追加
 
 	try {
@@ -457,7 +457,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 		} else if (afterXaml) {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
-			contentArea.innerHTML = '<div style="padding:12px;color:#28a745;font-weight:600;">新規ファイル</div>'; // ラベル
+			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
 			seqRenderer.render(afterData, seqContainer); // レンダリング
@@ -466,14 +466,14 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 		} else if (beforeXaml) {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
-			contentArea.innerHTML = '<div style="padding:12px;color:#d73a49;font-weight:600;">削除されたファイル</div>'; // ラベル
+			contentArea.innerHTML = '<div class="status-deleted-file">削除されたファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
 			seqRenderer.render(beforeData, seqContainer); // レンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
 		} else {
-			contentArea.innerHTML = '<div style="padding:20px;color:#666;">XAMLコンテンツが見つかりません</div>'; // エラー表示
+			contentArea.innerHTML = '<div class="status-message">XAMLコンテンツが見つかりません</div>'; // エラー表示
 		}
 
 	} catch (error) {
@@ -482,14 +482,11 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 		// デバッグ情報を収集してパネルに表示
 		const debugInfo = collectDebugInfo(); // デバッグ情報収集
 		contentArea.innerHTML = `
-			<div style="padding:20px;">
-				<div style="color:#d73a49;font-weight:600;margin-bottom:12px;">
+			<div class="error-message">
+				<div class="error-title">
 					エラー: ${(error as Error).message}
 				</div>
-				<div style="font-size:12px;font-family:monospace;background:#f6f8fa;
-								padding:12px;border-radius:4px;white-space:pre-wrap;max-height:60vh;overflow:auto;">
-					${debugInfo.join('\n')}
-				</div>
+				<div class="debug-info">${debugInfo.join('\n')}</div>
 			</div>`; // エラーとデバッグ情報を表示
 	}
 }
@@ -539,42 +536,23 @@ function createDiffSummary(diffResult: any): HTMLElement {
  */
 function createPanel(): HTMLElement {
 	const panel = document.createElement('div'); // パネル要素
-	panel.id = 'uipath-visualizer-panel'; // ID設定
-	panel.style.position = 'fixed'; // 固定位置
-	panel.style.top = '0'; // 上端
-	panel.style.right = '0'; // 右端
-	panel.style.width = '50%'; // 幅
-	panel.style.height = '100%'; // 高さ
-	panel.style.backgroundColor = 'white'; // 背景色
-	panel.style.boxShadow = '-2px 0 5px rgba(0,0,0,0.1)'; // 影
-	panel.style.zIndex = '10000'; // 最前面
-	panel.style.overflow = 'auto'; // スクロール
-	panel.style.display = 'flex'; // フレックスボックス
-	panel.style.flexDirection = 'column'; // 縦方向
+	panel.id = 'uipath-visualizer-panel'; // ID設定（レイアウト・色はCSSで定義）
 
 	// ヘッダー部分
 	const header = document.createElement('div'); // ヘッダー
-	header.style.padding = '12px 20px'; // パディング
-	header.style.borderBottom = '1px solid #e0e0e0'; // 下線
-	header.style.display = 'flex'; // フレックスボックス
-	header.style.justifyContent = 'space-between'; // 両端揃え
-	header.style.alignItems = 'center'; // 縦方向中央
-	header.style.flexShrink = '0'; // 縮小しない
+	header.className = 'panel-header'; // CSSクラスでスタイル適用
 
 	const titleArea = document.createElement('div'); // タイトルエリア
 
 	const title = document.createElement('span'); // タイトル
 	title.textContent = 'UiPath Workflow Visualizer'; // タイトルテキスト
-	title.style.fontWeight = '600'; // 太字
-	title.style.fontSize = '16px'; // フォントサイズ
+	title.className = 'panel-title'; // CSSクラスでスタイル適用
 
 	const buildInfo = document.createElement('div'); // ビルド情報
 	const buildDate = new Date(__BUILD_DATE__); // ビルド日時をDateに変換
 	const formattedDate = buildDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // 日本時間でフォーマット
 	buildInfo.textContent = `v${__VERSION__} | Build: ${formattedDate}`; // バージョンとビルド日時
-	buildInfo.style.fontSize = '11px'; // 小さめのフォント
-	buildInfo.style.color = '#888'; // グレー色
-	buildInfo.style.marginTop = '2px'; // 上マージン
+	buildInfo.className = 'panel-build-info'; // CSSクラスでスタイル適用
 
 	titleArea.appendChild(title);
 	titleArea.appendChild(buildInfo);
@@ -589,10 +567,7 @@ function createPanel(): HTMLElement {
 
 	// コンテンツ部分
 	const content = document.createElement('div'); // コンテンツ
-	content.className = 'panel-content'; // クラス設定
-	content.style.flex = '1'; // 残りの空間を埋める
-	content.style.overflow = 'auto'; // スクロール
-	content.style.padding = '20px'; // パディング
+	content.className = 'panel-content'; // CSSクラスでスタイル適用
 
 	panel.appendChild(header);
 	panel.appendChild(content);
