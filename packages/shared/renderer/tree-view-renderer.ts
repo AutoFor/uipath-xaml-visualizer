@@ -89,21 +89,21 @@ export class TreeViewRenderer {
    */
   private getActivityIcon(type: string): string {
     const iconMap: Record<string, string> = {
-      'Sequence': '🔄',
-      'Flowchart': '📊',
-      'Assign': '📝',
-      'If': '🔀',
-      'While': '🔁',
-      'ForEach': '🔁',
-      'Click': '🖱️',
-      'TypeInto': '⌨️',
-      'GetText': '📄',
-      'LogMessage': '📋',
-      'InvokeWorkflowFile': '📤',
-      'TryCatch': '⚠️',
-      'Delay': '⏱️'
+      'Sequence': '[Seq]',
+      'Flowchart': '[Flow]',
+      'Assign': '[=]',
+      'If': '[?]',
+      'While': '[Loop]',
+      'ForEach': '[Loop]',
+      'Click': '[Click]',
+      'TypeInto': '[Type]',
+      'GetText': '[Get]',
+      'LogMessage': '[Log]',
+      'InvokeWorkflowFile': '[Invoke]',
+      'TryCatch': '[Try]',
+      'Delay': '[Wait]'
     };
 
-    return iconMap[type] || '📦';               // デフォルトアイコン
+    return iconMap[type] || '[Act]';            // デフォルトアイコン
   }
 }
