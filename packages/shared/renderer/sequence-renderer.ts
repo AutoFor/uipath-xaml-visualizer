@@ -1,9 +1,24 @@
 import { Activity } from '../parser/xaml-parser';
 
+/** スクリーンショットファイル名からURLパスを解決する関数型 */
+export type ScreenshotPathResolver = (filename: string) => string;
+
+/** SequenceRendererのオプション */
+export interface RendererOptions {
+  resolveScreenshotPath?: ScreenshotPathResolver; // スクリーンショットパス解決関数
+}
+
 /**
  * Sequenceワークフローのレンダラー
  */
 export class SequenceRenderer {
+  private screenshotPathResolver: ScreenshotPathResolver; // スクリーンショットパス解決関数
+
+  constructor(options?: RendererOptions) {
+    this.screenshotPathResolver = options?.resolveScreenshotPath // 注入された関数を使用
+      ?? ((filename) => `.screenshots/${filename}`);             // デフォルト: 相対パス
+  }
+
   /**
    * アクティビティツリーをHTMLとしてレンダリング
    */
@@ -172,9 +187,7 @@ export class SequenceRenderer {
    * スクリーンショットのパスを解決
    */
   private resolveScreenshotPath(filename: string): string {
-    // TODO: Azure DevOps APIを使用して実際のパスを取得
-    // 現時点ではプレースホルダーを返す
-    return `.screenshots/${filename}`;
+    return this.screenshotPathResolver(filename); // 注入された関数に委譲
   }
 
   /**

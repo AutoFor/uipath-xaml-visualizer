@@ -10,3 +10,5 @@ export { DiffRenderer } from './renderer/diff-renderer'; // 差分表示レン�
 // 型定義のエクスポート
 export type { Activity, ParsedXaml, Variable, Argument } from './parser/xaml-parser'; // 型定義
 export type { DiffResult, DiffActivity, DiffType, PropertyChange } from './parser/diff-calculator'; // 差分型定義
+export type { ScreenshotPathResolver, RendererOptions } from './renderer/sequence-renderer'; // スクリーンショットパス解決型
+export type { DiffRendererOptions } from './renderer/diff-renderer'; // 差分レンダラーオプション型

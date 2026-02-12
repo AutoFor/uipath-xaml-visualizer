@@ -1,10 +1,27 @@
 import { DiffResult, DiffActivity, DiffType, PropertyChange } from '../parser/diff-calculator';
 import { Activity } from '../parser/xaml-parser';
+import { ScreenshotPathResolver } from './sequence-renderer'; // スクリーンショットパス解決関数型
+
+/** DiffRendererのオプション */
+export interface DiffRendererOptions {
+  resolveScreenshotPath?: ScreenshotPathResolver;       // after用パス解決関数
+  resolveBeforeScreenshotPath?: ScreenshotPathResolver;  // before用パス解決関数
+}
 
 /**
  * 差分レンダラー
  */
 export class DiffRenderer {
+  private screenshotPathResolver: ScreenshotPathResolver;       // after用
+  private beforeScreenshotPathResolver: ScreenshotPathResolver; // before用
+
+  constructor(options?: DiffRendererOptions) {
+    this.screenshotPathResolver = options?.resolveScreenshotPath             // 注入された関数を使用
+      ?? ((filename) => `.screenshots/${filename}`);                         // デフォルト: 相対パス
+    this.beforeScreenshotPathResolver = options?.resolveBeforeScreenshotPath // before用注入関数
+      ?? ((filename) => `.screenshots/${filename}`);                         // デフォルト: 相対パス
+  }
+
   /**
    * 差分結果をHTMLとしてレンダリング
    */
@@ -155,9 +172,10 @@ export class DiffRenderer {
     if (beforeScreenshot) {
       const beforeDiv = document.createElement('div');
       beforeDiv.className = 'screenshot-before';
+      const beforeSrc = this.beforeScreenshotPathResolver(beforeScreenshot); // before用リゾルバで解決
       beforeDiv.innerHTML = `
         <div class="label">Before</div>
-        <img src=".screenshots/${beforeScreenshot}" alt="Before" />
+        <img src="${beforeSrc}" alt="Before" />
       `;
       compareContainer.appendChild(beforeDiv);
     }
@@ -167,9 +185,10 @@ export class DiffRenderer {
     if (afterScreenshot) {
       const afterDiv = document.createElement('div');
       afterDiv.className = 'screenshot-after';
+      const afterSrc = this.screenshotPathResolver(afterScreenshot); // after用リゾルバで解決
       afterDiv.innerHTML = `
         <div class="label">After</div>
-        <img src=".screenshots/${afterScreenshot}" alt="After" />
+        <img src="${afterSrc}" alt="After" />
       `;
       compareContainer.appendChild(afterDiv);
     }
