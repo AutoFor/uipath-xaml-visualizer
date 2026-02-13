@@ -85,3 +85,8 @@ Git Worktree 運用、GitHub PR/Issue フロー、コーディング規約など
 - `/git-worktree-branch` - ブランチ作成
 - `/github-finish` - 作業完了フロー
 - `/japanese-comments` - 日本語コメント追加
+- `/dev-build` - 開発ビルド（Windows固定パスに出力）
+
+### 実装完了時のルール
+
+コードの実装が完了したら、必ず `/dev-build` スキルを実行してChrome拡張機能の開発ビルドを行うこと。
