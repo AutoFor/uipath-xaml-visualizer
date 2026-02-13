@@ -1,14 +1,21 @@
 import { Activity } from '../parser/xaml-parser';
+import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
+import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
 
 /**
  * ツリービューレンダラー
  */
 export class TreeViewRenderer {
+  private lineIndex: ActivityLineIndex | null = null; // 行番号マッピング
+  private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
+
   /**
    * アクティビティツリーをツリー表示としてレンダリング
    */
-  render(parsedData: any, container: HTMLElement): void {
+  render(parsedData: any, container: HTMLElement, lineIndex?: ActivityLineIndex): void {
     container.innerHTML = '';                   // コンテナをクリア
+    this.lineIndex = lineIndex || null;        // 行番号マッピングを保存
+    this.activityIndex = 0;                    // インデックスをリセット
 
     // ルートアクティビティからツリーを生成
     const tree = this.createTreeNode(parsedData.rootActivity, 0);
@@ -43,6 +50,22 @@ export class TreeViewRenderer {
 
     treeItem.appendChild(toggleBtn);
     treeItem.appendChild(label);
+
+    // 行番号バッジを挿入
+    if (this.lineIndex) {
+      const activityKey = buildActivityKey(activity, this.activityIndex); // キーを生成
+      this.activityIndex++; // インデックスをインクリメント
+      const lineRange = this.lineIndex.keyToLines.get(activityKey); // 行範囲を取得
+      if (lineRange) {
+        const lineBadge = document.createElement('span'); // バッジ要素
+        lineBadge.className = 'line-range-badge'; // スタイル用クラス
+        lineBadge.textContent = lineRange.startLine === lineRange.endLine
+          ? `L${lineRange.startLine}`                // 1行の場合
+          : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
+        lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
+        treeItem.appendChild(lineBadge);
+      }
+    }
 
     // 子ノードのコンテナ
     if (hasChildren) {

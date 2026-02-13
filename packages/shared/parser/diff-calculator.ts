@@ -1,6 +1,15 @@
 import { Activity } from './xaml-parser';
 
 /**
+ * アクティビティの一意キーを生成（差分計算・行マッピング共通）
+ * IdRef（安定した一意識別子）を優先使用、なければフォールバック
+ */
+export function buildActivityKey(activity: Activity, index: number): string {
+  const idRef = activity.properties['sap2010:WorkflowViewState.IdRef']; // IdRef属性
+  return idRef || `${activity.type}_${activity.displayName}_${index}`; // フォールバック
+}
+
+/**
  * 差分の種類
  */
 export enum DiffType {
@@ -126,9 +135,7 @@ export class DiffCalculator {
     const map = new Map<string, Activity>();
 
     activities.forEach((activity, index) => {
-      // IdRef（安定した一意識別子）を優先使用、なければフォールバック
-      const idRef = activity.properties['sap2010:WorkflowViewState.IdRef'];
-      const key = idRef || `${activity.type}_${activity.displayName}_${index}`;
+      const key = buildActivityKey(activity, index); // 共有キー生成関数を使用
       map.set(key, activity);
     });
 
