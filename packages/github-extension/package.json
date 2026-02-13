@@ -4,7 +4,11 @@
   "description": "GitHub上でUiPath XAMLファイルを視覚化するChrome拡張機能",
   "scripts": {
     "build": "webpack --mode production",
+    "build:fixed": "FIXED_OUTPUT=1 webpack --mode production",
     "dev": "webpack --mode development --watch",
+    "dev:fixed": "FIXED_OUTPUT=1 webpack --mode development --watch",
+    "dev:chrome": "node scripts/dev-chrome.js",
+    "setup": "FIXED_OUTPUT=1 node scripts/setup-chrome.js",
     "package": "web-ext build --source-dir=dist"
   },
   "keywords": [

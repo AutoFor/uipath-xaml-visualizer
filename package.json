@@ -11,6 +11,9 @@
     "build:shared": "npm run build --workspace=packages/shared",
     "build:github": "npm run build --workspace=packages/github-extension",
     "dev:github": "npm run dev --workspace=packages/github-extension",
+    "dev:github:fixed": "npm run build:shared && npm run dev:fixed --workspace=packages/github-extension",
+    "dev:github:chrome": "npm run build:shared && npm run dev:chrome --workspace=packages/github-extension",
+    "setup:github": "npm run setup --workspace=packages/github-extension",
     "test": "npm run test --workspaces",
     "clean": "rimraf packages/*/dist packages/*/node_modules"
   },
