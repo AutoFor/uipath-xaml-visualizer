@@ -43,6 +43,7 @@ export interface DiffResult {
 /** 差分表示から除外するプロパティのプレフィックス */
 const IGNORED_PROPERTY_PREFIXES = [
   'sap:',          // UIレイアウトメタデータ（HintSize等）
+  'sap2010:',      // ViewState関連メタデータ（WorkflowViewState.IdRef等）
 ];
 
 export class DiffCalculator {
