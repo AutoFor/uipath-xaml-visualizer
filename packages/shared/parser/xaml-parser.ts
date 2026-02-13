@@ -313,6 +313,7 @@ export class XamlParser {
 
         // プロパティ要素（タイプ名.プロパティ名形式）
         if (childName && childName.includes('.')) {
+          if (this.isMetadataElement(childElem)) continue; // メタデータ要素は除外
           const [, propName] = childName.split('.');
           properties[propName] = this.extractPropertyValue(childElem);
         }
