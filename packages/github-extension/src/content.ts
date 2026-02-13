@@ -1,4 +1,5 @@
 import { XamlParser, DiffCalculator, DiffRenderer, SequenceRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import type { ScreenshotPathResolver } from '@uipath-xaml-visualizer/shared'; // スクリーンショットパス解決型
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
@@ -450,7 +451,10 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 差分詳細を表示
 			const diffContainer = document.createElement('div'); // 差分コンテナ
 			diffContainer.className = 'diff-content'; // クラス設定
-			const diffRenderer = new DiffRenderer(); // 差分レンダラー
+			const diffRenderer = new DiffRenderer({ // 差分レンダラー（GitHub用リゾルバ注入）
+				resolveScreenshotPath: createDiffScreenshotResolver(pr.owner, pr.repo, refs.headSha, filePath),       // after用: headSha
+				resolveBeforeScreenshotPath: createDiffScreenshotResolver(pr.owner, pr.repo, refs.baseSha, filePath)   // before用: baseSha
+			});
 			diffRenderer.render(diffResult, diffContainer); // 差分をレンダリング
 			contentArea.appendChild(diffContainer); // コンテンツに追加
 
@@ -459,7 +463,9 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const afterData = parser.parse(afterXaml); // パース
 			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer({ // headSha用リゾルバ注入
+				resolveScreenshotPath: createDiffScreenshotResolver(pr.owner, pr.repo, refs.headSha, filePath)
+			});
 			seqRenderer.render(afterData, seqContainer); // レンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -468,7 +474,9 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const beforeData = parser.parse(beforeXaml); // パース
 			contentArea.innerHTML = '<div class="status-deleted-file">削除されたファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer({ // baseSha用リゾルバ注入
+				resolveScreenshotPath: createDiffScreenshotResolver(pr.owner, pr.repo, refs.baseSha, filePath)
+			});
 			seqRenderer.render(beforeData, seqContainer); // レンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -604,6 +612,36 @@ function createPanel(): HTMLElement {
 	return panel;
 }
 
+// ========== スクリーンショットURL解決 ==========
+
+/**
+ * Blob表示用スクリーンショットパスリゾルバを作成
+ * Raw ボタンの href からオーナー、リポジトリ、SHA、ファイルパスを抽出
+ */
+function createBlobScreenshotResolver(): ScreenshotPathResolver {
+	const rawButton = document.querySelector('a[data-testid="raw-button"]') as HTMLAnchorElement; // Rawボタン
+	if (!rawButton) return (filename) => `.screenshots/${filename}`; // フォールバック
+
+	// rawButton.href から SHA を取得（ブランチ名のスラッシュ問題を回避するため SHA 直指定）
+	const match = rawButton.href.match(/github\.com\/([^/]+)\/([^/]+)\/raw\/([a-f0-9]+)\/(.+)$/);
+	if (!match) return (filename) => `.screenshots/${filename}`; // パターン不一致時のフォールバック
+
+	const [, owner, repo, sha, filePath] = match; // URLパーツを分解
+	const dir = filePath.substring(0, filePath.lastIndexOf('/')); // ファイルのディレクトリ部分
+	const screenshotDir = dir ? `${dir}/.screenshots` : '.screenshots'; // スクリーンショットディレクトリ
+	return (filename) => `https://github.com/${owner}/${repo}/raw/${sha}/${screenshotDir}/${filename}`;
+}
+
+/**
+ * Diff表示用スクリーンショットパスリゾルバを作成
+ * 指定された owner/repo/sha/filePath から GitHub raw URL を構築
+ */
+function createDiffScreenshotResolver(owner: string, repo: string, sha: string, filePath: string): ScreenshotPathResolver {
+	const dir = filePath.substring(0, filePath.lastIndexOf('/')); // ファイルのディレクトリ部分
+	const screenshotDir = dir ? `${dir}/.screenshots` : '.screenshots'; // スクリーンショットディレクトリ
+	return (filename) => `https://github.com/${owner}/${repo}/raw/${sha}/${screenshotDir}/${filename}`;
+}
+
 // ========== 既存機能: 個別XAMLファイルページ ==========
 
 /**
@@ -675,8 +713,8 @@ function displayBlobVisualizerPanel(workflowData: any): void {
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
 
-	// SequenceRendererでレンダリング
-	const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+	// SequenceRendererでレンダリング（GitHub用スクリーンショットURL解決付き）
+	const seqRenderer = new SequenceRenderer({ resolveScreenshotPath: createBlobScreenshotResolver() }); // Blob用リゾルバ注入
 	seqRenderer.render(workflowData, contentArea); // レンダリング
 
 	document.body.appendChild(panel); // ページに追加
