@@ -255,8 +255,10 @@ export class XamlParser {
       this.log(`  スクリーンショット: ${informativeScreenshot}`);
     }
 
-    // アノテーションを取得
-    const annotations = this.extractAnnotations(element);
+    // アノテーションを取得（属性からの取得を優先、なければ子要素から取得）
+    const annotationAttr = element.getAttribute('sap2010:Annotation.AnnotationText');
+    const annotationChild = this.extractAnnotations(element);
+    const annotations = annotationAttr || annotationChild || undefined;
     if (annotations) {
       this.log(`  アノテーション: ${annotations.substring(0, 50)}...`);
     }
@@ -289,7 +291,8 @@ export class XamlParser {
     if (element.attributes) {
       this.log(`  属性数: ${element.attributes.length}`);
       Array.from(element.attributes).forEach(attr => {
-        if (attr.name !== 'DisplayName' && attr.name !== 'InformativeScreenshot') {
+        if (attr.name !== 'DisplayName' && attr.name !== 'InformativeScreenshot'
+            && attr.name !== 'sap2010:Annotation.AnnotationText') {
           properties[attr.name] = attr.value;
         }
       });

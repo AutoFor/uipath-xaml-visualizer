@@ -18,7 +18,15 @@
       "Bash(gh issue create:*)",
       "Bash(gh pr edit:*)",
       "Bash(gh pr merge:*)",
-      "Bash(gh issue close:*)"
+      "Bash(gh issue close:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run build:shared:*)",
+      "Bash(npm run build:azdo:*)",
+      "Bash(npm run build:github:*)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-98-change-annotation-and-display-name log --all --oneline)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-98-change-annotation-and-display-name log issue-98-change-annotation-and-display-name -1 --format=fuller)",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

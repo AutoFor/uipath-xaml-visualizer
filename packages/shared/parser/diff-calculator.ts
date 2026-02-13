@@ -121,8 +121,9 @@ export class DiffCalculator {
     const map = new Map<string, Activity>();
 
     activities.forEach((activity, index) => {
-      // displayName + index をキーとして使用（同名のアクティビティ対策）
-      const key = `${activity.displayName}_${index}`;
+      // IdRef（安定した一意識別子）を優先使用、なければフォールバック
+      const idRef = activity.properties['sap2010:WorkflowViewState.IdRef'];
+      const key = idRef || `${activity.type}_${activity.displayName}_${index}`;
       map.set(key, activity);
     });
 
@@ -158,6 +159,24 @@ export class DiffCalculator {
         });
       }
     });
+
+    // DisplayNameの変更チェック
+    if (before.displayName !== after.displayName) {
+      changes.push({
+        propertyName: 'DisplayName',
+        before: before.displayName,
+        after: after.displayName
+      });
+    }
+
+    // アノテーションの変更チェック
+    if (before.annotations !== after.annotations) {
+      changes.push({
+        propertyName: 'Annotation',
+        before: before.annotations,
+        after: after.annotations
+      });
+    }
 
     // InformativeScreenshotの変更もチェック
     if (before.informativeScreenshot !== after.informativeScreenshot) {
