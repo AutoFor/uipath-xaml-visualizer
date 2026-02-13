@@ -1,4 +1,7 @@
-import { XamlParser, DiffCalculator, DiffRenderer, SequenceRenderer } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, DiffCalculator, DiffRenderer, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import type { ActivityLineIndex, CommentRenderOptions } from '@uipath-xaml-visualizer/shared'; // 型定義
+import { fetchReviewComments, mapCommentsToActivities, postReviewComment } from './review-comments'; // レビューコメントモジュール
+import type { ReviewComment } from './review-comments'; // レビューコメント型
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
@@ -32,6 +35,15 @@ interface PrRefs {
 let cachedPrRefs: PrRefs | null = null; // PR refs キャッシュ（同一PR内で1回だけAPI呼び出し）
 let lastUrl: string = ''; // 前回のURL（URL変更検出用）
 let debounceTimer: ReturnType<typeof setTimeout> | null = null; // デバウンスタイマー
+
+// ========== ビジュアライザーコンテキスト（コメント連携用） ==========
+
+let currentContext: {
+	pr: PrInfo;               // PR情報
+	refs: PrRefs;             // base/head SHA
+	filePath: string;         // ファイルパス
+	headLineIndex: ActivityLineIndex | null; // head側の行マップ
+} | null = null; // 現在のビジュアライザーコンテキスト
 
 // ========== ページタイプ検出 ==========
 
@@ -442,34 +454,61 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const diffCalc = new DiffCalculator(); // 差分計算
 			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
 
+			// 行番号マッピングを構築
+			const baseLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // base側の行マップ
+			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
+
+			// コンテキストを保存（コメント投稿時に使用）
+			currentContext = { pr, refs, filePath, headLineIndex };
+
+			// レビューコメントを取得してマッピング（非同期・失敗時は空マップ）
+			let commentsMap = new Map<string, ReviewComment[]>();
+			try {
+				const comments = await fetchReviewComments(pr, filePath); // コメント取得
+				commentsMap = mapCommentsToActivities(comments, headLineIndex, baseLineIndex); // マッピング
+			} catch (e) {
+				console.warn('UiPath Visualizer: レビューコメント取得失敗（差分表示は続行）:', e);
+			}
+
+			// コメントレンダリングオプションを構築
+			const commentOptions: CommentRenderOptions = {
+				commentsMap,
+				onPostComment: async (activityKey: string, body: string) => {
+					await handlePostComment(activityKey, body); // コメント投稿ハンドラ
+				},
+				getActivityKey: (activity, index) => buildActivityKey(activity, index) // キー生成関数
+			};
+
 			// サマリーを表示
 			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
 			contentArea.innerHTML = ''; // クリア
 			contentArea.appendChild(summaryHtml); // サマリーを追加
 
-			// 差分詳細を表示
+			// 差分詳細を表示（コメントオプション付き）
 			const diffContainer = document.createElement('div'); // 差分コンテナ
 			diffContainer.className = 'diff-content'; // クラス設定
 			const diffRenderer = new DiffRenderer(); // 差分レンダラー
-			diffRenderer.render(diffResult, diffContainer); // 差分をレンダリング
+			diffRenderer.render(diffResult, diffContainer, commentOptions, headLineIndex, baseLineIndex); // コメント・行番号付きで差分をレンダリング
 			contentArea.appendChild(diffContainer); // コンテンツに追加
 
 		} else if (afterXaml) {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
+			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
-			seqRenderer.render(afterData, seqContainer); // レンダリング
+			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
 		} else if (beforeXaml) {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
+			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-deleted-file">削除されたファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
-			seqRenderer.render(beforeData, seqContainer); // レンダリング
+			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
 		} else {
@@ -488,6 +527,33 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 				</div>
 				<div class="debug-info">${debugInfo.join('\n')}</div>
 			</div>`; // エラーとデバッグ情報を表示
+	}
+}
+
+/**
+ * コメント投稿ハンドラ（ビジュアライザーからのコメント投稿を処理）
+ */
+async function handlePostComment(activityKey: string, body: string): Promise<void> {
+	if (!currentContext) throw new Error('ビジュアライザーコンテキストが未設定');
+
+	const { pr, refs, filePath, headLineIndex } = currentContext; // コンテキスト取得
+
+	// アクティビティキーから行範囲を取得
+	const lineRange = headLineIndex?.keyToLines.get(activityKey); // 行範囲
+	const line = lineRange?.endLine || 1; // コメント対象行（endLine）
+	const startLine = lineRange?.startLine; // 複数行コメントの開始行
+
+	const result = await postReviewComment(pr, {
+		body,
+		commitId: refs.headSha, // headのコミットSHA
+		path: filePath,
+		line,
+		startLine: startLine !== line ? startLine : undefined, // 1行の場合はstart_lineを省略
+		side: 'RIGHT' // head側にコメント
+	});
+
+	if (!result) {
+		throw new Error('コメント投稿に失敗しました');
 	}
 }
 
@@ -637,8 +703,9 @@ async function showBlobVisualizer(): Promise<void> {
 		const xamlContent = await fetchXamlContent(); // XAML内容を取得
 		const parser = new XamlParser(); // パーサー初期化
 		const workflowData = parser.parse(xamlContent); // XAML解析
+		const lineIndex = XamlLineMapper.buildLineMap(xamlContent); // 行マップ構築
 
-		displayBlobVisualizerPanel(workflowData); // パネル表示
+		displayBlobVisualizerPanel(workflowData, lineIndex); // パネル表示（行番号付き）
 	} catch (error) {
 		console.error('ビジュアライザー表示エラー:', error); // エラーログ
 		alert('XAMLファイルの解析に失敗しました'); // アラート表示
@@ -667,7 +734,7 @@ async function fetchXamlContent(): Promise<string> {
 /**
  * 個別ファイル用ビジュアライザーパネルを表示
  */
-function displayBlobVisualizerPanel(workflowData: any): void {
+function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex): void {
 	// 既存パネルを削除
 	const existingPanel = document.getElementById('uipath-visualizer-panel');
 	if (existingPanel) existingPanel.remove();
@@ -677,7 +744,7 @@ function displayBlobVisualizerPanel(workflowData: any): void {
 
 	// SequenceRendererでレンダリング
 	const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
-	seqRenderer.render(workflowData, contentArea); // レンダリング
+	seqRenderer.render(workflowData, contentArea, lineIndex); // 行番号付きでレンダリング
 
 	document.body.appendChild(panel); // ページに追加
 }
@@ -725,6 +792,7 @@ const observer = new MutationObserver(() => {
 		if (currentUrl !== lastUrl) {
 			// URL変更 → キャッシュクリアして再初期化
 			cachedPrRefs = null; // PRキャッシュをクリア
+			currentContext = null; // ビジュアライザーコンテキストをクリア
 			lastUrl = currentUrl; // URLを更新
 			init(); // 再初期化
 		} else if (detectPageType() === 'pr-diff') {

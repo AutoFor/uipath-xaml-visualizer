@@ -1,15 +1,54 @@
-import { DiffResult, DiffActivity, DiffType, PropertyChange } from '../parser/diff-calculator';
+import { DiffResult, DiffActivity, DiffType, PropertyChange, buildActivityKey } from '../parser/diff-calculator';
 import { Activity } from '../parser/xaml-parser';
+import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
+
+/**
+ * レビューコメント型（github-extensionのReviewCommentと同一構造）
+ */
+export interface ReviewCommentData {
+  id: number;                // コメントID
+  body: string;              // コメント本文
+  user: {                    // 投稿ユーザー
+    login: string;           // ユーザー名
+    avatar_url: string;      // アバターURL
+  };
+  created_at: string;        // 作成日時
+  html_url: string;          // コメントのWeb URL
+}
+
+/**
+ * コメントレンダリングオプション
+ */
+export interface CommentRenderOptions {
+  commentsMap: Map<string, ReviewCommentData[]>;  // アクティビティキー→コメントリスト
+  onPostComment: (activityKey: string, body: string) => Promise<void>; // コメント投稿コールバック
+  getActivityKey: (activity: Activity, index: number) => string; // アクティビティキー取得関数
+}
 
 /**
  * 差分レンダラー
  */
 export class DiffRenderer {
+  private commentOptions: CommentRenderOptions | null = null; // コメントオプション
+  private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
+  private headLineIndex: ActivityLineIndex | null = null; // head側の行番号マッピング
+  private baseLineIndex: ActivityLineIndex | null = null; // base側の行番号マッピング
+
   /**
    * 差分結果をHTMLとしてレンダリング
    */
-  render(diff: DiffResult, container: HTMLElement): void {
+  render(
+    diff: DiffResult,
+    container: HTMLElement,
+    commentOptions?: CommentRenderOptions,
+    headLineIndex?: ActivityLineIndex,  // head側の行番号マッピング
+    baseLineIndex?: ActivityLineIndex   // base側の行番号マッピング
+  ): void {
     container.innerHTML = '';                   // コンテナをクリア
+    this.commentOptions = commentOptions || null; // コメントオプションを保存
+    this.activityIndex = 0; // インデックスをリセット
+    this.headLineIndex = headLineIndex || null; // head側行マップを保存
+    this.baseLineIndex = baseLineIndex || null; // base側行マップを保存
 
     // 追加されたアクティビティ
     diff.added.forEach(diffActivity => {
@@ -38,6 +77,10 @@ export class DiffRenderer {
     card.className = `diff-item activity-card diff-${diffActivity.diffType}`;
     card.dataset.id = diffActivity.activity.id;
 
+    // アクティビティキーを計算
+    const activityKey = this.getActivityKeyForDiff(diffActivity);
+    card.dataset.activityKey = activityKey; // data属性にキーを保存
+
     // ヘッダー
     const header = document.createElement('div');
     header.className = 'activity-header';
@@ -60,6 +103,32 @@ export class DiffRenderer {
     }
 
     header.appendChild(title);
+
+    // 行番号バッジを挿入（追加→head、削除→base、変更→head）
+    const lineIndex = diffActivity.diffType === DiffType.REMOVED ? this.baseLineIndex : this.headLineIndex;
+    if (lineIndex) {
+      const lineRange = lineIndex.keyToLines.get(activityKey); // アクティビティの行範囲を取得
+      if (lineRange) {
+        const lineBadge = document.createElement('span'); // バッジ要素
+        lineBadge.className = 'line-range-badge'; // スタイル用クラス
+        lineBadge.textContent = lineRange.startLine === lineRange.endLine
+          ? `L${lineRange.startLine}`                // 1行の場合
+          : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
+        lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
+        header.appendChild(lineBadge);
+      }
+    }
+
+    // コメントインジケーター・追加ボタンを挿入
+    if (this.commentOptions) {
+      const comments = this.commentOptions.commentsMap.get(activityKey); // このアクティビティのコメント
+      const commentIndicator = this.renderCommentIndicator(comments?.length || 0, card); // インジケーター
+      header.appendChild(commentIndicator);
+
+      const addCommentBtn = this.renderAddCommentButton(activityKey, card); // コメント追加ボタン
+      header.appendChild(addCommentBtn);
+    }
+
     card.appendChild(header);
 
     // Assignアクティビティの代入式を表示（追加・削除の場合）
@@ -86,8 +155,268 @@ export class DiffRenderer {
       card.appendChild(screenshotDiff);
     }
 
+    // コメントパネル（コメントがある場合のみ初期生成）
+    if (this.commentOptions) {
+      const comments = this.commentOptions.commentsMap.get(activityKey);
+      if (comments && comments.length > 0) {
+        const panel = this.renderCommentPanel(activityKey, comments);
+        panel.style.display = 'none'; // 初期状態は非表示
+        card.appendChild(panel);
+      }
+    }
+
     return card;
   }
+
+  // ========== コメント UI メソッド ==========
+
+  /**
+   * コメントインジケーターバッジをレンダリング
+   */
+  private renderCommentIndicator(count: number, card: HTMLElement): HTMLElement {
+    const indicator = document.createElement('span'); // インジケーター要素
+    indicator.className = 'comment-indicator';
+
+    if (count > 0) {
+      indicator.textContent = `[Cmt: ${count}]`; // コメント数を表示
+      indicator.style.cursor = 'pointer'; // クリック可能
+      indicator.addEventListener('click', (e) => {
+        e.stopPropagation(); // イベント伝播停止
+        this.toggleCommentPanel(card); // コメントパネルの展開/折りたたみ
+      });
+    }
+
+    return indicator;
+  }
+
+  /**
+   * コメント追加ボタンをレンダリング（ホバー時のみ表示）
+   */
+  private renderAddCommentButton(activityKey: string, card: HTMLElement): HTMLElement {
+    const btn = document.createElement('span'); // ボタン要素
+    btn.className = 'add-comment-btn';
+    btn.textContent = '[+]'; // ボタンテキスト
+    btn.title = 'コメントを追加'; // ツールチップ
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // イベント伝播停止
+      this.showCommentForm(activityKey, card); // コメント入力フォームを表示
+    });
+
+    return btn;
+  }
+
+  /**
+   * コメントパネルをレンダリング
+   */
+  private renderCommentPanel(_activityKey: string, comments: ReviewCommentData[]): HTMLElement {
+    const panel = document.createElement('div'); // パネル要素
+    panel.className = 'activity-comments';
+
+    // 各コメントを表示
+    const commentList = document.createElement('div'); // コメントリストコンテナ
+    commentList.className = 'comment-list';
+    comments.forEach(comment => {
+      const item = this.renderCommentItem(comment); // 個別コメント
+      commentList.appendChild(item);
+    });
+    panel.appendChild(commentList);
+
+    return panel;
+  }
+
+  /**
+   * 個別コメントをレンダリング
+   */
+  private renderCommentItem(comment: ReviewCommentData): HTMLElement {
+    const item = document.createElement('div'); // コメント要素
+    item.className = 'comment-item';
+
+    // ヘッダー（アバター + ユーザー名 + タイムスタンプ）
+    const header = document.createElement('div'); // ヘッダー要素
+    header.className = 'comment-header';
+
+    if (comment.user.avatar_url) {
+      const avatar = document.createElement('img'); // アバター画像
+      avatar.className = 'comment-avatar';
+      avatar.src = comment.user.avatar_url;
+      avatar.alt = comment.user.login;
+      avatar.width = 20;
+      avatar.height = 20;
+      header.appendChild(avatar);
+    }
+
+    const username = document.createElement('span'); // ユーザー名
+    username.className = 'comment-username';
+    username.textContent = comment.user.login || 'unknown';
+    header.appendChild(username);
+
+    const timestamp = document.createElement('span'); // タイムスタンプ
+    timestamp.className = 'comment-timestamp';
+    timestamp.textContent = this.formatTimestamp(comment.created_at); // 日時フォーマット
+    header.appendChild(timestamp);
+
+    item.appendChild(header);
+
+    // 本文
+    const body = document.createElement('div'); // 本文要素
+    body.className = 'comment-body';
+    body.textContent = comment.body; // コメント本文
+    item.appendChild(body);
+
+    return item;
+  }
+
+  /**
+   * コメントパネルの展開/折りたたみ
+   */
+  private toggleCommentPanel(card: HTMLElement): void {
+    const panel = card.querySelector('.activity-comments') as HTMLElement; // コメントパネル
+    if (!panel) return;
+
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block'; // 展開
+    } else {
+      panel.style.display = 'none'; // 折りたたみ
+    }
+  }
+
+  /**
+   * コメント入力フォームを表示
+   */
+  private showCommentForm(activityKey: string, card: HTMLElement): void {
+    // 既存のフォームがあれば削除
+    const existingForm = card.querySelector('.comment-form');
+    if (existingForm) {
+      existingForm.remove();
+      return; // トグル動作: フォームが既にあれば閉じる
+    }
+
+    const form = document.createElement('div'); // フォーム要素
+    form.className = 'comment-form';
+
+    const textarea = document.createElement('textarea'); // テキストエリア
+    textarea.className = 'comment-input';
+    textarea.placeholder = 'コメントを入力...';
+    textarea.rows = 3;
+    form.appendChild(textarea);
+
+    const actions = document.createElement('div'); // ボタン群
+    actions.className = 'comment-form-actions';
+
+    const cancelBtn = document.createElement('button'); // キャンセルボタン
+    cancelBtn.className = 'btn btn-sm comment-cancel-btn';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', () => form.remove()); // クリックでフォーム削除
+
+    const submitBtn = document.createElement('button'); // 投稿ボタン
+    submitBtn.className = 'btn btn-sm comment-submit-btn';
+    submitBtn.textContent = 'Comment';
+    submitBtn.addEventListener('click', async () => {
+      const body = textarea.value.trim(); // コメント本文
+      if (!body) return; // 空コメントは無視
+
+      if (!this.commentOptions?.onPostComment) return; // コールバックなし
+
+      submitBtn.disabled = true; // ボタン無効化
+      submitBtn.textContent = 'Posting...'; // 投稿中表示
+
+      try {
+        await this.commentOptions.onPostComment(activityKey, body); // コメント投稿
+
+        // 楽観的更新: コメントをリストに追加
+        this.addCommentToCard(card, activityKey, body);
+        form.remove(); // フォームを削除
+      } catch (e) {
+        console.error('コメント投稿エラー:', e);
+        submitBtn.disabled = false; // ボタン再有効化
+        submitBtn.textContent = 'Comment'; // テキスト復元
+      }
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(submitBtn);
+    form.appendChild(actions);
+
+    card.appendChild(form); // カードにフォームを追加
+    textarea.focus(); // テキストエリアにフォーカス
+  }
+
+  /**
+   * 投稿成功後にカードにコメントを追加（楽観的更新）
+   */
+  private addCommentToCard(card: HTMLElement, activityKey: string, body: string): void {
+    // コメントパネルを取得または作成
+    let panel = card.querySelector('.activity-comments') as HTMLElement;
+    if (!panel) {
+      panel = document.createElement('div'); // 新規パネル
+      panel.className = 'activity-comments';
+      const commentList = document.createElement('div'); // コメントリスト
+      commentList.className = 'comment-list';
+      panel.appendChild(commentList);
+      card.appendChild(panel);
+    }
+
+    panel.style.display = 'block'; // パネルを表示
+
+    // 新しいコメントを追加
+    const commentList = panel.querySelector('.comment-list') || panel; // コメントリスト
+    const newComment: ReviewCommentData = {
+      id: Date.now(), // 仮ID
+      body,
+      user: { login: 'You', avatar_url: '' }, // 投稿者（ダミー）
+      created_at: new Date().toISOString(),
+      html_url: ''
+    };
+    const item = this.renderCommentItem(newComment); // コメントアイテム
+    commentList.appendChild(item);
+
+    // インジケーターを更新
+    const indicator = card.querySelector('.comment-indicator') as HTMLElement;
+    if (indicator) {
+      const currentCount = this.commentOptions?.commentsMap.get(activityKey)?.length || 0;
+      const displayCount = currentCount + 1; // 新しいコメント分を加算
+      indicator.textContent = `[Cmt: ${displayCount}]`;
+      indicator.style.cursor = 'pointer';
+
+      // クリックイベントがなければ追加
+      if (!indicator.dataset.hasListener) {
+        indicator.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.toggleCommentPanel(card);
+        });
+        indicator.dataset.hasListener = 'true';
+      }
+    }
+  }
+
+  /**
+   * アクティビティキーをDiffActivityから取得
+   */
+  private getActivityKeyForDiff(diffActivity: DiffActivity): string {
+    if (this.commentOptions?.getActivityKey) {
+      const key = this.commentOptions.getActivityKey(diffActivity.activity, this.activityIndex); // カスタムキー生成
+      this.activityIndex++;
+      return key;
+    }
+    // フォールバック: 組み込みキー生成
+    const key = buildActivityKey(diffActivity.activity, this.activityIndex);
+    this.activityIndex++;
+    return key;
+  }
+
+  /**
+   * タイムスタンプをフォーマット
+   */
+  private formatTimestamp(isoString: string): string {
+    try {
+      const date = new Date(isoString); // ISO文字列をDateに変換
+      return date.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // 日本時間でフォーマット
+    } catch {
+      return isoString; // パース失敗時は元の文字列を返す
+    }
+  }
+
+  // ========== 既存メソッド ==========
 
   /**
    * プロパティ変更をレンダリング
