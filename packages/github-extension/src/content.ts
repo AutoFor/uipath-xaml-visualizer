@@ -36,6 +36,7 @@ interface PrRefs {
 let cachedPrRefs: PrRefs | null = null; // PR refs キャッシュ（同一PR内で1回だけAPI呼び出し）
 let lastUrl: string = ''; // 前回のURL（URL変更検出用）
 let debounceTimer: ReturnType<typeof setTimeout> | null = null; // デバウンスタイマー
+let syncAbortController: AbortController | null = null; // カーソル同期イベントリスナーの管理用
 
 // ========== ビジュアライザーコンテキスト（コメント連携用） ==========
 
@@ -492,6 +493,9 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			diffRenderer.render(diffResult, diffContainer, commentOptions, headLineIndex, baseLineIndex); // コメント・行番号付きで差分をレンダリング
 			contentArea.appendChild(diffContainer); // コンテンツに追加
 
+			// カーソル同期をセットアップ（Diff view）
+			setupCursorSync(panel, headLineIndex, 'diff', filePath);
+
 		} else if (afterXaml) {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
@@ -501,6 +505,9 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
+
+			// カーソル同期をセットアップ（新規ファイル → Blob view扱い）
+			setupCursorSync(panel, afterLineIndex, 'blob');
 
 		} else if (beforeXaml) {
 			// 削除ファイル: before のみ表示
@@ -596,6 +603,150 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	return summary;
 }
 
+// ========== カーソル同期（Visualizer ↔ GitHub） ==========
+
+/**
+ * GitHub側のハイライトスタイルをページに注入
+ */
+function injectSyncHighlightStyles(): void {
+	if (document.getElementById('xaml-sync-styles')) return; // 既に注入済みならスキップ
+	const style = document.createElement('style'); // スタイル要素
+	style.id = 'xaml-sync-styles'; // 重複防止用ID
+	style.textContent = `
+		.xaml-sync-highlight {
+			background-color: rgba(255, 165, 0, 0.25) !important;
+			transition: background-color 0.5s ease-out;
+		}
+	`; // GitHub側コード行のハイライトスタイル
+	document.head.appendChild(style); // ページに注入
+}
+
+/**
+ * GitHub側の同期ハイライトを全除去
+ */
+function clearGithubHighlights(): void {
+	document.querySelectorAll('.xaml-sync-highlight').forEach(el => {
+		el.classList.remove('xaml-sync-highlight'); // ハイライトクラスを除去
+	});
+}
+
+/**
+ * Visualizer内カードのハイライトを全除去
+ */
+function clearVisualizerHighlights(panel: HTMLElement): void {
+	panel.querySelectorAll('.activity-card.sync-highlighted').forEach(el => {
+		el.classList.remove('sync-highlighted'); // ハイライトクラスを除去
+	});
+}
+
+/**
+ * Visualizer内のカードをハイライト＋スクロール（3秒後自動消去）
+ */
+function highlightVisualizerCard(panel: HTMLElement, activityKey: string): void {
+	clearVisualizerHighlights(panel); // 前のハイライトを消去
+	const card = panel.querySelector(`.activity-card[data-activity-key="${activityKey}"]`) as HTMLElement; // 対象カードを検索
+	if (!card) return; // 見つからなければ何もしない
+	card.classList.add('sync-highlighted'); // ハイライトクラスを追加
+	card.scrollIntoView({ behavior: 'smooth', block: 'center' }); // カードにスクロール
+	setTimeout(() => card.classList.remove('sync-highlighted'), 3000); // 3秒後にハイライト除去
+}
+
+/**
+ * GitHub側の行をハイライト＋スクロール（2秒後自動消去）
+ */
+function highlightGithubLines(startLine: number, endLine: number, filePath?: string): void {
+	clearGithubHighlights(); // 前のハイライトを消去
+
+	if (filePath) {
+		// Diff view: ファイルコンテナ内のtd.blob-numから該当行を検索
+		const fileContainer = document.querySelector(`div.file[data-tagsearch-path="${filePath}"]`); // ファイルコンテナ
+		if (!fileContainer) return;
+		for (let line = startLine; line <= endLine; line++) {
+			// diff viewの行番号セルを検索（data-line-number属性で特定）
+			const lineNumCells = fileContainer.querySelectorAll(`td.blob-num[data-line-number="${line}"]`); // 行番号セル
+			lineNumCells.forEach(cell => {
+				const row = cell.closest('tr'); // 行要素を取得
+				if (row) row.classList.add('xaml-sync-highlight'); // 行をハイライト
+			});
+		}
+		// 最初のハイライト行にスクロール
+		const firstHighlighted = fileContainer.querySelector('.xaml-sync-highlight') as HTMLElement;
+		if (firstHighlighted) firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	} else {
+		// Blob view: document.getElementById('LC${lineNum}') で行要素を取得
+		for (let line = startLine; line <= endLine; line++) {
+			const lineEl = document.getElementById(`LC${line}`); // コード行要素
+			if (lineEl) lineEl.classList.add('xaml-sync-highlight'); // ハイライト
+		}
+		// 中央の行にスクロール
+		const midLine = Math.floor((startLine + endLine) / 2); // 中央行番号
+		const scrollTarget = document.getElementById(`LC${midLine}`); // スクロール先
+		if (scrollTarget) scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	}
+
+	// 2秒後にハイライト自動消去
+	setTimeout(clearGithubHighlights, 2000);
+}
+
+/**
+ * カーソル同期をセットアップ（双方向: Visualizer ↔ GitHub）
+ */
+function setupCursorSync(
+	panel: HTMLElement,
+	lineIndex: ActivityLineIndex,
+	viewMode: 'blob' | 'diff',
+	filePath?: string
+): void {
+	// 前のリスナーを全解除
+	if (syncAbortController) syncAbortController.abort();
+	syncAbortController = new AbortController(); // 新規AbortController
+	const signal = syncAbortController.signal; // シグナル
+
+	// === Direction 1: Visualizer → GitHub（行番号バッジクリック） ===
+	panel.addEventListener('visualizer-line-click', ((e: CustomEvent) => {
+		const { startLine, endLine } = e.detail; // クリックされた行範囲
+		highlightGithubLines(startLine, endLine, viewMode === 'diff' ? filePath : undefined); // GitHub側をハイライト
+	}) as EventListener, { signal }); // AbortControllerで管理
+
+	// === Direction 2: GitHub → Visualizer（行番号クリック） ===
+	if (viewMode === 'blob') {
+		// Blob view: コードテーブルの行番号セルのクリックを監視（イベント委譲）
+		const codeTable = document.querySelector('table.highlight') // コードテーブルを検索
+			|| document.querySelector('.blob-code-content table') // フォールバック
+			|| document.querySelector('.js-file-line-container'); // さらにフォールバック
+		if (codeTable) {
+			codeTable.addEventListener('click', (e: Event) => {
+				const target = e.target as HTMLElement; // クリック対象
+				const lineCell = target.closest('td[id]') as HTMLElement; // 行番号セルを検索
+				if (!lineCell) return;
+				const match = lineCell.id.match(/^L(\d+)$/); // id="L123" パターンにマッチ
+				if (!match) return;
+				const lineNum = parseInt(match[1], 10); // 行番号を取得
+				const activityKey = lineIndex.lineToKey.get(lineNum); // 行番号からアクティビティキーを検索
+				if (!activityKey) return; // マッピングなければ無視
+				highlightVisualizerCard(panel, activityKey); // Visualizer側カードをハイライト
+			}, { signal }); // AbortControllerで管理
+		}
+	} else {
+		// Diff view: ファイルコンテナ内の行番号セルのクリックを監視
+		const fileContainer = filePath
+			? document.querySelector(`div.file[data-tagsearch-path="${filePath}"]`)
+			: null; // ファイルコンテナ
+		if (fileContainer) {
+			fileContainer.addEventListener('click', (e: Event) => {
+				const target = e.target as HTMLElement; // クリック対象
+				const blobNumCell = target.closest('td.blob-num[data-line-number]') as HTMLElement; // 行番号セルを検索
+				if (!blobNumCell) return;
+				const lineNum = parseInt(blobNumCell.getAttribute('data-line-number') || '0', 10); // 行番号を取得
+				if (!lineNum) return;
+				const activityKey = lineIndex.lineToKey.get(lineNum); // 行番号からアクティビティキーを検索
+				if (!activityKey) return; // マッピングなければ無視
+				highlightVisualizerCard(panel, activityKey); // Visualizer側カードをハイライト
+			}, { signal }); // AbortControllerで管理
+		}
+	}
+}
+
 // ========== パネルUI ==========
 
 /**
@@ -627,7 +778,12 @@ function createPanel(): HTMLElement {
 	const closeButton = document.createElement('button'); // 閉じるボタン
 	closeButton.textContent = '✕'; // テキスト
 	closeButton.className = 'btn btn-sm'; // ボタンスタイル
-	closeButton.addEventListener('click', () => panel.remove()); // クリックで閉じる
+	closeButton.addEventListener('click', () => {
+		clearGithubHighlights(); // GitHub側ハイライトをクリア
+		syncAbortController?.abort(); // カーソル同期リスナーを全解除
+		syncAbortController = null; // 参照をクリア
+		panel.remove(); // パネルを削除
+	});
 
 	// Copy HTMLボタン（デバッグ用）
 	const copyHtmlButton = document.createElement('button'); // コピーボタン
@@ -748,6 +904,11 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
 	seqRenderer.render(workflowData, contentArea, lineIndex); // 行番号付きでレンダリング
 
 	document.body.appendChild(panel); // ページに追加
+
+	// カーソル同期をセットアップ（Blob view）
+	if (lineIndex) {
+		setupCursorSync(panel, lineIndex, 'blob'); // 双方向同期を有効化
+	}
 }
 
 // ========== 初期化とMutationObserver ==========
@@ -757,6 +918,7 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
  */
 function init(): void {
 	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
+	injectSyncHighlightStyles(); // GitHub側ハイライト用CSSを注入
 
 	const pageType = detectPageType(); // ページタイプを検出
 

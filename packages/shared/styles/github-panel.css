@@ -406,7 +406,7 @@
   border-radius: 4px;                         /* 角丸 */
   white-space: nowrap;                        /* 折り返さない */
   flex-shrink: 0;                             /* 縮小しない */
-  cursor: default;                            /* デフォルトカーソル */
+  cursor: pointer;                            /* クリック可能カーソル（カーソル同期用） */
 }
 
 #uipath-visualizer-panel .line-range-badge:hover {
@@ -680,4 +680,14 @@
 #uipath-visualizer-panel .comment-submit-btn:disabled {
   opacity: 0.6;                             /* 無効時の透明度 */
   cursor: not-allowed;                      /* 無効カーソル */
+}
+
+/* ========== カーソル同期ハイライト ========== */
+
+/* Visualizer内カードの同期ハイライト（GitHub行クリック時） */
+#uipath-visualizer-panel .activity-card.sync-highlighted {
+  border-color: var(--panel-accent);        /* アクセント色ボーダー */
+  box-shadow: 0 0 0 2px var(--panel-accent), 0 2px 8px rgba(0, 120, 212, 0.3); /* グローシャドウ */
+  background-color: var(--diff-modified-bg); /* 変更時の背景色 */
+  transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s; /* スムーズなトランジション */
 }

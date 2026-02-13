@@ -111,10 +111,20 @@ export class DiffRenderer {
       if (lineRange) {
         const lineBadge = document.createElement('span'); // バッジ要素
         lineBadge.className = 'line-range-badge'; // スタイル用クラス
+        lineBadge.dataset.startLine = String(lineRange.startLine); // 開始行をdata属性に保存
+        lineBadge.dataset.endLine = String(lineRange.endLine); // 終了行をdata属性に保存
         lineBadge.textContent = lineRange.startLine === lineRange.endLine
           ? `L${lineRange.startLine}`                // 1行の場合
           : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
         lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
+        lineBadge.style.cursor = 'pointer'; // クリック可能カーソル
+        lineBadge.addEventListener('click', (e) => {
+          e.stopPropagation(); // カードのクリックイベントを阻止
+          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // カーソル同期イベントを発火
+            bubbles: true, // バブリングでパネルまで伝播
+            detail: { activityKey, startLine: lineRange.startLine, endLine: lineRange.endLine }
+          }));
+        });
         header.appendChild(lineBadge);
       }
     }

@@ -50,18 +50,31 @@ export class SequenceRenderer {
 
     header.appendChild(title);
 
+    // アクティビティキーを算出してdata属性に設定（カーソル同期用）
+    const activityKey = buildActivityKey(activity, this.activityIndex); // キーを生成
+    this.activityIndex++; // インデックスをインクリメント
+    card.dataset.activityKey = activityKey; // data属性にキーを保存
+
     // 行番号バッジを挿入
     if (this.lineIndex) {
-      const activityKey = buildActivityKey(activity, this.activityIndex); // キーを生成
-      this.activityIndex++; // インデックスをインクリメント
       const lineRange = this.lineIndex.keyToLines.get(activityKey); // 行範囲を取得
       if (lineRange) {
         const lineBadge = document.createElement('span'); // バッジ要素
         lineBadge.className = 'line-range-badge'; // スタイル用クラス
+        lineBadge.dataset.startLine = String(lineRange.startLine); // 開始行をdata属性に保存
+        lineBadge.dataset.endLine = String(lineRange.endLine); // 終了行をdata属性に保存
         lineBadge.textContent = lineRange.startLine === lineRange.endLine
           ? `L${lineRange.startLine}`                // 1行の場合
           : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
         lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
+        lineBadge.style.cursor = 'pointer'; // クリック可能カーソル
+        lineBadge.addEventListener('click', (e) => {
+          e.stopPropagation(); // カードのクリックイベント（detailPanel表示）を阻止
+          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // カーソル同期イベントを発火
+            bubbles: true, // バブリングでパネルまで伝播
+            detail: { activityKey, startLine: lineRange.startLine, endLine: lineRange.endLine }
+          }));
+        });
         header.appendChild(lineBadge);
       }
     }
