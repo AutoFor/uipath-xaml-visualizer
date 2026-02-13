@@ -40,6 +40,11 @@ export interface DiffResult {
 /**
  * 差分計算クラス
  */
+/** 差分表示から除外するプロパティのプレフィックス */
+const IGNORED_PROPERTY_PREFIXES = [
+  'sap:',          // UIレイアウトメタデータ（HintSize等）
+];
+
 export class DiffCalculator {
   /**
    * 2つのアクティビティツリーの差分を計算
@@ -144,8 +149,9 @@ export class DiffCalculator {
       ...Object.keys(after.properties)
     ]);
 
-    // 各プロパティを比較
+    // 各プロパティを比較（除外プレフィックスに該当するものはスキップ）
     allPropertyNames.forEach(propName => {
+      if (IGNORED_PROPERTY_PREFIXES.some(prefix => propName.startsWith(prefix))) return;
       const beforeValue = before.properties[propName];
       const afterValue = after.properties[propName];
 
