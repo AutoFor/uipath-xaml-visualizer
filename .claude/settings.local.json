@@ -26,7 +26,21 @@
       "Bash(npm run build:github:*)",
       "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-98-change-annotation-and-display-name log --all --oneline)",
       "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-98-change-annotation-and-display-name log issue-98-change-annotation-and-display-name -1 --format=fuller)",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Bash(gh issue view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-107-fix-build-output-and-auto-install worktree list:*)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer show 65ace87:CLAUDE.md)",
+      "Bash(npm -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-107-fix-build-output-and-auto-install ls)",
+      "Bash(cmd.exe /c \"echo %LOCALAPPDATA%\")",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-107-fix-build-output-and-auto-install branch --show-current)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-107-fix-build-output-and-auto-install log --oneline -10)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-107-fix-build-output-and-auto-install diff master...HEAD --name-only)",
+      "Bash(node -e \"const { execSync } = require\\(''child_process''\\); console.log\\(execSync\\(''git branch --show-current'', { encoding: ''utf8'' }\\).trim\\(\\)\\)\")",
+      "Bash(echo:*)",
+      "Bash(node -e \"const { execSync } = require\\(''child_process''\\); const raw = execSync\\(''cmd.exe /c echo %LOCALAPPDATA%'', { encoding: ''utf8'' }\\).trim\\(\\); const wslPath = execSync\\(''wslpath -u \"\"'' + raw + ''\"\"'', { encoding: ''utf8'' }\\).trim\\(\\); console.log\\(wslPath\\);\")",
+      "Bash(node -e:*)",
+      "Bash(npm run dev:github:*)"
     ],
     "deny": [],
     "ask": []

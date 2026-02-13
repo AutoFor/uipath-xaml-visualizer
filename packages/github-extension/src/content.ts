@@ -12,8 +12,9 @@ import '../../shared/styles/github-panel.css'; // パネル用スコープ付き
 
 // ========== ビルド情報（webpackのDefinePluginで注入） ==========
 
-declare const __BUILD_DATE__: string; // ビルド日時
-declare const __VERSION__: string;    // バージョン
+declare const __BUILD_DATE__: string;  // ビルド日時
+declare const __VERSION__: string;     // バージョン
+declare const __BRANCH_NAME__: string; // ビルド時のブランチ名
 
 // ========== 型定義 ==========
 
@@ -617,7 +618,7 @@ function createPanel(): HTMLElement {
 	const buildInfo = document.createElement('div'); // ビルド情報
 	const buildDate = new Date(__BUILD_DATE__); // ビルド日時をDateに変換
 	const formattedDate = buildDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // 日本時間でフォーマット
-	buildInfo.textContent = `v${__VERSION__} | Build: ${formattedDate}`; // バージョンとビルド日時
+	buildInfo.textContent = `v${__VERSION__} | ${__BRANCH_NAME__} | Build: ${formattedDate}`; // バージョン、ブランチ名、ビルド日時
 	buildInfo.className = 'panel-build-info'; // CSSクラスでスタイル適用
 
 	titleArea.appendChild(title);
