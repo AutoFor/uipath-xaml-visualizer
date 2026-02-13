@@ -2,19 +2,19 @@
 
 ## 📖 プロジェクト概要
 
-UiPath の XAML ワークフローファイルをビジュアル化するツールです。
+GitHub上のUiPath XAMLワークフローファイルを視覚的に表示するChrome拡張機能です。
 
 ### 主な機能
-- XAML ワークフローの構造を視覚的に表示
-- VSCode 拡張機能として動作
-- リアルタイムプレビュー
+- GitHub上のXAMLファイルをビジュアル表示
+- PRやコミット差分のビジュアル差分表示
+- Chrome拡張機能として動作
 
 ---
 
 ## 🛠️ 技術スタック
 
 - **言語**: TypeScript
-- **フレームワーク**: VSCode Extension API
+- **フレームワーク**: Chrome Extension API (Manifest V3)
 - **対応フォーマット**: UiPath XAML
 - **ビルドツール**: npm, webpack
 
@@ -23,20 +23,15 @@ UiPath の XAML ワークフローファイルをビジュアル化するツー�
 ## 📁 ファイル構造
 
 ```
-uipath-github-xaml-visualizer/
-├── docs/                    # ドキュメント
-├── src/                     # ソースコード
-│   ├── shared/             # 共通ライブラリ
-│   ├── extension/          # VSCode拡張機能
-│   │   ├── extension.ts   # エントリーポイント
-│   │   └── preview/       # プレビュー機能
-│   └── server/            # プレビューサーバー
-├── test/                   # テストファイル
-│   └── projects/          # テスト用XAMLプロジェクト
-├── .claude/               # Claude Code 設定
-├── CLAUDE.md             # このファイル
-├── package.json          # npm設定
-└── README.md             # プロジェクト説明
+uipath-xaml-visualizer/
+├── packages/
+│   ├── shared/                # 共通ライブラリ（パーサー・レンダラー）
+│   └── github-extension/      # GitHub Chrome拡張機能
+├── test/                      # テストファイル
+├── .claude/                   # Claude Code 設定
+├── CLAUDE.md                  # このファイル
+├── package.json               # ルートパッケージ（モノレポ）
+└── README.md                  # プロジェクト説明
 ```
 
 ---
