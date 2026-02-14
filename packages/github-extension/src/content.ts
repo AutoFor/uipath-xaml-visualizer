@@ -516,7 +516,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-deleted-file">削除されたファイル</div>'; // ラベル
+			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
