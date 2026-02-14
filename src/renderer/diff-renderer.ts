@@ -140,7 +140,7 @@ export class DiffRenderer {
 
     const header = document.createElement('div');
     header.className = 'screenshot-header';
-    header.textContent = '📷 Screenshot 変更:';
+    header.textContent = '📷 Screenshot Changed:';
 
     const compareContainer = document.createElement('div');
     compareContainer.className = 'compare-container';
@@ -280,9 +280,9 @@ export class DiffRenderer {
    */
   private getDiffBadge(diffType: DiffType): string {
     const badgeMap: Record<DiffType, string> = {
-      [DiffType.ADDED]: '<span class="badge badge-added">🆕 追加</span>',
-      [DiffType.REMOVED]: '<span class="badge badge-removed">🗑️ 削除</span>',
-      [DiffType.MODIFIED]: '<span class="badge badge-modified">🟡 変更</span>'
+      [DiffType.ADDED]: '<span class="badge badge-added">🆕 Added</span>',
+      [DiffType.REMOVED]: '<span class="badge badge-removed">🗑️ Removed</span>',
+      [DiffType.MODIFIED]: '<span class="badge badge-modified">🟡 Modified</span>'
     };
 
     return badgeMap[diffType];

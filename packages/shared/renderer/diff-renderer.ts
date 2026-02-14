@@ -197,7 +197,7 @@ export class DiffRenderer {
     const btn = document.createElement('span'); // ボタン要素
     btn.className = 'add-comment-btn';
     btn.textContent = '[+]'; // ボタンテキスト
-    btn.title = 'コメントを追加'; // ツールチップ
+    btn.title = 'Add comment'; // ツールチップ
     btn.addEventListener('click', (e) => {
       e.stopPropagation(); // イベント伝播停止
       this.showCommentForm(activityKey, card); // コメント入力フォームを表示
@@ -480,7 +480,7 @@ export class DiffRenderer {
 
     const header = document.createElement('div');
     header.className = 'screenshot-header';
-    header.textContent = 'Screenshot 変更:';
+    header.textContent = 'Screenshot Changed:';
 
     const compareContainer = document.createElement('div');
     compareContainer.className = 'compare-container';
@@ -620,9 +620,9 @@ export class DiffRenderer {
    */
   private getDiffBadge(diffType: DiffType): string {
     const badgeMap: Record<DiffType, string> = {
-      [DiffType.ADDED]: '<span class="badge badge-added">+ 追加</span>',
-      [DiffType.REMOVED]: '<span class="badge badge-removed">- 削除</span>',
-      [DiffType.MODIFIED]: '<span class="badge badge-modified">~ 変更</span>'
+      [DiffType.ADDED]: '<span class="badge badge-added">+ Added</span>',
+      [DiffType.REMOVED]: '<span class="badge badge-removed">- Removed</span>',
+      [DiffType.MODIFIED]: '<span class="badge badge-modified">~ Modified</span>'
     };
 
     return badgeMap[diffType];
