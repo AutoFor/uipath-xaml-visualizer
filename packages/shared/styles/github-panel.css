@@ -691,3 +691,136 @@
   background-color: var(--diff-modified-bg); /* 変更時の背景色 */
   transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s; /* スムーズなトランジション */
 }
+
+/* ========== 検索バー ========== */
+
+/* 検索バーコンテナ */
+#uipath-visualizer-panel .panel-search-bar {
+  display: flex;                            /* 横並びレイアウト */
+  align-items: center;                      /* 縦方向中央揃え */
+  gap: 6px;                                 /* 要素間の間隔 */
+  padding: 8px 20px;                        /* パディング */
+  border-bottom: 1px solid var(--panel-border); /* 下線 */
+  flex-shrink: 0;                           /* 縮小しない */
+}
+
+/* 検索入力フィールド */
+#uipath-visualizer-panel .panel-search-input {
+  flex: 1;                                  /* 残りの幅を占める */
+  padding: 4px 8px;                         /* パディング */
+  border: 1px solid var(--panel-border);    /* ボーダー */
+  border-radius: 4px;                       /* 角丸 */
+  background-color: var(--panel-bg);        /* 背景色 */
+  color: var(--panel-text-primary);         /* テキスト色 */
+  font-size: 13px;                          /* フォントサイズ */
+  font-family: inherit;                     /* フォント継承 */
+  outline: none;                            /* デフォルトアウトライン除去 */
+}
+
+#uipath-visualizer-panel .panel-search-input:focus {
+  border-color: var(--panel-accent);        /* フォーカス時のボーダー色 */
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.2); /* フォーカスシャドウ */
+}
+
+#uipath-visualizer-panel .panel-search-input::placeholder {
+  color: var(--panel-text-muted);           /* プレースホルダー色 */
+}
+
+/* 一致件数表示 */
+#uipath-visualizer-panel .panel-search-count {
+  font-size: 12px;                          /* フォントサイズ */
+  color: var(--panel-text-muted);           /* 控えめテキスト色 */
+  white-space: nowrap;                      /* 折り返さない */
+  min-width: 50px;                          /* 最小幅 */
+  text-align: center;                       /* 中央揃え */
+}
+
+/* ナビゲーションボタン（▲/▼） */
+#uipath-visualizer-panel .panel-search-nav-btn {
+  background: none;                         /* 背景なし */
+  border: 1px solid var(--panel-border);    /* ボーダー */
+  border-radius: 4px;                       /* 角丸 */
+  color: var(--panel-text-secondary);       /* テキスト色 */
+  cursor: pointer;                          /* クリック可能カーソル */
+  padding: 2px 6px;                         /* パディング */
+  font-size: 12px;                          /* フォントサイズ */
+  line-height: 1;                           /* 行高 */
+}
+
+#uipath-visualizer-panel .panel-search-nav-btn:hover {
+  background-color: var(--panel-hover-bg);  /* ホバー背景 */
+  border-color: var(--panel-accent);        /* ホバーボーダー */
+  color: var(--panel-accent);               /* ホバーテキスト色 */
+}
+
+#uipath-visualizer-panel .panel-search-nav-btn:disabled {
+  opacity: 0.4;                             /* 無効時の透明度 */
+  cursor: not-allowed;                      /* 無効カーソル */
+}
+
+/* クリアボタン（✕） */
+#uipath-visualizer-panel .panel-search-clear-btn {
+  background: none;                         /* 背景なし */
+  border: none;                             /* ボーダーなし */
+  color: var(--panel-text-muted);           /* 控えめテキスト色 */
+  cursor: pointer;                          /* クリック可能カーソル */
+  padding: 2px 4px;                         /* パディング */
+  font-size: 14px;                          /* フォントサイズ */
+  line-height: 1;                           /* 行高 */
+}
+
+#uipath-visualizer-panel .panel-search-clear-btn:hover {
+  color: var(--panel-text-primary);         /* ホバーテキスト色 */
+}
+
+/* ========== 検索結果ハイライト ========== */
+
+/* 一致カードのハイライト */
+#uipath-visualizer-panel .activity-card.search-match {
+  border-color: var(--panel-accent);        /* アクセント色ボーダー */
+}
+
+/* 現在フォーカス中の一致カード */
+#uipath-visualizer-panel .activity-card.search-current {
+  border-color: var(--panel-accent);        /* アクセント色ボーダー */
+  box-shadow: 0 0 0 2px var(--panel-accent), 0 2px 8px rgba(0, 120, 212, 0.3); /* 強調シャドウ */
+  background-color: var(--diff-modified-bg); /* 強調背景色 */
+}
+
+/* 非一致カードのディム表示 */
+#uipath-visualizer-panel .activity-card.search-dimmed {
+  opacity: 0.35;                            /* 薄く表示 */
+}
+
+/* テキスト内の一致部分ハイライト（<mark>要素） */
+#uipath-visualizer-panel .search-highlight {
+  background-color: rgba(255, 213, 0, 0.4); /* 黄色ハイライト */
+  border-radius: 2px;                       /* 角丸 */
+  padding: 0 1px;                           /* パディング */
+}
+
+/* 現在フォーカス中のテキストハイライト */
+#uipath-visualizer-panel .search-highlight-current {
+  background-color: rgba(255, 165, 0, 0.6); /* オレンジハイライト（強調） */
+  border-radius: 2px;                       /* 角丸 */
+  padding: 0 1px;                           /* パディング */
+}
+
+/* ダークモード: 検索ハイライト */
+[data-color-mode="dark"] #uipath-visualizer-panel .search-highlight {
+  background-color: rgba(255, 213, 0, 0.3); /* ダーク用黄色ハイライト */
+}
+
+[data-color-mode="dark"] #uipath-visualizer-panel .search-highlight-current {
+  background-color: rgba(255, 165, 0, 0.5); /* ダーク用オレンジハイライト */
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-color-mode="auto"] #uipath-visualizer-panel .search-highlight {
+    background-color: rgba(255, 213, 0, 0.3); /* Auto ダーク用黄色ハイライト */
+  }
+
+  [data-color-mode="auto"] #uipath-visualizer-panel .search-highlight-current {
+    background-color: rgba(255, 165, 0, 0.5); /* Auto ダーク用オレンジハイライト */
+  }
+}
