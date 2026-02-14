@@ -64,44 +64,25 @@ export async function fetchReviewComments(
   while (true) {
     const url = `https://api.github.com/repos/${pr.owner}/${pr.repo}/pulls/${pr.prNumber}/comments?per_page=${perPage}&page=${page}`; // API URL
 
-    let response: Response | null = null; // レスポンス
-
-    // 方法1: credentials: 'include'（Chrome拡張のhost_permissionsでCookie送信）
+    // credentials なしで fetch（GitHub API は Access-Control-Allow-Origin: * のため credentials 付きは CORS エラー）
+    let response: Response; // レスポンス
     try {
       response = await fetch(url, {
-        credentials: 'include', // Cookie付きリクエスト
         headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
       });
     } catch (e) {
-      console.warn('UiPath Visualizer: コメント取得エラー (include):', e);
+      console.warn('UiPath Visualizer: コメント取得エラー:', e);
+      break; // ネットワークエラー
     }
 
-    // 方法2: credentials: 'same-origin' にフォールバック
-    if (!response || !response.ok) {
-      try {
-        response = await fetch(url, {
-          credentials: 'same-origin', // 同一オリジンCookie送信
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
-      } catch (e) {
-        console.warn('UiPath Visualizer: コメント取得エラー (same-origin):', e);
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) {
+        console.warn(`UiPath Visualizer: コメント取得失敗 (${response.status}): プライベートリポジトリの場合は認証が必要です`);
+      } else if (response.status === 404) {
+        console.warn('UiPath Visualizer: コメント取得失敗 (404): PRが見つかりません');
+      } else {
+        console.warn(`UiPath Visualizer: コメント取得失敗: status=${response.status}`);
       }
-    }
-
-    // 方法3: Cookie なしフォールバック（パブリックリポジトリ用）
-    if (!response || !response.ok) {
-      try {
-        response = await fetch(url, {
-          headers: { 'Accept': 'application/vnd.github.v3+json' }
-        });
-      } catch (e) {
-        console.warn('UiPath Visualizer: コメント取得エラー (no-auth):', e);
-        break; // 全手段失敗
-      }
-    }
-
-    if (!response || !response.ok) {
-      console.warn(`UiPath Visualizer: コメント取得失敗: status=${response?.status}`);
       break;
     }
 
@@ -180,30 +161,7 @@ export async function postReviewComment(
     body.start_side = params.side; // 開始行のdiff側
   }
 
-  // 方法1: credentials: 'include' でAPI経由投稿
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      credentials: 'include', // Cookie付きリクエスト
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body) // ボディをJSON文字列化
-    });
-
-    if (response.ok) {
-      const comment: ReviewComment = await response.json(); // レスポンスをパース
-      console.log('UiPath Visualizer: コメント投稿成功 (API)');
-      return comment;
-    }
-
-    console.warn(`UiPath Visualizer: コメント投稿失敗 (API): status=${response.status}`);
-  } catch (e) {
-    console.warn('UiPath Visualizer: コメント投稿エラー (API):', e);
-  }
-
-  // 方法2: GitHub DOM内のCSRFトークンを使った同一オリジンPOSTにフォールバック
+  // 方法1: GitHub DOM内のCSRFトークンを使った同一オリジンPOST（github.com 上で動作、プライベートリポジトリ対応）
   try {
     const csrfToken = extractCsrfToken(); // CSRFトークンを取得
     if (csrfToken) {
@@ -229,8 +187,8 @@ export async function postReviewComment(
       });
 
       if (response.ok) {
-        console.log('UiPath Visualizer: コメント投稿成功 (CSRF fallback)');
-        // フォールバックではレスポンスがHTMLのため、最低限の情報で返す
+        console.log('UiPath Visualizer: コメント投稿成功 (CSRF)');
+        // レスポンスがHTMLのため、最低限の情報で返す
         return {
           id: Date.now(), // 仮ID
           body: params.body,
@@ -244,9 +202,33 @@ export async function postReviewComment(
           html_url: ''
         };
       }
+
+      console.warn(`UiPath Visualizer: コメント投稿失敗 (CSRF): status=${response.status}`);
     }
   } catch (e) {
-    console.warn('UiPath Visualizer: コメント投稿エラー (CSRF fallback):', e);
+    console.warn('UiPath Visualizer: コメント投稿エラー (CSRF):', e);
+  }
+
+  // 方法2: API（credentials なし）にフォールバック（パブリックリポジトリ用）
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body) // ボディをJSON文字列化
+    });
+
+    if (response.ok) {
+      const comment: ReviewComment = await response.json(); // レスポンスをパース
+      console.log('UiPath Visualizer: コメント投稿成功 (API)');
+      return comment;
+    }
+
+    console.warn(`UiPath Visualizer: コメント投稿失敗 (API): status=${response.status}`);
+  } catch (e) {
+    console.warn('UiPath Visualizer: コメント投稿エラー (API):', e);
   }
 
   console.error('UiPath Visualizer: コメント投稿失敗 - 全手段で失敗');
