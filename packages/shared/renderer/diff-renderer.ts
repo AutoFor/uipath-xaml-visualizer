@@ -91,16 +91,7 @@ export class DiffRenderer {
     const title = document.createElement('span');
     title.className = 'activity-title';
 
-    // DisplayName変更がある場合は旧名→新名を表示
-    const displayNameChange = (diffActivity.diffType === DiffType.MODIFIED)
-      ? diffActivity.changes?.find(c => c.propertyName === 'DisplayName')
-      : undefined;
-
-    if (displayNameChange) {
-      title.innerHTML = `${icon} ${diffActivity.activity.type}: ${displayNameChange.before} → ${displayNameChange.after} ${badge}`;
-    } else {
-      title.innerHTML = `${icon} ${diffActivity.activity.type}: ${diffActivity.activity.displayName} ${badge}`;
-    }
+    title.innerHTML = `${icon} ${diffActivity.activity.type}: ${diffActivity.activity.displayName} ${badge}`;
 
     header.appendChild(title);
 
