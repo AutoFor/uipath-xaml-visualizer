@@ -41,7 +41,10 @@
       "Bash(node -e \"const { execSync } = require\\(''child_process''\\); const raw = execSync\\(''cmd.exe /c echo %LOCALAPPDATA%'', { encoding: ''utf8'' }\\).trim\\(\\); const wslPath = execSync\\(''wslpath -u \"\"'' + raw + ''\"\"'', { encoding: ''utf8'' }\\).trim\\(\\); console.log\\(wslPath\\);\")",
       "Bash(node -e:*)",
       "Bash(npm run dev:github:*)",
-      "Skill(dev-build)"
+      "Skill(dev-build)",
+      "Bash(gh pr review:*)",
+      "Bash(gh repo view:*)",
+      "Skill(github-finish)"
     ],
     "deny": [],
     "ask": []

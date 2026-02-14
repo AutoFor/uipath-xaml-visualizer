@@ -37,6 +37,9 @@ let cachedPrRefs: PrRefs | null = null; // PR refs キャッシュ（同一PR内
 let lastUrl: string = ''; // 前回のURL（URL変更検出用）
 let debounceTimer: ReturnType<typeof setTimeout> | null = null; // デバウンスタイマー
 let syncAbortController: AbortController | null = null; // カーソル同期イベントリスナーの管理用
+let searchMatches: HTMLElement[] = []; // 検索一致カードのリスト
+let searchCurrentIndex: number = -1; // 現在フォーカス中の一致インデックス
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
 
 // ========== ビジュアライザーコンテキスト（コメント連携用） ==========
 
@@ -747,6 +750,264 @@ function setupCursorSync(
 	}
 }
 
+// ========== 検索機能 ==========
+
+/**
+ * テキストノード内の一致部分を <mark> で囲んでハイライト
+ */
+function highlightTextInElement(el: HTMLElement, query: string): void {
+	const lowerQuery = query.toLowerCase(); // 小文字化したクエリ
+	const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); // テキストノードを走査
+	const textNodes: Text[] = []; // テキストノードリスト
+	while (walker.nextNode()) {
+		textNodes.push(walker.currentNode as Text); // テキストノードを収集
+	}
+	for (const node of textNodes) {
+		const text = node.textContent || ''; // テキスト内容
+		const lowerText = text.toLowerCase(); // 小文字化
+		const idx = lowerText.indexOf(lowerQuery); // 一致位置
+		if (idx === -1) continue; // 一致なしならスキップ
+
+		const before = text.substring(0, idx); // 一致前のテキスト
+		const match = text.substring(idx, idx + query.length); // 一致テキスト
+		const after = text.substring(idx + query.length); // 一致後のテキスト
+
+		const mark = document.createElement('mark'); // <mark> 要素
+		mark.className = 'search-highlight'; // ハイライトクラス
+		mark.textContent = match; // 一致テキストを設定
+
+		const parent = node.parentNode; // 親ノード
+		if (!parent) continue;
+		if (before) parent.insertBefore(document.createTextNode(before), node); // 一致前テキスト
+		parent.insertBefore(mark, node); // <mark> 要素を挿入
+		if (after) parent.insertBefore(document.createTextNode(after), node); // 一致後テキスト
+		parent.removeChild(node); // 元のテキストノードを削除
+	}
+}
+
+/**
+ * 検索ハイライト（<mark>）をテキストノードに戻して結合
+ */
+function clearSearchHighlights(): void {
+	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	if (!panel) return;
+
+	// <mark> 要素をテキストノードに戻す
+	panel.querySelectorAll('mark.search-highlight, mark.search-highlight-current').forEach(mark => {
+		const parent = mark.parentNode; // 親ノード
+		if (!parent) return;
+		const textNode = document.createTextNode(mark.textContent || ''); // テキストノードに変換
+		parent.replaceChild(textNode, mark); // 置換
+		parent.normalize(); // 隣接テキストノードを結合
+	});
+
+	// 検索関連クラスを全除去
+	panel.querySelectorAll('.activity-card.search-match, .activity-card.search-current, .activity-card.search-dimmed').forEach(el => {
+		el.classList.remove('search-match', 'search-current', 'search-dimmed'); // クラス除去
+	});
+}
+
+/**
+ * 検索状態を完全にクリア
+ */
+function clearSearch(input: HTMLInputElement, countSpan: HTMLElement, prevBtn: HTMLButtonElement, nextBtn: HTMLButtonElement): void {
+	clearSearchHighlights(); // ハイライトを除去
+	searchMatches = []; // 一致リストをクリア
+	searchCurrentIndex = -1; // インデックスをリセット
+	input.value = ''; // 入力をクリア
+	countSpan.textContent = ''; // カウント表示をクリア
+	prevBtn.disabled = true; // ナビボタンを無効化
+	nextBtn.disabled = true; // ナビボタンを無効化
+}
+
+/**
+ * 現在の一致にフォーカスを更新（スクロール + カウント表示）
+ */
+function updateSearchFocus(countSpan: HTMLElement): void {
+	// 前の search-current を解除
+	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	if (panel) {
+		panel.querySelectorAll('.activity-card.search-current').forEach(el => {
+			el.classList.remove('search-current'); // 前のフォーカスを解除
+		});
+		panel.querySelectorAll('mark.search-highlight-current').forEach(mark => {
+			mark.className = 'search-highlight'; // テキストハイライトも通常に戻す
+		});
+	}
+
+	if (searchMatches.length === 0 || searchCurrentIndex < 0) {
+		countSpan.textContent = ''; // カウント表示をクリア
+		return;
+	}
+
+	const current = searchMatches[searchCurrentIndex]; // 現在の一致カード
+	current.classList.add('search-current'); // フォーカスクラスを追加
+	current.scrollIntoView({ behavior: 'smooth', block: 'center' }); // スクロール
+
+	// 現在カード内の <mark> を強調
+	const mark = current.querySelector('.activity-title mark.search-highlight'); // タイトル内のmark
+	if (mark) mark.className = 'search-highlight-current'; // 強調クラスに変更
+
+	countSpan.textContent = `${searchCurrentIndex + 1}/${searchMatches.length} 件`; // カウント表示を更新
+}
+
+/**
+ * 一致リスト内を前/次に移動（循環）
+ */
+function navigateSearch(direction: 'prev' | 'next', countSpan: HTMLElement): void {
+	if (searchMatches.length === 0) return; // 一致なしなら何もしない
+	if (direction === 'next') {
+		searchCurrentIndex = (searchCurrentIndex + 1) % searchMatches.length; // 次へ（循環）
+	} else {
+		searchCurrentIndex = (searchCurrentIndex - 1 + searchMatches.length) % searchMatches.length; // 前へ（循環）
+	}
+	updateSearchFocus(countSpan); // フォーカスを更新
+}
+
+/**
+ * 検索を実行（パネル内の全 .activity-card を走査）
+ */
+function performSearch(query: string, countSpan: HTMLElement, prevBtn: HTMLButtonElement, nextBtn: HTMLButtonElement): void {
+	clearSearchHighlights(); // 前の検索結果をクリア
+	searchMatches = []; // 一致リストをリセット
+	searchCurrentIndex = -1; // インデックスをリセット
+
+	if (!query.trim()) {
+		countSpan.textContent = ''; // カウント表示をクリア
+		prevBtn.disabled = true; // ナビボタンを無効化
+		nextBtn.disabled = true; // ナビボタンを無効化
+		return;
+	}
+
+	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	if (!panel) return;
+
+	const lowerQuery = query.toLowerCase(); // 小文字化したクエリ
+	const allCards = Array.from(panel.querySelectorAll('.activity-card')) as HTMLElement[]; // 全カード
+
+	// 各カードの一致/非一致を判定
+	const matchedCards = new Set<HTMLElement>(); // 一致カードセット
+	for (const card of allCards) {
+		const titleEl = card.querySelector(':scope > .activity-header > .activity-title') as HTMLElement; // タイトル要素（直接の子のみ）
+		if (!titleEl) continue;
+		const titleText = titleEl.textContent || ''; // タイトルテキスト
+		if (titleText.toLowerCase().includes(lowerQuery)) {
+			matchedCards.add(card); // 一致カードに追加
+		}
+	}
+
+	// 一致カードの祖先カードもディム解除対象に追加
+	const undimmedCards = new Set<HTMLElement>(matchedCards); // ディム解除カードセット
+	for (const card of matchedCards) {
+		let parent = card.parentElement; // 親要素を取得
+		while (parent) {
+			const ancestorCard = parent.closest('.activity-card') as HTMLElement; // 祖先カードを検索
+			if (ancestorCard && ancestorCard !== card) {
+				undimmedCards.add(ancestorCard); // 祖先カードをディム解除
+				parent = ancestorCard.parentElement; // さらに上の祖先を検索
+			} else {
+				break; // パネル外に出たら終了
+			}
+		}
+	}
+
+	// クラスを付与
+	for (const card of allCards) {
+		if (matchedCards.has(card)) {
+			card.classList.add('search-match'); // 一致カード
+			searchMatches.push(card); // 一致リストに追加
+			// タイトル内のテキストをハイライト
+			const titleEl = card.querySelector(':scope > .activity-header > .activity-title') as HTMLElement;
+			if (titleEl) highlightTextInElement(titleEl, query); // テキストハイライト
+		} else if (!undimmedCards.has(card)) {
+			card.classList.add('search-dimmed'); // 非一致かつ祖先でもないカード
+		}
+	}
+
+	// ナビボタンの有効/無効
+	const hasMatches = searchMatches.length > 0; // 一致があるか
+	prevBtn.disabled = !hasMatches; // 前ボタン
+	nextBtn.disabled = !hasMatches; // 次ボタン
+
+	if (hasMatches) {
+		searchCurrentIndex = 0; // 最初の一致にフォーカス
+		updateSearchFocus(countSpan); // フォーカスを更新
+	} else {
+		countSpan.textContent = '0 件'; // 一致なし表示
+	}
+}
+
+/**
+ * 検索バーを作成
+ */
+function createSearchBar(): HTMLElement {
+	const bar = document.createElement('div'); // 検索バーコンテナ
+	bar.className = 'panel-search-bar'; // CSSクラス
+
+	const input = document.createElement('input'); // 検索入力フィールド
+	input.type = 'text'; // テキスト入力
+	input.className = 'panel-search-input'; // CSSクラス
+	input.placeholder = 'DisplayName で検索...'; // プレースホルダー
+
+	const countSpan = document.createElement('span'); // 一致件数表示
+	countSpan.className = 'panel-search-count'; // CSSクラス
+
+	const prevBtn = document.createElement('button'); // 前ボタン
+	prevBtn.className = 'panel-search-nav-btn'; // CSSクラス
+	prevBtn.textContent = '\u25B2'; // ▲
+	prevBtn.title = '前の一致 (Shift+Enter)'; // ツールチップ
+	prevBtn.disabled = true; // 初期状態は無効
+
+	const nextBtn = document.createElement('button'); // 次ボタン
+	nextBtn.className = 'panel-search-nav-btn'; // CSSクラス
+	nextBtn.textContent = '\u25BC'; // ▼
+	nextBtn.title = '次の一致 (Enter)'; // ツールチップ
+	nextBtn.disabled = true; // 初期状態は無効
+
+	const clearBtn = document.createElement('button'); // クリアボタン
+	clearBtn.className = 'panel-search-clear-btn'; // CSSクラス
+	clearBtn.textContent = '\u2715'; // ✕
+	clearBtn.title = 'クリア (Escape)'; // ツールチップ
+
+	// 入力イベント: 250ms デバウンスで検索実行
+	input.addEventListener('input', () => {
+		if (searchDebounceTimer) clearTimeout(searchDebounceTimer); // 前のタイマーをクリア
+		searchDebounceTimer = setTimeout(() => {
+			performSearch(input.value, countSpan, prevBtn, nextBtn); // 検索実行
+		}, 250); // 250msデバウンス
+	});
+
+	// キーボードイベント: Enter/Shift+Enter で前/次ナビゲーション、Escape でクリア
+	input.addEventListener('keydown', (e: KeyboardEvent) => {
+		if (e.key === 'Enter') {
+			e.preventDefault(); // デフォルト動作を防止
+			if (e.shiftKey) {
+				navigateSearch('prev', countSpan); // Shift+Enter: 前へ
+			} else {
+				navigateSearch('next', countSpan); // Enter: 次へ
+			}
+		} else if (e.key === 'Escape') {
+			clearSearch(input, countSpan, prevBtn, nextBtn); // Escape: クリア
+			input.blur(); // フォーカスを外す
+		}
+	});
+
+	// ナビボタンクリック
+	prevBtn.addEventListener('click', () => navigateSearch('prev', countSpan)); // 前へ
+	nextBtn.addEventListener('click', () => navigateSearch('next', countSpan)); // 次へ
+
+	// クリアボタンクリック
+	clearBtn.addEventListener('click', () => clearSearch(input, countSpan, prevBtn, nextBtn)); // クリア
+
+	bar.appendChild(input); // 入力フィールド追加
+	bar.appendChild(countSpan); // カウント表示追加
+	bar.appendChild(prevBtn); // 前ボタン追加
+	bar.appendChild(nextBtn); // 次ボタン追加
+	bar.appendChild(clearBtn); // クリアボタン追加
+
+	return bar;
+}
+
 // ========== パネルUI ==========
 
 /**
@@ -782,8 +1043,40 @@ function createPanel(): HTMLElement {
 		clearGithubHighlights(); // GitHub側ハイライトをクリア
 		syncAbortController?.abort(); // カーソル同期リスナーを全解除
 		syncAbortController = null; // 参照をクリア
+		searchMatches = []; // 検索一致リストをクリア
+		searchCurrentIndex = -1; // 検索インデックスをリセット
 		panel.remove(); // パネルを削除
 	});
+
+	/**
+	 * パネル関連のCSSルールを抽出し、CSS変数を実値に解決して返す
+	 */
+	function extractPanelCss(): string {
+		const rules: string[] = []; // 収集したCSSルール
+		const panel = document.getElementById('uipath-visualizer-panel'); // CSS変数解決用のパネル要素
+		const computedStyle = panel ? getComputedStyle(panel) : null; // パネルの計算済みスタイル
+
+		for (const sheet of Array.from(document.styleSheets)) { // 全スタイルシートを走査
+			let cssRules: CSSRuleList;
+			try {
+				cssRules = sheet.cssRules; // ルール一覧を取得
+			} catch {
+				continue; // クロスオリジンのスタイルシートはスキップ
+			}
+			for (const rule of Array.from(cssRules)) { // 各ルールを走査
+				if (rule.cssText.includes('uipath-visualizer-panel')) { // パネル関連のルールのみ収集
+					let text = rule.cssText; // ルールテキスト
+					if (computedStyle) { // CSS変数を実値に解決
+						text = text.replace(/var\(--([^)]+)\)/g, (_match, varName) => {
+							return computedStyle.getPropertyValue(`--${varName}`).trim() || _match; // 変数値を取得、なければ元のまま
+						});
+					}
+					rules.push(text); // 解決済みルールを追加
+				}
+			}
+		}
+		return rules.join('\n'); // 改行区切りで結合
+	}
 
 	// Copy HTMLボタン（デバッグ用）
 	const copyHtmlButton = document.createElement('button'); // コピーボタン
@@ -791,7 +1084,9 @@ function createPanel(): HTMLElement {
 	copyHtmlButton.className = 'btn btn-sm panel-copy-btn'; // スタイル適用
 	copyHtmlButton.addEventListener('click', () => { // クリックイベント
 		const originalText = copyHtmlButton.textContent; // 元のテキストを保存
-		navigator.clipboard.writeText(content.innerHTML) // コンテンツのHTMLをクリップボードにコピー
+		const css = extractPanelCss(); // パネル関連CSSを抽出
+		const fullHtml = `<style>\n${css}\n</style>\n<div id="uipath-visualizer-panel"><div class="panel-content">\n${content.innerHTML}\n</div></div>`; // CSSとパネル構造を含む完全なHTML
+		navigator.clipboard.writeText(fullHtml) // CSS付きHTMLをクリップボードにコピー
 			.then(() => {
 				copyHtmlButton.textContent = 'Copied!'; // 成功表示
 				copyHtmlButton.classList.add('panel-copy-btn-success'); // 成功スタイル
@@ -822,6 +1117,8 @@ function createPanel(): HTMLElement {
 	content.className = 'panel-content'; // CSSクラスでスタイル適用
 
 	panel.appendChild(header);
+	const searchBar = createSearchBar(); // 検索バーを作成
+	panel.appendChild(searchBar); // 検索バーを追加
 	panel.appendChild(content);
 
 	return panel;
@@ -933,6 +1230,19 @@ function init(): void {
 			break; // その他のページでは何もしない
 	}
 }
+
+// Ctrl+F (Mac: Cmd+F) で検索入力にフォーカス
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+		const panel = document.getElementById('uipath-visualizer-panel'); // パネルの存在チェック
+		if (!panel) return; // パネルがなければブラウザデフォルトに任せる
+		const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // 検索入力要素
+		if (!searchInput) return;
+		e.preventDefault(); // ブラウザデフォルトの検索を抑止
+		searchInput.focus(); // フォーカスを設定
+		searchInput.select(); // テキストを全選択
+	}
+});
 
 // ページロード時に初期化
 if (document.readyState === 'loading') {
