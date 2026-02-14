@@ -86,11 +86,6 @@ export class DiffRenderer {
     const changesDiv = document.createElement('div');
     changesDiv.className = 'property-changes';
 
-    const header = document.createElement('div');
-    header.className = 'changes-header';
-    header.textContent = `プロパティ変更 (${changes.length})`;
-    changesDiv.appendChild(header);
-
     const changesList = document.createElement('div');
     changesList.className = 'property-diff-detail';
 
