@@ -44,7 +44,9 @@
       "Skill(dev-build)",
       "Bash(gh pr review:*)",
       "Bash(gh repo view:*)",
-      "Skill(github-finish)"
+      "Skill(github-finish)",
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
