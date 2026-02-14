@@ -1048,13 +1048,45 @@ function createPanel(): HTMLElement {
 		panel.remove(); // パネルを削除
 	});
 
+	/**
+	 * パネル関連のCSSルールを抽出し、CSS変数を実値に解決して返す
+	 */
+	function extractPanelCss(): string {
+		const rules: string[] = []; // 収集したCSSルール
+		const panel = document.getElementById('uipath-visualizer-panel'); // CSS変数解決用のパネル要素
+		const computedStyle = panel ? getComputedStyle(panel) : null; // パネルの計算済みスタイル
+
+		for (const sheet of Array.from(document.styleSheets)) { // 全スタイルシートを走査
+			let cssRules: CSSRuleList;
+			try {
+				cssRules = sheet.cssRules; // ルール一覧を取得
+			} catch {
+				continue; // クロスオリジンのスタイルシートはスキップ
+			}
+			for (const rule of Array.from(cssRules)) { // 各ルールを走査
+				if (rule.cssText.includes('uipath-visualizer-panel')) { // パネル関連のルールのみ収集
+					let text = rule.cssText; // ルールテキスト
+					if (computedStyle) { // CSS変数を実値に解決
+						text = text.replace(/var\(--([^)]+)\)/g, (_match, varName) => {
+							return computedStyle.getPropertyValue(`--${varName}`).trim() || _match; // 変数値を取得、なければ元のまま
+						});
+					}
+					rules.push(text); // 解決済みルールを追加
+				}
+			}
+		}
+		return rules.join('\n'); // 改行区切りで結合
+	}
+
 	// Copy HTMLボタン（デバッグ用）
 	const copyHtmlButton = document.createElement('button'); // コピーボタン
 	copyHtmlButton.textContent = 'Copy HTML'; // ボタンテキスト
 	copyHtmlButton.className = 'btn btn-sm panel-copy-btn'; // スタイル適用
 	copyHtmlButton.addEventListener('click', () => { // クリックイベント
 		const originalText = copyHtmlButton.textContent; // 元のテキストを保存
-		navigator.clipboard.writeText(content.innerHTML) // コンテンツのHTMLをクリップボードにコピー
+		const css = extractPanelCss(); // パネル関連CSSを抽出
+		const fullHtml = `<style>\n${css}\n</style>\n<div id="uipath-visualizer-panel"><div class="panel-content">\n${content.innerHTML}\n</div></div>`; // CSSとパネル構造を含む完全なHTML
+		navigator.clipboard.writeText(fullHtml) // CSS付きHTMLをクリップボードにコピー
 			.then(() => {
 				copyHtmlButton.textContent = 'Copied!'; // 成功表示
 				copyHtmlButton.classList.add('panel-copy-btn-success'); // 成功スタイル
