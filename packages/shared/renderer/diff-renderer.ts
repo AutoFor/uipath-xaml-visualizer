@@ -91,7 +91,7 @@ export class DiffRenderer {
     const title = document.createElement('span');
     title.className = 'activity-title';
 
-    title.innerHTML = `${icon} ${diffActivity.activity.type}: ${diffActivity.activity.displayName} ${badge}`;
+    title.innerHTML = `${diffActivity.activity.type}: ${diffActivity.activity.displayName} ${badge}`;
 
     header.appendChild(title);
 
