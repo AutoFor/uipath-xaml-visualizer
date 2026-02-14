@@ -46,7 +46,9 @@
       "Bash(gh repo view:*)",
       "Skill(github-finish)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git log:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": [],
     "ask": []
