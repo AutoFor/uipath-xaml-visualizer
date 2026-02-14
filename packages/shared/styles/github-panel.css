@@ -324,17 +324,15 @@
 
 #uipath-visualizer-panel .diff-item.diff-added {
   border-left: 4px solid var(--diff-added-fg); /* 緑のボーダー */
-  background-color: var(--diff-added-bg);   /* 薄い緑の背景 */
 }
 
 #uipath-visualizer-panel .diff-item.diff-removed {
   border-left: 4px solid var(--diff-removed-fg); /* 赤のボーダー */
-  background-color: var(--diff-removed-bg); /* 薄い赤の背景 */
 }
 
 #uipath-visualizer-panel .diff-item.diff-modified {
   border-left: 4px solid var(--diff-modified-fg); /* オレンジのボーダー */
-  background-color: var(--diff-modified-bg); /* 薄いオレンジの背景 */
+  padding: 4px;
 }
 
 /* ========== バッジ ========== */
@@ -422,11 +420,8 @@
 /* ========== プロパティ変更 ========== */
 
 #uipath-visualizer-panel .property-changes {
-  margin-top: 12px;
-  padding: 12px;
-  background-color: var(--panel-bg);        /* 背景色 */
-  border-radius: 4px;
-  border: 1px solid var(--panel-border);    /* ボーダー */
+  margin-top: 0;
+  padding: 0;
 }
 
 #uipath-visualizer-panel .changes-header {
@@ -436,14 +431,12 @@
 }
 
 #uipath-visualizer-panel .property-diff-detail {
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 #uipath-visualizer-panel .property-change-item {
-  margin-bottom: 12px;
-  padding: 8px;
-  background-color: var(--panel-bg-tertiary); /* ターシャリ背景 */
-  border-radius: 4px;
+  margin-bottom: 0;
+  padding: 4px;
 }
 
 #uipath-visualizer-panel .prop-name {
