@@ -206,31 +206,6 @@
   background-color: rgba(215, 58, 73, 0.08);
 }
 
-/* Assign変更詳細 */
-.assign-change-label {
-  font-weight: 600;
-  color: var(--color-fg-muted, #555);
-  margin-bottom: 2px;
-}
-
-.assign-change-side {
-  display: inline-block;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: 600;
-  margin-right: 4px;
-}
-
-.assign-change-side.left {
-  background-color: #e3f2fd;                     /* 青系: 左辺 */
-  color: #1565c0;
-}
-
-.assign-change-side.right {
-  background-color: #f3e5f5;                     /* 紫系: 右辺 */
-  color: #7b1fa2;
-}
 
 /* セレクト */
 .select {

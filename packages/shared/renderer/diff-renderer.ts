@@ -538,41 +538,32 @@ export class DiffRenderer {
     const container = document.createElement('div');
     container.className = 'property-changes';
 
-    // To/Valueの変更を「左辺/右辺」ラベル付きでGitHub風diff表示
-    const assignChanges = diffActivity.changes?.filter(
+    const beforeAct = diffActivity.beforeActivity;  // 変更前のアクティビティ
+    const afterAct = diffActivity.activity;         // 変更後のアクティビティ
+
+    // To/Valueのいずれかが変更されていれば統合形式で表示
+    const hasAssignChange = diffActivity.changes?.some(
       c => c.propertyName === 'To' || c.propertyName === 'Value'
-    ) || [];
+    );
 
-    assignChanges.forEach(change => {
-      const item = document.createElement('div');
-      item.className = 'property-change-item';
+    if (hasAssignChange && beforeAct) {
+      const beforeTo = beforeAct.properties['To'];      // 変更前の左辺
+      const beforeVal = beforeAct.properties['Value'];  // 変更前の右辺
+      const afterTo = afterAct.properties['To'];        // 変更後の左辺
+      const afterVal = afterAct.properties['Value'];    // 変更後の右辺
 
-      // 左辺/右辺のラベル
-      const sideLabel = document.createElement('span');
-      const isLeft = change.propertyName === 'To';  // Toは左辺、Valueは右辺
-      sideLabel.className = `assign-change-side ${isLeft ? 'left' : 'right'}`;
-      sideLabel.textContent = isLeft ? '左辺' : '右辺';
+      // 変更前の行（赤）
+      const beforeDiv = document.createElement('div');
+      beforeDiv.className = 'diff-before';
+      beforeDiv.textContent = `- ${this.formatValue(beforeTo)} = ${this.formatValue(beforeVal)}`;
+      container.appendChild(beforeDiv);
 
-      const propLabel = document.createElement('span');
-      propLabel.className = 'assign-change-label';
-      propLabel.textContent = ` (${change.propertyName}):`;
-
-      // 変更前の値（赤）
-      const beforeValue = document.createElement('div');
-      beforeValue.className = 'diff-before';
-      beforeValue.textContent = `- ${this.formatValue(change.before)}`;
-
-      // 変更後の値（緑）
-      const afterValue = document.createElement('div');
-      afterValue.className = 'diff-after';
-      afterValue.textContent = `+ ${this.formatValue(change.after)}`;
-
-      item.appendChild(sideLabel);
-      item.appendChild(propLabel);
-      item.appendChild(beforeValue);
-      item.appendChild(afterValue);
-      container.appendChild(item);
-    });
+      // 変更後の行（緑）
+      const afterDiv = document.createElement('div');
+      afterDiv.className = 'diff-after';
+      afterDiv.textContent = `+ ${this.formatValue(afterTo)} = ${this.formatValue(afterVal)}`;
+      container.appendChild(afterDiv);
+    }
 
     // To/Value以外のプロパティ変更は通常通り表示
     const otherChanges = diffActivity.changes?.filter(

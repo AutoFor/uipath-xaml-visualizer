@@ -51,7 +51,21 @@
       "Bash(git remote add:*)",
       "Bash(npx tsc:*)",
       "Bash(wslpath:*)",
-      "Bash(clip.exe:*)"
+      "Bash(clip.exe:*)",
+      "Bash(gh pr view:*)",
+      "WebSearch",
+      "WebFetch(domain:developer.chrome.com)",
+      "WebFetch(domain:www.chromium.org)",
+      "Bash(git rebase:*)",
+      "Bash(git stash:*)",
+      "Bash(git stash pop:*)",
+      "Bash(npx webpack --mode development)",
+      "Bash(gh api:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue list:*)",
+      "Skill(gh-pr-approve)",
+      "Skill(gh-branch-finish)",
+      "Skill(gh-worktree-branch)"
     ],
     "deny": [],
     "ask": []
