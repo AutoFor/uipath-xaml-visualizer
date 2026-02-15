@@ -66,7 +66,9 @@
       "Skill(gh-pr-approve)",
       "Skill(gh-branch-finish)",
       "Skill(gh-worktree-branch)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(fi)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []
