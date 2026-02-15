@@ -68,7 +68,8 @@
       "Skill(gh-worktree-branch)",
       "Bash(python3:*)",
       "Bash(fi)",
-      "Bash(done)"
+      "Bash(done)",
+      "WebFetch(domain:docs.github.com)"
     ],
     "deny": [],
     "ask": []

@@ -1677,26 +1677,83 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 		if (item.changes && item.changes.length > 0) {
 			const changesDiv = document.createElement('div'); // 変更詳細コンテナ
 			changesDiv.className = 'diff-highlight-changes'; // CSSクラス
-			for (const change of item.changes) {
-				const changeItem = document.createElement('div'); // 個別変更要素
+
+			// Assignアクティビティの場合はTo/Valueを統合形式で表示
+			const isAssign = item.activity.type === 'Assign'; // Assignかどうか
+			const hasAssignChange = isAssign && item.changes.some( // To/Valueの変更があるか
+				(c: any) => c.propertyName === 'To' || c.propertyName === 'Value'
+			);
+
+			if (hasAssignChange && item.beforeActivity) {
+				// 統合形式: 「左辺 = 右辺」をまとめて表示
+				const beforeTo = item.beforeActivity.properties['To']; // 変更前の左辺
+				const beforeVal = item.beforeActivity.properties['Value']; // 変更前の右辺
+				const afterTo = item.activity.properties['To']; // 変更後の左辺
+				const afterVal = item.activity.properties['Value']; // 変更後の右辺
+
+				const changeItem = document.createElement('div'); // 統合変更要素
 				changeItem.className = 'property-change-item'; // CSSクラス
 
-				const propName = document.createElement('span'); // プロパティ名
-				propName.className = 'prop-name'; // CSSクラス
-				propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
-				changeItem.appendChild(propName);
-
-				const beforeDiv = document.createElement('div'); // 変更前の値
+				const beforeDiv = document.createElement('div'); // 変更前の行（赤）
 				beforeDiv.className = 'diff-before'; // CSSクラス
-				beforeDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+				beforeDiv.textContent = `- ${String(beforeTo ?? '')} = ${String(beforeVal ?? '')}`; // 変更前テキスト
 				changeItem.appendChild(beforeDiv);
 
-				const afterDiv = document.createElement('div'); // 変更後の値
+				const afterDiv = document.createElement('div'); // 変更後の行（緑）
 				afterDiv.className = 'diff-after'; // CSSクラス
-				afterDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+				afterDiv.textContent = `+ ${String(afterTo ?? '')} = ${String(afterVal ?? '')}`; // 変更後テキスト
 				changeItem.appendChild(afterDiv);
 
 				changesDiv.appendChild(changeItem); // 変更詳細に追加
+
+				// To/Value以外のプロパティ変更は通常通り表示
+				const otherChanges = item.changes.filter( // To/Value以外を抽出
+					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value'
+				);
+				for (const change of otherChanges) {
+					const otherItem = document.createElement('div'); // 個別変更要素
+					otherItem.className = 'property-change-item'; // CSSクラス
+
+					const propName = document.createElement('span'); // プロパティ名
+					propName.className = 'prop-name'; // CSSクラス
+					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
+					otherItem.appendChild(propName);
+
+					const bDiv = document.createElement('div'); // 変更前の値
+					bDiv.className = 'diff-before'; // CSSクラス
+					bDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+					otherItem.appendChild(bDiv);
+
+					const aDiv = document.createElement('div'); // 変更後の値
+					aDiv.className = 'diff-after'; // CSSクラス
+					aDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+					otherItem.appendChild(aDiv);
+
+					changesDiv.appendChild(otherItem); // 変更詳細に追加
+				}
+			} else {
+				// 通常のプロパティ変更表示
+				for (const change of item.changes) {
+					const changeItem = document.createElement('div'); // 個別変更要素
+					changeItem.className = 'property-change-item'; // CSSクラス
+
+					const propName = document.createElement('span'); // プロパティ名
+					propName.className = 'prop-name'; // CSSクラス
+					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
+					changeItem.appendChild(propName);
+
+					const beforeDiv = document.createElement('div'); // 変更前の値
+					beforeDiv.className = 'diff-before'; // CSSクラス
+					beforeDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+					changeItem.appendChild(beforeDiv);
+
+					const afterDiv = document.createElement('div'); // 変更後の値
+					afterDiv.className = 'diff-after'; // CSSクラス
+					afterDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+					changeItem.appendChild(afterDiv);
+
+					changesDiv.appendChild(changeItem); // 変更詳細に追加
+				}
 			}
 			// activity-header の後に挿入
 			const header = card.querySelector(':scope > .activity-header'); // ヘッダー要素
