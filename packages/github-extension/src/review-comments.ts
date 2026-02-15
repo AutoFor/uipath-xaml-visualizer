@@ -51,8 +51,92 @@ export interface PostCommentParams {
 
 /**
  * PR のレビューコメントを取得（ファイルパスでフィルタ）
+ * 方法1: github.com 同一オリジン fetch（プライベートリポジトリ対応）
+ * 方法2: api.github.com credentials なし fetch（公開リポジトリ用フォールバック）
  */
 export async function fetchReviewComments(
+  pr: PrInfo,
+  filePath: string
+): Promise<ReviewComment[]> {
+  // 方法1: github.com 同一オリジン fetch（セッションCookieでプライベートリポジトリ対応）
+  const sameOriginComments = await fetchReviewCommentsSameOrigin(pr, filePath); // 同一オリジンで取得
+  if (sameOriginComments !== null) return sameOriginComments; // 成功した場合はそのまま返す
+
+  // 方法2: api.github.com フォールバック（公開リポジトリ用）
+  console.log('UiPath Visualizer: 同一オリジン取得失敗、API にフォールバック');
+  return fetchReviewCommentsApi(pr, filePath); // API で取得
+}
+
+/**
+ * 方法1: github.com 同一オリジンでコメント取得（プライベートリポジトリ対応）
+ * 成功時は ReviewComment[]、失敗時は null を返す
+ */
+async function fetchReviewCommentsSameOrigin(
+  pr: PrInfo,
+  filePath: string
+): Promise<ReviewComment[] | null> {
+  const url = `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.prNumber}/review_comments`; // 同一オリジンURL
+
+  let response: Response; // レスポンス
+  try {
+    response = await fetch(url, {
+      headers: { 'Accept': 'application/json' }, // JSONレスポンスを要求
+      credentials: 'same-origin' // 同一オリジンCookie送信（プライベートリポジトリ認証）
+    });
+  } catch (e) {
+    console.warn('UiPath Visualizer: コメント取得エラー (同一オリジン):', e);
+    return null; // ネットワークエラー → フォールバック
+  }
+
+  if (!response.ok) {
+    console.warn(`UiPath Visualizer: コメント取得失敗 (同一オリジン): status=${response.status}`);
+    return null; // エラー → フォールバック
+  }
+
+  // レスポンスが JSON か確認（HTML が返る場合はフォールバック）
+  const contentType = response.headers.get('content-type') || ''; // Content-Type ヘッダ
+  if (!contentType.includes('json')) {
+    console.warn('UiPath Visualizer: 同一オリジンが JSON でないレスポンスを返却、API にフォールバック');
+    return null; // JSON でない → フォールバック
+  }
+
+  let data: any; // レスポンスデータ
+  try {
+    data = await response.json(); // JSON パース
+  } catch (e) {
+    console.warn('UiPath Visualizer: 同一オリジン JSON パースエラー:', e);
+    return null; // パースエラー → フォールバック
+  }
+
+  // デバッグ: レスポンス構造を出力
+  console.log('UiPath Visualizer: 同一オリジン レスポンス構造:', typeof data, Array.isArray(data) ? `array[${data.length}]` : Object.keys(data)); // デバッグ用
+  if (!Array.isArray(data) && typeof data === 'object' && data !== null) {
+    console.log('UiPath Visualizer: 同一オリジン レスポンスキー:', Object.keys(data)); // オブジェクトのキー一覧
+    // 各キーの型と値のプレビューを出力
+    for (const key of Object.keys(data).slice(0, 10)) { // 最初の10キーまで
+      const val = data[key]; // 値
+      console.log(`  ${key}: ${typeof val}${Array.isArray(val) ? `[${val.length}]` : ''}${typeof val === 'string' ? ` = "${val.slice(0, 100)}"` : ''}`); // 型とプレビュー
+    }
+  }
+
+  // レスポンス形式を正規化（配列でない場合も対応）
+  const comments = normalizeReviewComments(data); // 正規化
+  if (comments === null) {
+    console.warn('UiPath Visualizer: 同一オリジンのレスポンス形式が不明、API にフォールバック');
+    return null; // 不明な形式 → フォールバック
+  }
+
+  // ファイルパスでフィルタ
+  const filtered = comments.filter(comment => comment.path === filePath); // 対象ファイルのコメントのみ
+  console.log(`UiPath Visualizer: レビューコメント ${filtered.length}件取得 (同一オリジン, ${filePath})`);
+  return filtered;
+}
+
+/**
+ * 方法2: api.github.com でコメント取得（公開リポジトリ用フォールバック）
+ * ページネーション対応で全件取得
+ */
+async function fetchReviewCommentsApi(
   pr: PrInfo,
   filePath: string
 ): Promise<ReviewComment[]> {
@@ -71,17 +155,17 @@ export async function fetchReviewComments(
         headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
       });
     } catch (e) {
-      console.warn('UiPath Visualizer: コメント取得エラー:', e);
+      console.warn('UiPath Visualizer: コメント取得エラー (API):', e);
       break; // ネットワークエラー
     }
 
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
-        console.warn(`UiPath Visualizer: コメント取得失敗 (${response.status}): プライベートリポジトリの場合は認証が必要です`);
+        console.warn(`UiPath Visualizer: コメント取得失敗 (API ${response.status}): プライベートリポジトリの場合は認証が必要です`);
       } else if (response.status === 404) {
-        console.warn('UiPath Visualizer: コメント取得失敗 (404): PRが見つかりません');
+        console.warn('UiPath Visualizer: コメント取得失敗 (API 404): PRが見つかりません');
       } else {
-        console.warn(`UiPath Visualizer: コメント取得失敗: status=${response.status}`);
+        console.warn(`UiPath Visualizer: コメント取得失敗 (API): status=${response.status}`);
       }
       break;
     }
@@ -98,8 +182,43 @@ export async function fetchReviewComments(
     page++; // 次のページ
   }
 
-  console.log(`UiPath Visualizer: レビューコメント ${allComments.length}件取得 (${filePath})`);
+  console.log(`UiPath Visualizer: レビューコメント ${allComments.length}件取得 (API, ${filePath})`);
   return allComments;
+}
+
+/**
+ * github.com 内部エンドポイントのレスポンスを ReviewComment[] に正規化
+ * API 形式と異なる場合に対応する変換レイヤー
+ * 正規化できない場合は null を返す
+ */
+function normalizeReviewComments(data: any): ReviewComment[] | null {
+  // 配列の場合（API と同じ形式、またはコメント配列）
+  const items = Array.isArray(data) ? data : Array.isArray(data?.comments) ? data.comments : null; // 配列を抽出
+  if (!items) return null; // 配列でない → 正規化不可
+
+  const result: ReviewComment[] = []; // 結果
+  for (const item of items) {
+    // 必須フィールドの存在確認
+    if (!item || typeof item.path !== 'string') continue; // path がなければスキップ
+
+    result.push({
+      id: item.id ?? 0, // コメントID
+      body: item.body ?? '', // コメント本文
+      user: {
+        login: item.user?.login ?? '', // ユーザー名
+        avatar_url: item.user?.avatar_url ?? item.user?.avatarUrl ?? '' // アバターURL（camelCase 対応）
+      },
+      created_at: item.created_at ?? item.createdAt ?? '', // 作成日時（camelCase 対応）
+      updated_at: item.updated_at ?? item.updatedAt ?? '', // 更新日時（camelCase 対応）
+      path: item.path, // ファイルパス
+      line: item.line ?? item.original_line ?? null, // コメント対象行
+      start_line: item.start_line ?? item.startLine ?? null, // 開始行（camelCase 対応）
+      side: item.side === 'LEFT' ? 'LEFT' : 'RIGHT', // diff側（デフォルト RIGHT）
+      html_url: item.html_url ?? item.htmlUrl ?? '' // Web URL（camelCase 対応）
+    });
+  }
+
+  return result;
 }
 
 // ========== コメント → アクティビティマッピング ==========
