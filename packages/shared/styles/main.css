@@ -149,7 +149,7 @@ body {
   transition: border-color 0.2s, box-shadow 0.2s; /* アニメーション */
 }
 
-.activity-card:hover {
+.activity-card:hover:not(:has(.activity-card:hover)) {
   border-color: #0078d4;                        /* ホバー時のボーダー色 */
   box-shadow: 0 2px 6px rgba(0, 120, 212, 0.2);
 }
