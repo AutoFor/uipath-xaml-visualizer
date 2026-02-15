@@ -1085,11 +1085,6 @@ function createSearchBar(): HTMLElement {
 	nextBtn.title = '次の一致 (Enter)'; // ツールチップ
 	nextBtn.disabled = true; // 初期状態は無効
 
-	const clearBtn = document.createElement('button'); // クリアボタン
-	clearBtn.className = 'panel-search-clear-btn'; // CSSクラス
-	clearBtn.textContent = '\u2715'; // ✕
-	clearBtn.title = 'クリア (Escape)'; // ツールチップ
-
 	// 入力イベント: 250ms デバウンスで検索実行
 	input.addEventListener('input', () => {
 		if (searchDebounceTimer) clearTimeout(searchDebounceTimer); // 前のタイマーをクリア
@@ -1117,14 +1112,10 @@ function createSearchBar(): HTMLElement {
 	prevBtn.addEventListener('click', () => navigateSearch('prev', countSpan)); // 前へ
 	nextBtn.addEventListener('click', () => navigateSearch('next', countSpan)); // 次へ
 
-	// クリアボタンクリック
-	clearBtn.addEventListener('click', () => clearSearch(input, countSpan, prevBtn, nextBtn)); // クリア
-
 	bar.appendChild(input); // 入力フィールド追加
 	bar.appendChild(countSpan); // カウント表示追加
 	bar.appendChild(prevBtn); // 前ボタン追加
 	bar.appendChild(nextBtn); // 次ボタン追加
-	bar.appendChild(clearBtn); // クリアボタン追加
 
 	return bar;
 }
