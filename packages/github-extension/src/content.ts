@@ -1,13 +1,12 @@
-import { XamlParser, DiffCalculator, DiffRenderer, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
-import type { ActivityLineIndex, CommentRenderOptions } from '@uipath-xaml-visualizer/shared'; // 型定義
-import { fetchReviewComments, mapCommentsToActivities, postReviewComment } from './review-comments'; // レビューコメントモジュール
-import type { ReviewComment } from './review-comments'; // レビューコメント型
+import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import type { ActivityLineIndex } from '@uipath-xaml-visualizer/shared'; // 型定義
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
  * GitHub上のXAMLファイルを視覚化するコンテンツスクリプト
- * - blob-xaml: 個別ファイル表示ページ（既存機能）
- * - pr-diff: PR差分ページ（新機能）
+ * - blob-xaml: 個別ファイル表示ページ
+ * - pr-diff: PR差分ページ
+ * - commit-diff: コミット差分ページ・Compareページ
  */
 
 // ========== ビルド情報（webpackのDefinePluginで注入） ==========
@@ -18,7 +17,7 @@ declare const __BRANCH_NAME__: string; // ビルド時のブランチ名
 
 // ========== 型定義 ==========
 
-type PageType = 'blob-xaml' | 'pr-diff' | 'unknown'; // ページタイプ
+type PageType = 'blob-xaml' | 'pr-diff' | 'commit-diff' | 'unknown'; // ページタイプ
 
 interface PrInfo {
 	owner: string;   // リポジトリオーナー
@@ -41,15 +40,6 @@ let searchMatches: HTMLElement[] = []; // 検索一致カードのリスト
 let searchCurrentIndex: number = -1; // 現在フォーカス中の一致インデックス
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
 
-// ========== ビジュアライザーコンテキスト（コメント連携用） ==========
-
-let currentContext: {
-	pr: PrInfo;               // PR情報
-	refs: PrRefs;             // base/head SHA
-	filePath: string;         // ファイルパス
-	headLineIndex: ActivityLineIndex | null; // head側の行マップ
-} | null = null; // 現在のビジュアライザーコンテキスト
-
 // ========== ページタイプ検出 ==========
 
 /**
@@ -64,6 +54,14 @@ function detectPageType(): PageType {
 
 	if (/\/pull\/\d+\/files/.test(url)) {
 		return 'pr-diff'; // PR差分ページ
+	}
+
+	if (/\/commit\/[a-f0-9]{7,40}/.test(url)) {
+		return 'commit-diff'; // コミット差分ページ
+	}
+
+	if (/\/compare\//.test(url)) {
+		return 'commit-diff'; // Compareページ（コミット差分と同じ扱い）
 	}
 
 	return 'unknown'; // その他のページ
@@ -161,6 +159,15 @@ function parsePrUrl(): PrInfo | null {
 		repo: match[2],    // リポジトリ名
 		prNumber: parseInt(match[3], 10) // PR番号
 	};
+}
+
+/**
+ * URLからリポジトリ情報を汎用的に抽出（PR以外のページでも使用可能）
+ */
+function parseRepoInfo(): { owner: string; repo: string } | null {
+	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)/); // URLからowner/repoを抽出
+	if (!match) return null;
+	return { owner: match[1], repo: match[2] }; // リポジトリ情報を返す
 }
 
 /**
@@ -355,6 +362,70 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 }
 
 /**
+ * コミットページ用のbase/head SHA取得（DOM抽出 → API フォールバック）
+ */
+async function fetchCommitRefs(owner: string, repo: string): Promise<PrRefs> {
+	// 方法1: DOMからSHA抽出（hidden input等）
+	const domRefs = extractShasFromDom(); // DOMから直接抽出
+	if (domRefs) {
+		console.log('UiPath Visualizer: コミットページ - DOMからSHA取得成功');
+		return domRefs;
+	}
+
+	// 方法2: URLからコミットSHAを取得してGitHub APIで親コミットを取得
+	const commitMatch = window.location.pathname.match(/\/commit\/([a-f0-9]{7,40})/); // URLからSHA抽出
+	if (commitMatch) {
+		const headSha = commitMatch[1]; // コミットSHA
+		try {
+			const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${headSha}`; // Commits API
+			console.log(`UiPath Visualizer: コミットAPI fetch: ${apiUrl}`);
+			const response = await fetch(apiUrl, {
+				headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
+			});
+			if (response.ok) {
+				const data = await response.json(); // レスポンスをパース
+				if (data.parents && data.parents.length > 0) {
+					const baseSha = data.parents[0].sha; // 親コミットSHA
+					console.log(`UiPath Visualizer: コミットAPI - base=${baseSha}, head=${data.sha}`);
+					return { baseSha, headSha: data.sha }; // フルSHAを使用
+				}
+			}
+		} catch (e) {
+			console.warn('UiPath Visualizer: コミットAPI失敗:', e);
+		}
+	}
+
+	// 方法3: Compareページの場合、URLからブランチ/SHA情報を使用
+	const compareMatch = window.location.pathname.match(/\/compare\/([^.]+)\.{2,3}(.+)/); // compare URLパターン
+	if (compareMatch) {
+		const baseRef = compareMatch[1]; // ベース参照
+		const headRef = compareMatch[2]; // ヘッド参照
+		console.log(`UiPath Visualizer: Compareページ - base=${baseRef}, head=${headRef}`);
+		// refがSHAでない場合（ブランチ名の場合）APIで解決
+		try {
+			const [baseResponse, headResponse] = await Promise.all([
+				fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${baseRef}`, {
+					headers: { 'Accept': 'application/vnd.github.v3+json' }
+				}),
+				fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${headRef}`, {
+					headers: { 'Accept': 'application/vnd.github.v3+json' }
+				})
+			]); // 両方のrefを解決
+			if (baseResponse.ok && headResponse.ok) {
+				const baseData = await baseResponse.json(); // ベースコミット
+				const headData = await headResponse.json(); // ヘッドコミット
+				console.log(`UiPath Visualizer: Compare API - base=${baseData.sha}, head=${headData.sha}`);
+				return { baseSha: baseData.sha, headSha: headData.sha };
+			}
+		} catch (e) {
+			console.warn('UiPath Visualizer: Compare API失敗:', e);
+		}
+	}
+
+	throw new Error('コミットの base/head SHA を取得できません。コンソールログを確認してください。'); // エラー
+}
+
+/**
  * ファイル内容を取得（同一オリジン経由でプライベートリポジトリにも対応）
  */
 async function fetchRawContent(owner: string, repo: string, sha: string, filePath: string): Promise<string> {
@@ -385,13 +456,13 @@ async function fetchRawContent(owner: string, repo: string, sha: string, filePat
 	return await fallbackResponse.text(); // テキストとして返す
 }
 
-// ========== PR diff ページのDOM操作 ==========
+// ========== 差分ページのDOM操作 ==========
 
 /**
- * PR diff ページをスキャンしてXAMLファイルにボタンを注入
+ * 差分ページをスキャンしてXAMLファイルにボタンを注入（PR・コミット・Compare共通）
  */
-function scanAndInjectDiffButtons(): void {
-	// GitHub PRのdiffページで各ファイルのdivを取得
+function scanAndInjectDiffButtons(onClick?: (filePath: string) => void): void {
+	// GitHub差分ページで各ファイルのdivを取得
 	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // ファイルコンテナ
 
 	fileContainers.forEach(container => {
@@ -414,7 +485,7 @@ function scanAndInjectDiffButtons(): void {
 		button.addEventListener('click', (e) => {
 			e.preventDefault(); // デフォルト動作を防止
 			e.stopPropagation(); // イベント伝播を停止
-			showDiffVisualizer(filePath); // 差分ビジュアライザーを表示
+			(onClick || showDiffVisualizer)(filePath); // コールバックまたはデフォルトのPR用ビジュアライザーを呼び出し
 		});
 
 		toolbar.appendChild(button); // ツールバーにボタンを追加
@@ -452,7 +523,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 		const parser = new XamlParser(); // パーサーを初期化
 
 		if (beforeXaml && afterXaml) {
-			// 変更ファイル: 差分表示
+			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
 			const beforeData = parser.parse(beforeXaml); // ベース版をパース
 			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
 
@@ -460,41 +531,21 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
 
 			// 行番号マッピングを構築
-			const baseLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // base側の行マップ
 			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
-
-			// コンテキストを保存（コメント投稿時に使用）
-			currentContext = { pr, refs, filePath, headLineIndex };
-
-			// レビューコメントを取得してマッピング（非同期・失敗時は空マップ）
-			let commentsMap = new Map<string, ReviewComment[]>();
-			try {
-				const comments = await fetchReviewComments(pr, filePath); // コメント取得
-				commentsMap = mapCommentsToActivities(comments, headLineIndex, baseLineIndex); // マッピング
-			} catch (e) {
-				console.warn('UiPath Visualizer: レビューコメント取得失敗（差分表示は続行）:', e);
-			}
-
-			// コメントレンダリングオプションを構築
-			const commentOptions: CommentRenderOptions = {
-				commentsMap,
-				onPostComment: async (activityKey: string, body: string) => {
-					await handlePostComment(activityKey, body); // コメント投稿ハンドラ
-				},
-				getActivityKey: (activity, index) => buildActivityKey(activity, index) // キー生成関数
-			};
 
 			// サマリーを表示
 			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
 			contentArea.innerHTML = ''; // クリア
 			contentArea.appendChild(summaryHtml); // サマリーを追加
 
-			// 差分詳細を表示（コメントオプション付き）
-			const diffContainer = document.createElement('div'); // 差分コンテナ
-			diffContainer.className = 'diff-content'; // クラス設定
-			const diffRenderer = new DiffRenderer(); // 差分レンダラー
-			diffRenderer.render(diffResult, diffContainer, commentOptions, headLineIndex, baseLineIndex); // コメント・行番号付きで差分をレンダリング
-			contentArea.appendChild(diffContainer); // コンテンツに追加
+			// フルワークフローをレンダリング（head版）
+			const seqContainer = document.createElement('div'); // シーケンスコンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
+			contentArea.appendChild(seqContainer); // コンテンツに追加
+
+			// 差分ハイライトをオーバーレイ適用
+			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
 
 			// カーソル同期をセットアップ（Diff view）
 			setupCursorSync(panel, headLineIndex, 'diff', filePath);
@@ -542,29 +593,99 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 }
 
 /**
- * コメント投稿ハンドラ（ビジュアライザーからのコメント投稿を処理）
+ * コミット差分ビジュアライザーを表示（コメント機能なし）
  */
-async function handlePostComment(activityKey: string, body: string): Promise<void> {
-	if (!currentContext) throw new Error('ビジュアライザーコンテキストが未設定');
+async function showCommitDiffVisualizer(filePath: string): Promise<void> {
+	// 既存パネルを削除
+	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
+	if (existingPanel) existingPanel.remove();
 
-	const { pr, refs, filePath, headLineIndex } = currentContext; // コンテキスト取得
+	// ローディングパネルを表示
+	const panel = createPanel(); // パネル作成
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
+	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
+	document.body.appendChild(panel); // ページに追加
 
-	// アクティビティキーから行範囲を取得
-	const lineRange = headLineIndex?.keyToLines.get(activityKey); // 行範囲
-	const line = lineRange?.endLine || 1; // コメント対象行（endLine）
-	const startLine = lineRange?.startLine; // 複数行コメントの開始行
+	try {
+		const repoInfo = parseRepoInfo(); // リポジトリ情報を取得
+		if (!repoInfo) throw new Error('リポジトリ情報を取得できません');
 
-	const result = await postReviewComment(pr, {
-		body,
-		commitId: refs.headSha, // headのコミットSHA
-		path: filePath,
-		line,
-		startLine: startLine !== line ? startLine : undefined, // 1行の場合はstart_lineを省略
-		side: 'RIGHT' // head側にコメント
-	});
+		const refs = await fetchCommitRefs(repoInfo.owner, repoInfo.repo); // base/head SHAを取得
 
-	if (!result) {
-		throw new Error('コメント投稿に失敗しました');
+		// before/afterのXAMLを並列で取得
+		const [beforeXaml, afterXaml] = await Promise.all([
+			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.baseSha, filePath), // ベース版
+			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.headSha, filePath)  // ヘッド版
+		]);
+
+		const parser = new XamlParser(); // パーサーを初期化
+
+		if (beforeXaml && afterXaml) {
+			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
+			const beforeData = parser.parse(beforeXaml); // ベース版をパース
+			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
+
+			const diffCalc = new DiffCalculator(); // 差分計算
+			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
+
+			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
+
+			// サマリーを表示
+			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
+			contentArea.innerHTML = ''; // クリア
+			contentArea.appendChild(summaryHtml); // サマリーを追加
+
+			// フルワークフローをレンダリング（head版）
+			const seqContainer = document.createElement('div'); // シーケンスコンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
+			contentArea.appendChild(seqContainer); // コンテンツに追加
+
+			// 差分ハイライトをオーバーレイ適用
+			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
+
+			// カーソル同期をセットアップ（Diff view）
+			setupCursorSync(panel, headLineIndex, 'diff', filePath);
+
+		} else if (afterXaml) {
+			// 新規ファイル: after のみ表示
+			const afterData = parser.parse(afterXaml); // パース
+			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
+			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
+			contentArea.appendChild(seqContainer); // 追加
+
+			// カーソル同期をセットアップ（新規ファイル → Blob view扱い）
+			setupCursorSync(panel, afterLineIndex, 'blob');
+
+		} else if (beforeXaml) {
+			// 削除ファイル: before のみ表示
+			const beforeData = parser.parse(beforeXaml); // パース
+			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
+			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
+			contentArea.appendChild(seqContainer); // 追加
+
+		} else {
+			contentArea.innerHTML = '<div class="status-message">XAMLコンテンツが見つかりません</div>'; // エラー表示
+		}
+
+	} catch (error) {
+		console.error('コミット差分ビジュアライザーエラー:', error); // エラーログ
+
+		// デバッグ情報を収集してパネルに表示
+		const debugInfo = collectDebugInfo(); // デバッグ情報収集
+		contentArea.innerHTML = `
+			<div class="error-message">
+				<div class="error-title">
+					エラー: ${(error as Error).message}
+				</div>
+				<div class="debug-info">${debugInfo.join('\n')}</div>
+			</div>`; // エラーとデバッグ情報を表示
 	}
 }
 
@@ -1208,6 +1329,436 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
 	}
 }
 
+// ========== 全XAMLファイルビジュアライゼーション ==========
+
+/**
+ * リポジトリ内の全XAMLファイル一覧を取得
+ */
+async function fetchAllXamlFiles(owner: string, repo: string, sha: string): Promise<string[]> {
+	// 方法1: GitHub同一オリジンのtree-list API（プライベートリポジトリ対応）
+	try {
+		const treeListUrl = `https://github.com/${owner}/${repo}/tree-list/${sha}`; // ツリーリストURL
+		const response = await fetch(treeListUrl, { credentials: 'same-origin' }); // Cookie付きリクエスト
+		if (response.ok) {
+			const text = await response.text(); // レスポンステキスト
+			const paths = text.split('\n').filter(p => p.endsWith('.xaml')); // .xamlファイルのみフィルタ
+			if (paths.length > 0) {
+				console.log(`UiPath Visualizer: tree-list APIから${paths.length}個のXAMLファイルを取得`);
+				return paths;
+			}
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: tree-list API失敗、Trees APIにフォールバック:', e);
+	}
+
+	// 方法2: GitHub REST API Trees（パブリックリポジトリ用フォールバック）
+	try {
+		const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`; // Trees API URL
+		const response = await fetch(apiUrl, {
+			headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
+		});
+		if (response.ok) {
+			const data = await response.json(); // レスポンスをパース
+			const paths = (data.tree as Array<{ path: string; type: string }>)
+				.filter(item => item.type === 'blob' && item.path.endsWith('.xaml')) // .xamlファイルのみ
+				.map(item => item.path); // パスのみ抽出
+			console.log(`UiPath Visualizer: Trees APIから${paths.length}個のXAMLファイルを取得`);
+			return paths;
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: Trees API失敗:', e);
+	}
+
+	return []; // 取得失敗時は空配列
+}
+
+/**
+ * PR差分ページのDOMから変更されたXAMLファイル一覧を取得
+ */
+function getChangedXamlFiles(): Set<string> {
+	const changedFiles = new Set<string>(); // 変更ファイルセット
+	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // ファイルコンテナ
+	fileContainers.forEach(container => {
+		const filePath = container.getAttribute('data-tagsearch-path'); // ファイルパス
+		if (filePath && filePath.endsWith('.xaml')) {
+			changedFiles.add(filePath); // XAMLファイルをセットに追加
+		}
+	});
+	return changedFiles;
+}
+
+/**
+ * PR diff ページに「View All Workflows」ボタンを注入
+ */
+function injectAllWorkflowsButton(): void {
+	// 既にボタンが追加済みかチェック
+	if (document.querySelector('.uipath-all-workflows-btn')) return; // 重複防止
+
+	// PR diff ページのツールバーを探す
+	const toolbar = document.querySelector('.pr-review-tools, .diffbar, .js-diff-progressive-container')?.closest('.pr-review-tools')
+		|| document.querySelector('#files_bucket .pr-toolbar')
+		|| document.querySelector('.diffbar-item.d-flex'); // ツールバー候補
+
+	// ツールバーが見つからない場合はファイルバケットの先頭に追加
+	const insertTarget = toolbar || document.querySelector('#files_bucket'); // 挿入先
+
+	if (!insertTarget) return; // 挿入先が見つからない場合はスキップ
+
+	const button = document.createElement('button'); // ボタン要素
+	button.textContent = 'View All Workflows'; // ボタンテキスト
+	button.className = 'btn btn-sm uipath-all-workflows-btn'; // GitHubスタイル + 識別クラス
+	button.addEventListener('click', (e) => {
+		e.preventDefault(); // デフォルト動作を防止
+		e.stopPropagation(); // イベント伝播を停止
+		showAllWorkflowsVisualizer(); // 全ワークフロービジュアライザーを表示
+	});
+
+	if (toolbar) {
+		toolbar.appendChild(button); // ツールバーにボタンを追加
+	} else {
+		insertTarget.insertBefore(button, insertTarget.firstChild); // ファイルバケットの先頭に追加
+	}
+}
+
+/**
+ * 全ワークフロービジュアライザーのメインオーケストレーター
+ */
+async function showAllWorkflowsVisualizer(): Promise<void> {
+	// 既存パネルを削除
+	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
+	if (existingPanel) existingPanel.remove();
+
+	// ローディングパネルを表示
+	const panel = createPanel(); // パネル作成
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
+	contentArea.innerHTML = '<div class="status-message">全XAMLファイルを読み込み中...</div>'; // ローディング表示
+	document.body.appendChild(panel); // ページに追加
+
+	try {
+		const pr = parsePrUrl(); // PR情報を取得
+		if (!pr) throw new Error('PR情報を取得できません');
+
+		// base/head SHAを取得
+		const refs = await fetchPrRefs(pr); // base/head SHAを取得
+
+		// 全XAMLファイルリストと変更ファイルリストを並行取得
+		const [allFiles, changedFiles] = await Promise.all([
+			fetchAllXamlFiles(pr.owner, pr.repo, refs.headSha), // head SHA のツリーから全ファイル取得
+			Promise.resolve(getChangedXamlFiles()) // DOMから変更ファイル取得
+		]);
+
+		if (allFiles.length === 0) {
+			contentArea.innerHTML = '<div class="status-message">XAMLファイルが見つかりません</div>'; // ファイルなし表示
+			return;
+		}
+
+		// base側にも存在するがhead側に存在しない（削除された）ファイルを検出
+		const baseFiles = await fetchAllXamlFiles(pr.owner, pr.repo, refs.baseSha); // base側の全ファイル
+		const headFileSet = new Set(allFiles); // head側ファイルセット
+		const deletedFiles = baseFiles.filter(f => !headFileSet.has(f)); // 削除ファイル
+
+		// 全ファイル = head側の全ファイル + 削除ファイル
+		const combinedFiles = [...allFiles, ...deletedFiles]; // 全ファイルリスト
+
+		// ファイルを分類してソート（変更ファイル先頭、次に未変更）
+		const sortedFiles = combinedFiles.sort((a, b) => {
+			const aChanged = changedFiles.has(a); // aが変更ファイルか
+			const bChanged = changedFiles.has(b); // bが変更ファイルか
+			if (aChanged !== bChanged) return aChanged ? -1 : 1; // 変更ファイルを先頭に
+			return a.localeCompare(b); // アルファベット順
+		});
+
+		// サマリーを表示
+		const changedCount = changedFiles.size; // 変更ファイル数
+		const unchangedCount = combinedFiles.length - changedCount; // 未変更ファイル数
+		contentArea.innerHTML = ''; // クリア
+
+		const summary = document.createElement('div'); // サマリー要素
+		summary.className = 'all-workflows-summary'; // CSSクラス
+		summary.innerHTML = `
+			<span>XAML Files: <strong>${combinedFiles.length}</strong></span>
+			<span>Changed: <strong>${changedCount}</strong></span>
+			<span>Unchanged: <strong>${unchangedCount}</strong></span>
+		`; // サマリーHTML
+		contentArea.appendChild(summary); // サマリーを追加
+
+		// 各ファイルのアコーディオンセクションを作成
+		for (const filePath of sortedFiles) {
+			const isChanged = changedFiles.has(filePath); // 変更ファイルか
+			const isDeleted = deletedFiles.includes(filePath); // 削除ファイルか
+			const isNew = isChanged && !baseFiles.includes(filePath); // 新規ファイルか（変更かつbase側に存在しない）
+			const section = createFileAccordionSection(filePath, isChanged, isNew, isDeleted, pr, refs); // アコーディオン作成
+			contentArea.appendChild(section); // コンテンツに追加
+		}
+
+	} catch (error) {
+		console.error('全ワークフロービジュアライザーエラー:', error); // エラーログ
+		contentArea.innerHTML = `
+			<div class="error-message">
+				<div class="error-title">エラー: ${(error as Error).message}</div>
+			</div>`; // エラー表示
+	}
+}
+
+/**
+ * ファイル用アコーディオンセクションを作成（遅延読み込み対応）
+ */
+function createFileAccordionSection(
+	filePath: string,
+	isChanged: boolean,
+	isNew: boolean,
+	isDeleted: boolean,
+	pr: PrInfo,
+	refs: PrRefs
+): HTMLElement {
+	const section = document.createElement('div'); // セクション要素
+	// ファイル状態に応じたCSSクラスを設定
+	let statusClass = 'file-unchanged'; // デフォルトは未変更
+	let badgeClass = 'badge-unchanged'; // デフォルトバッジ
+	let badgeText = 'Unchanged'; // デフォルトバッジテキスト
+	if (isNew) {
+		statusClass = 'file-new'; // 新規ファイル
+		badgeClass = 'badge-new';
+		badgeText = 'New';
+	} else if (isDeleted) {
+		statusClass = 'file-deleted'; // 削除ファイル
+		badgeClass = 'badge-deleted';
+		badgeText = 'Deleted';
+	} else if (isChanged) {
+		statusClass = 'file-changed'; // 変更ファイル
+		badgeClass = 'badge-modified';
+		badgeText = 'Changed';
+	}
+	section.className = `file-accordion-section ${statusClass}`; // CSSクラス
+
+	// ヘッダー部分
+	const header = document.createElement('div'); // ヘッダー要素
+	header.className = 'file-accordion-header'; // CSSクラス
+
+	const icon = document.createElement('span'); // 開閉アイコン
+	icon.className = 'accordion-icon'; // CSSクラス
+	icon.textContent = '\u25B6'; // ▶（閉じた状態）
+
+	const pathSpan = document.createElement('span'); // ファイルパス表示
+	pathSpan.className = 'file-path'; // CSSクラス
+	pathSpan.textContent = filePath; // ファイルパス
+	pathSpan.title = filePath; // ツールチップ（省略時に全パス表示）
+
+	const badge = document.createElement('span'); // ステータスバッジ
+	badge.className = `badge-file-status ${badgeClass}`; // CSSクラス
+	badge.textContent = badgeText; // バッジテキスト
+
+	header.appendChild(icon);
+	header.appendChild(pathSpan);
+	header.appendChild(badge);
+
+	// コンテンツ部分
+	const content = document.createElement('div'); // コンテンツ要素
+	content.className = 'file-accordion-content'; // CSSクラス
+
+	let loaded = false; // 読み込み済みフラグ
+
+	// ヘッダークリックで開閉
+	header.addEventListener('click', () => {
+		const isExpanded = section.classList.toggle('expanded'); // 開閉トグル
+		if (isExpanded && !loaded) {
+			loaded = true; // 読み込み済みに設定
+			loadFileContent(content, filePath, isChanged, isNew, isDeleted, pr, refs); // コンテンツを遅延読み込み
+		}
+	});
+
+	section.appendChild(header);
+	section.appendChild(content);
+
+	return section;
+}
+
+/**
+ * アコーディオンセクション内にファイル内容を読み込んでレンダリング
+ */
+async function loadFileContent(
+	container: HTMLElement,
+	filePath: string,
+	isChanged: boolean,
+	isNew: boolean,
+	isDeleted: boolean,
+	pr: PrInfo,
+	refs: PrRefs
+): Promise<void> {
+	container.innerHTML = '<div class="accordion-loading">読み込み中...</div>'; // ローディング表示
+
+	try {
+		const parser = new XamlParser(); // パーサーを初期化
+
+		if (isDeleted) {
+			// 削除ファイル: before のみ表示
+			const beforeXaml = await fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath); // ベース版取得
+			if (!beforeXaml) {
+				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
+				return;
+			}
+			const beforeData = parser.parse(beforeXaml); // パース
+			const lineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
+			container.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(beforeData, seqContainer, lineIndex); // レンダリング
+			container.appendChild(seqContainer); // 追加
+
+		} else if (isNew) {
+			// 新規ファイル: after のみ表示
+			const afterXaml = await fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath); // ヘッド版取得
+			if (!afterXaml) {
+				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
+				return;
+			}
+			const afterData = parser.parse(afterXaml); // パース
+			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
+			container.innerHTML = '<div class="status-new-file">New File</div>'; // ラベル
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
+			container.appendChild(seqContainer); // 追加
+
+		} else if (isChanged) {
+			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
+			const [beforeXaml, afterXaml] = await Promise.all([
+				fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath), // ベース版
+				fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath)  // ヘッド版
+			]);
+
+			const beforeData = parser.parse(beforeXaml); // ベース版をパース
+			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
+
+			const diffCalc = new DiffCalculator(); // 差分計算
+			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
+
+			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
+
+			// サマリーを表示
+			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
+			container.innerHTML = ''; // クリア
+			container.appendChild(summaryHtml); // サマリーを追加
+
+			// フルワークフローをレンダリング（head版）
+			const seqContainer = document.createElement('div'); // シーケンスコンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
+			container.appendChild(seqContainer); // コンテンツに追加
+
+			// 差分ハイライトをオーバーレイ適用
+			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
+
+		} else {
+			// 未変更ファイル: head のコンテンツを表示
+			const afterXaml = await fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath); // ヘッド版取得
+			if (!afterXaml) {
+				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
+				return;
+			}
+			const afterData = parser.parse(afterXaml); // パース
+			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
+			container.innerHTML = ''; // クリア
+			const seqContainer = document.createElement('div'); // コンテナ
+			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
+			container.appendChild(seqContainer); // 追加
+		}
+
+	} catch (error) {
+		console.error(`ファイル読み込みエラー (${filePath}):`, error); // エラーログ
+		container.innerHTML = `<div class="accordion-error">読み込みエラー: ${(error as Error).message}</div>`; // エラー表示
+	}
+}
+
+/**
+ * フルワークフロー上に差分ハイライトを適用（data-activity-keyで照合）
+ */
+function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
+	// 変更アクティビティをハイライト
+	for (const item of diffResult.modified) {
+		const key = buildActivityKey(item.activity, 0); // キーを生成（IdRef優先）
+		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // カードを検索
+		if (!card) continue;
+		card.classList.add('diff-highlight-modified'); // 変更ハイライトクラスを追加
+
+		// プロパティ変更の詳細を注入
+		if (item.changes && item.changes.length > 0) {
+			const changesDiv = document.createElement('div'); // 変更詳細コンテナ
+			changesDiv.className = 'diff-highlight-changes'; // CSSクラス
+			for (const change of item.changes) {
+				const changeItem = document.createElement('div'); // 個別変更要素
+				changeItem.className = 'property-change-item'; // CSSクラス
+
+				const propName = document.createElement('span'); // プロパティ名
+				propName.className = 'prop-name'; // CSSクラス
+				propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
+				changeItem.appendChild(propName);
+
+				const beforeDiv = document.createElement('div'); // 変更前の値
+				beforeDiv.className = 'diff-before'; // CSSクラス
+				beforeDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+				changeItem.appendChild(beforeDiv);
+
+				const afterDiv = document.createElement('div'); // 変更後の値
+				afterDiv.className = 'diff-after'; // CSSクラス
+				afterDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+				changeItem.appendChild(afterDiv);
+
+				changesDiv.appendChild(changeItem); // 変更詳細に追加
+			}
+			// activity-header の後に挿入
+			const header = card.querySelector(':scope > .activity-header'); // ヘッダー要素
+			if (header && header.nextSibling) {
+				card.insertBefore(changesDiv, header.nextSibling); // ヘッダーの直後に挿入
+			} else {
+				card.appendChild(changesDiv); // フォールバック: カード末尾に追加
+			}
+		}
+	}
+
+	// 追加アクティビティをハイライト
+	for (const item of diffResult.added) {
+		const key = buildActivityKey(item.activity, 0); // キーを生成
+		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // カードを検索
+		if (!card) continue;
+		card.classList.add('diff-highlight-added'); // 追加ハイライトクラスを追加
+	}
+
+	// 削除アクティビティを末尾に表示（head版には存在しないため）
+	if (diffResult.removed.length > 0) {
+		const removedSection = document.createElement('div'); // 削除セクション
+		removedSection.className = 'removed-activities-section'; // CSSクラス
+
+		const removedLabel = document.createElement('div'); // 削除ラベル
+		removedLabel.className = 'status-deleted-file'; // CSSクラス
+		removedLabel.textContent = `Removed Activities (${diffResult.removed.length})`; // ラベルテキスト
+		removedSection.appendChild(removedLabel);
+
+		for (const item of diffResult.removed) {
+			const card = document.createElement('div'); // 削除カード
+			card.className = 'activity-card diff-highlight-removed'; // CSSクラス
+
+			const header = document.createElement('div'); // ヘッダー
+			header.className = 'activity-header'; // CSSクラス
+
+			const title = document.createElement('span'); // タイトル
+			title.className = 'activity-title'; // CSSクラス
+			title.textContent = `${item.activity.type}: ${item.activity.displayName} `; // アクティビティ名
+
+			const badge = document.createElement('span'); // バッジ
+			badge.className = 'badge badge-removed'; // CSSクラス
+			badge.textContent = '- Removed'; // バッジテキスト
+			title.appendChild(badge);
+
+			header.appendChild(title);
+			card.appendChild(header);
+			removedSection.appendChild(card); // セクションに追加
+		}
+		container.appendChild(removedSection); // コンテナに追加
+	}
+}
+
 // ========== 初期化とMutationObserver ==========
 
 /**
@@ -1225,6 +1776,10 @@ function init(): void {
 			break;
 		case 'pr-diff':
 			scanAndInjectDiffButtons(); // PR diff ページにボタン注入
+			injectAllWorkflowsButton(); // 全ワークフローボタンを注入
+			break;
+		case 'commit-diff':
+			scanAndInjectDiffButtons(showCommitDiffVisualizer); // コミット/Compare差分ページにボタン注入
 			break;
 		default:
 			break; // その他のページでは何もしない
@@ -1265,12 +1820,16 @@ const observer = new MutationObserver(() => {
 		if (currentUrl !== lastUrl) {
 			// URL変更 → キャッシュクリアして再初期化
 			cachedPrRefs = null; // PRキャッシュをクリア
-			currentContext = null; // ビジュアライザーコンテキストをクリア
 			lastUrl = currentUrl; // URLを更新
 			init(); // 再初期化
-		} else if (detectPageType() === 'pr-diff') {
+		} else {
 			// 同一URLでDOM変更 → lazy-loaded diffsに対応してボタンを再スキャン
-			scanAndInjectDiffButtons();
+			const currentPageType = detectPageType(); // 現在のページタイプ
+			if (currentPageType === 'pr-diff') {
+				scanAndInjectDiffButtons(); // PR差分ページ
+			} else if (currentPageType === 'commit-diff') {
+				scanAndInjectDiffButtons(showCommitDiffVisualizer); // コミット/Compare差分ページ
+			}
 		}
 	}, 300); // 300msデバウンス
 });
