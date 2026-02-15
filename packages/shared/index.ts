@@ -12,4 +12,3 @@ export { DiffRenderer } from './renderer/diff-renderer'; // 差分表示レン�
 export type { Activity, ParsedXaml, Variable, Argument } from './parser/xaml-parser'; // 型定義
 export type { DiffResult, DiffActivity, DiffType, PropertyChange } from './parser/diff-calculator'; // 差分型定義
 export type { ActivityLineRange, ActivityLineIndex } from './parser/line-mapper'; // 行マッピング型定義
-export type { CommentRenderOptions, ReviewCommentData } from './renderer/diff-renderer'; // コメントUI型定義
