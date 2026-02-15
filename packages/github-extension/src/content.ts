@@ -579,7 +579,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const addedCard = document.createElement('div'); // 追加カード
 	addedCard.className = 'summary-card';
 	addedCard.innerHTML = `
-		<span class="summary-label">追加</span>
+		<span class="summary-label">Added</span>
 		<span class="count added">${diffResult.added.length}</span>
 	`;
 
@@ -587,7 +587,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const removedCard = document.createElement('div'); // 削除カード
 	removedCard.className = 'summary-card';
 	removedCard.innerHTML = `
-		<span class="summary-label">削除</span>
+		<span class="summary-label">Removed</span>
 		<span class="count removed">${diffResult.removed.length}</span>
 	`;
 
@@ -595,7 +595,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const modifiedCard = document.createElement('div'); // 変更カード
 	modifiedCard.className = 'summary-card';
 	modifiedCard.innerHTML = `
-		<span class="summary-label">変更</span>
+		<span class="summary-label">Modified</span>
 		<span class="count modified">${diffResult.modified.length}</span>
 	`;
 
