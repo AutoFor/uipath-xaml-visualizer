@@ -176,6 +176,24 @@ export class SequenceRenderer {
       return propsDiv;
     }
 
+    // MultipleAssignアクティビティの場合はAssignOperationsの各式を表示
+    if (activityType === 'MultipleAssign' && properties['AssignOperations']) {
+      const operations = properties['AssignOperations'] as Array<{ To: string; Value: string }>; // 代入操作リスト
+      operations.forEach(op => {
+        const propItem = document.createElement('div'); // 各代入式の行
+        propItem.className = 'property-item';
+
+        const propValue = document.createElement('span'); // 代入式テキスト
+        propValue.className = 'assign-expression'; // Assignと同じスタイル
+        propValue.textContent = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // [左辺] = [右辺]
+
+        propItem.appendChild(propValue);
+        propsDiv.appendChild(propItem);
+      });
+
+      return propsDiv;
+    }
+
     // LogMessageアクティビティの場合はLevel/Messageを表示
     if (activityType === 'LogMessage') {
       let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
