@@ -446,16 +446,13 @@
 #uipath-visualizer-panel .diff-before {
   color: var(--diff-removed-fg);            /* 赤: 削除された値 */
   font-family: 'Courier New', monospace;
-  padding: 4px;
   background-color: var(--diff-removed-bg); /* 薄い赤の背景 */
   border-radius: 4px;
-  margin-bottom: 4px;
 }
 
 #uipath-visualizer-panel .diff-after {
   color: var(--diff-added-fg);              /* 緑: 追加された値 */
   font-family: 'Courier New', monospace;
-  padding: 4px;
   background-color: var(--diff-added-bg);   /* 薄い緑の背景 */
   border-radius: 4px;
 }
