@@ -81,6 +81,12 @@ export class SequenceRenderer {
 
     card.appendChild(header);
 
+    // 注釈表示（DisplayNameの直後に表示）
+    if (activity.annotations) {
+      const annotationDiv = this.renderAnnotation(activity.annotations); // 注釈をレンダリング
+      card.appendChild(annotationDiv);
+    }
+
     // プロパティ表示
     if (Object.keys(activity.properties).length > 0) {
       const propsDiv = this.renderProperties(activity.properties, activity.type); // アクティビティタイプを渡す
@@ -196,6 +202,16 @@ export class SequenceRenderer {
 
     // 表示可能なプロパティがない場合はnullを返す
     return hasVisibleProps ? propsDiv : null;
+  }
+
+  /**
+   * 注釈をレンダリング（メモ風表示）
+   */
+  private renderAnnotation(text: string): HTMLElement {
+    const div = document.createElement('div'); // 注釈コンテナ
+    div.className = 'activity-annotation'; // メモ風スタイル用クラス
+    div.textContent = text; // 注釈テキストを設定
+    return div;
   }
 
   /**

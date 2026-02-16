@@ -220,8 +220,20 @@ body {
 }
 
 .activity-card.collapsed > .activity-properties,
-.activity-card.collapsed > .informative-screenshot {
-  display: none;                                /* プロパティとスクリーンショットも非表示 */
+.activity-card.collapsed > .informative-screenshot,
+.activity-card.collapsed > .activity-annotation {
+  display: none;                                /* プロパティ・スクリーンショット・注釈も非表示 */
+}
+
+/* 注釈表示 */
+.activity-annotation {
+  padding: 2px 6px;                            /* パディング */
+  font-size: 12px;                             /* フォントサイズ */
+  font-style: italic;                          /* イタリック体 */
+  color: #666;                                 /* 控えめテキスト色 */
+  line-height: 1.4;                            /* 行高 */
+  white-space: pre-wrap;                       /* 改行を保持 */
+  word-break: break-word;                      /* 長い単語を折り返す */
 }
 
 /* InformativeScreenshot */

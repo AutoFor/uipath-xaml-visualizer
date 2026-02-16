@@ -96,6 +96,12 @@ export class DiffRenderer {
 
     card.appendChild(header);
 
+    // 注釈表示（DisplayNameの直後に表示）
+    if (diffActivity.activity.annotations) {
+      const annotationDiv = this.renderAnnotation(diffActivity.activity.annotations); // 注釈をレンダリング
+      card.appendChild(annotationDiv);
+    }
+
     // Assignアクティビティの代入式を表示（追加・削除の場合）
     if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
         && diffActivity.activity.type === 'Assign') {
@@ -130,6 +136,16 @@ export class DiffRenderer {
     const key = buildActivityKey(diffActivity.activity, this.activityIndex); // 組み込みキー生成
     this.activityIndex++;
     return key;
+  }
+
+  /**
+   * 注釈をレンダリング（メモ風表示）
+   */
+  private renderAnnotation(text: string): HTMLElement {
+    const div = document.createElement('div'); // 注釈コンテナ
+    div.className = 'activity-annotation'; // メモ風スタイル用クラス
+    div.textContent = text; // 注釈テキストを設定
+    return div;
   }
 
   // ========== 既存メソッド ==========

@@ -302,8 +302,21 @@
 }
 
 #uipath-visualizer-panel .activity-card.collapsed > .activity-properties,
-#uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot {
-  display: none;                            /* プロパティとスクリーンショットも非表示 */
+#uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot,
+#uipath-visualizer-panel .activity-card.collapsed > .activity-annotation {
+  display: none;                            /* プロパティ・スクリーンショット・注釈も非表示 */
+}
+
+/* ========== 注釈表示 ========== */
+
+#uipath-visualizer-panel .activity-annotation {
+  padding: 2px 6px;                        /* パディング */
+  font-size: 12px;                         /* フォントサイズ */
+  font-style: italic;                      /* イタリック体 */
+  color: var(--panel-text-muted);          /* 控えめテキスト色 */
+  line-height: 1.4;                        /* 行高 */
+  white-space: pre-wrap;                   /* 改行を保持 */
+  word-break: break-word;                  /* 長い単語を折り返す */
 }
 
 /* ========== 差分サマリー ========== */
