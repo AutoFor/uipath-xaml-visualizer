@@ -74,7 +74,11 @@
       "Bash(bash ~/.claude/skills/_shared/copy-to-clipboard.sh \"cd /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-157-fine-tune-layout && claude\")",
       "Bash(xxd:*)",
       "Bash(awk:*)",
-      "Bash(npx jest:*)"
+      "Bash(npx jest:*)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card log --oneline -20)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card show 7d38906 --stat)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card log --all --grep=\"179\" --oneline)",
+      "Bash(wc:*)"
     ],
     "deny": [],
     "ask": []
