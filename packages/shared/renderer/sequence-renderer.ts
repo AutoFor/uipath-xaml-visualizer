@@ -83,7 +83,7 @@ export class SequenceRenderer {
 
     // プロパティ表示
     if (Object.keys(activity.properties).length > 0) {
-      const propsDiv = this.renderProperties(activity.properties);
+      const propsDiv = this.renderProperties(activity.properties, activity.type); // アクティビティタイプを渡す
       if (propsDiv) { // nullチェックを追加
         card.appendChild(propsDiv);
       }
@@ -130,9 +130,45 @@ export class SequenceRenderer {
   /**
    * プロパティをレンダリング
    */
-  private renderProperties(properties: Record<string, any>): HTMLElement | null {
+  private renderProperties(properties: Record<string, any>, activityType?: string): HTMLElement | null {
     const propsDiv = document.createElement('div');
     propsDiv.className = 'activity-properties';
+
+    // Assignアクティビティの場合はTo/Valueを統合形式で表示
+    if (activityType === 'Assign' && (properties['To'] || properties['Value'])) {
+      const propItem = document.createElement('div'); // 統合表示用の行
+      propItem.className = 'property-item';
+
+      const propValue = document.createElement('span'); // 代入式テキスト
+      propValue.className = 'assign-expression'; // 白文字・モノスペースフォント
+      propValue.textContent = `${this.formatValue(properties['To'])} = ${this.formatValue(properties['Value'])}`; // [左辺] = [右辺]
+
+      propItem.appendChild(propValue);
+      propsDiv.appendChild(propItem);
+
+      // To/Value以外の主要プロパティも表示
+      const otherImportantProps = ['Condition', 'Selector', 'Message']; // To/Valueを除く主要プロパティ
+      Object.entries(properties).forEach(([key, value]) => {
+        if (otherImportantProps.includes(key)) {
+          const otherItem = document.createElement('div');
+          otherItem.className = 'property-item';
+
+          const otherKey = document.createElement('span');
+          otherKey.className = 'property-key';
+          otherKey.textContent = `${key}:`;
+
+          const otherValue = document.createElement('span');
+          otherValue.className = 'property-value';
+          otherValue.textContent = this.formatValue(value);
+
+          otherItem.appendChild(otherKey);
+          otherItem.appendChild(otherValue);
+          propsDiv.appendChild(otherItem);
+        }
+      });
+
+      return propsDiv;
+    }
 
     // 主要なプロパティのみ表示（簡略表示）
     const importantProps = ['To', 'Value', 'Condition', 'Selector', 'Message'];
