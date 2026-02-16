@@ -124,6 +124,12 @@
   color: #555;
 }
 
+.assign-expression {
+  color: #333;                                  /* 変更なしの代入式 */
+  font-family: 'Courier New', monospace;
+  border-radius: 4px;
+}
+
 .diff-before {
   color: #d73a49;                               /* 赤: 削除された値 */
   font-family: 'Courier New', monospace;
