@@ -586,6 +586,25 @@
   gap: 8px;                                 /* ボタン間の間隔 */
 }
 
+/* 言語切替ボタン */
+#uipath-visualizer-panel .panel-lang-toggle {
+  font-size: 12px;                          /* 小さめのフォント */
+  font-weight: 600;                         /* 太字 */
+  padding: 2px 8px;                         /* コンパクトなパディング */
+  border: 1px solid var(--panel-border);    /* ボーダー */
+  border-radius: 4px;                       /* 角丸 */
+  background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
+  color: var(--panel-text-secondary);       /* テキスト色 */
+  cursor: pointer;                          /* クリック可能カーソル */
+  transition: border-color 0.2s, color 0.2s; /* ホバーアニメーション */
+  white-space: nowrap;                      /* 折り返さない */
+}
+
+#uipath-visualizer-panel .panel-lang-toggle:hover {
+  border-color: var(--panel-accent);        /* ホバー時のボーダー色 */
+  color: var(--panel-accent);               /* ホバー時のテキスト色 */
+}
+
 /* Copy HTMLボタン（デバッグ用・控えめ表示） */
 #uipath-visualizer-panel .panel-copy-btn {
   opacity: 0.7;                             /* 控えめな透明度 */

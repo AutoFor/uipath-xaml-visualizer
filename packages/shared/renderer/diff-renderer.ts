@@ -1,6 +1,7 @@
 import { DiffResult, DiffActivity, DiffType, PropertyChange, buildActivityKey } from '../parser/diff-calculator';
 import { Activity } from '../parser/xaml-parser';
 import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
+import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
 
 /**
  * 差分レンダラー
@@ -72,7 +73,7 @@ export class DiffRenderer {
     const title = document.createElement('span');
     title.className = 'activity-title';
 
-    title.innerHTML = `${diffActivity.activity.type}: ${diffActivity.activity.displayName} ${badge}`;
+    title.innerHTML = `${translateActivityType(diffActivity.activity.type)}: ${diffActivity.activity.displayName} ${badge}`; // アクティビティタイプを翻訳
 
     header.appendChild(title);
 
@@ -184,7 +185,7 @@ export class DiffRenderer {
       // プロパティ名
       const propName = document.createElement('div');
       propName.className = 'prop-name';
-      propName.textContent = `${change.propertyName}:`;
+      propName.textContent = `${translatePropertyName(change.propertyName)}:`; // プロパティ名を翻訳
 
       // Before値（ワードレベルdiff付き）
       const beforeText = this.formatValue(change.before); // 変更前テキスト
@@ -231,7 +232,7 @@ export class DiffRenderer {
 
     const header = document.createElement('div');
     header.className = 'screenshot-header';
-    header.textContent = 'Screenshot Changed:';
+    header.textContent = t('Screenshot Changed:'); // スクリーンショット変更ラベルを翻訳
 
     const compareContainer = document.createElement('div');
     compareContainer.className = 'compare-container';
@@ -242,8 +243,8 @@ export class DiffRenderer {
       const beforeDiv = document.createElement('div');
       beforeDiv.className = 'screenshot-before';
       beforeDiv.innerHTML = `
-        <div class="label">Before</div>
-        <img src="${this.screenshotPathResolver(beforeScreenshot)}" alt="Before" />
+        <div class="label">${t('Before')}</div>
+        <img src="${this.screenshotPathResolver(beforeScreenshot)}" alt="${t('Before')}" />
       `;
       compareContainer.appendChild(beforeDiv);
     }
@@ -254,8 +255,8 @@ export class DiffRenderer {
       const afterDiv = document.createElement('div');
       afterDiv.className = 'screenshot-after';
       afterDiv.innerHTML = `
-        <div class="label">After</div>
-        <img src="${this.screenshotPathResolver(afterScreenshot)}" alt="After" />
+        <div class="label">${t('After')}</div>
+        <img src="${this.screenshotPathResolver(afterScreenshot)}" alt="${t('After')}" />
       `;
       compareContainer.appendChild(afterDiv);
     }
@@ -512,9 +513,9 @@ export class DiffRenderer {
    */
   private getDiffBadge(diffType: DiffType): string {
     const badgeMap: Record<DiffType, string> = {
-      [DiffType.ADDED]: '<span class="badge badge-added">+ Added</span>',
-      [DiffType.REMOVED]: '<span class="badge badge-removed">- Removed</span>',
-      [DiffType.MODIFIED]: '<span class="badge badge-modified">~ Modified</span>'
+      [DiffType.ADDED]: `<span class="badge badge-added">+ ${t('Added')}</span>`, // 追加バッジを翻訳
+      [DiffType.REMOVED]: `<span class="badge badge-removed">- ${t('Removed')}</span>`, // 削除バッジを翻訳
+      [DiffType.MODIFIED]: `<span class="badge badge-modified">~ ${t('Modified')}</span>` // 変更バッジを翻訳
     };
 
     return badgeMap[diffType];
