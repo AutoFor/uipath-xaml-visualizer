@@ -565,7 +565,8 @@ export class XamlParser {
       'AssignOperation', // MultipleAssign内の代入操作（プロパティとして処理済み）
       'TargetApp',
       'TargetAnchorable',
-      'Target'
+      'Target',
+      'VerifyExecutionOptions' // NClick等の検証オプション（プロパティとして処理済み）
     ];
 
     // プレフィックスでチェック（sap:, scg:, x: など）

@@ -124,6 +124,13 @@ export class DiffRenderer {
       if (expr) card.appendChild(expr);          // 代入式があれば表示
     }
 
+    // NApplicationCardアクティビティの重要プロパティを表示（追加・削除の場合）
+    if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
+        && diffActivity.activity.type === 'NApplicationCard') {
+      const props = this.renderNApplicationCardProperties(diffActivity.activity, diffActivity.diffType);
+      if (props) card.appendChild(props); // URL・リポジトリ状態があれば表示
+    }
+
     // 変更内容を表示（変更の場合のみ）
     if (diffActivity.diffType === DiffType.MODIFIED && diffActivity.changes) {
       if (diffActivity.activity.type === 'Assign') {
@@ -354,6 +361,39 @@ export class DiffRenderer {
     });
 
     return container;
+  }
+
+  /**
+   * NApplicationCardアクティビティの重要プロパティをレンダリング（追加・削除用）
+   */
+  private renderNApplicationCardProperties(activity: Activity, diffType: DiffType): HTMLElement | null {
+    const targetApp = activity.properties['TargetApp']; // TargetAppオブジェクトを取得
+    if (!targetApp || typeof targetApp !== 'object') return null; // オブジェクトでなければ表示しない
+
+    const propsDiv = document.createElement('div'); // コンテナ
+    propsDiv.className = 'property-changes';
+    const isAdded = diffType === DiffType.ADDED; // 追加か削除かで表示を切替
+    const className = isAdded ? 'diff-after' : 'diff-before';
+    const prefix = isAdded ? '+' : '-';
+    let hasProps = false;
+
+    // URLを表示
+    if (targetApp.Url) {
+      const urlDiv = document.createElement('div'); // URL行
+      urlDiv.className = className;
+      urlDiv.textContent = `${prefix} ${translatePropertyName('Url')}: ${targetApp.Url}`; // URL値
+      propsDiv.appendChild(urlDiv);
+      hasProps = true;
+    }
+
+    // オブジェクトリポジトリ連携状態を表示
+    const repoDiv = document.createElement('div'); // リポジトリ状態行
+    repoDiv.className = className;
+    repoDiv.textContent = `${prefix} ${translatePropertyName('ObjectRepository')}: ${targetApp.Reference ? t('Linked') : t('Not linked')}`; // 連携状態
+    propsDiv.appendChild(repoDiv);
+    hasProps = true;
+
+    return hasProps ? propsDiv : null;
   }
 
   /**
