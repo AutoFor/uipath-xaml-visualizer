@@ -61,11 +61,17 @@ const propertyNameMap: Record<string, string> = {
 	'InteractionMode': '操作モード', // 操作モード（Simulate/Hardware等）
 	'TargetApp': 'ターゲットアプリ', // 対象アプリケーション
 	'Target': 'ターゲット', // ターゲット要素
+	'Url': 'URL', // ブラウザURL
+	'ObjectRepository': 'オブジェクトリポジトリ', // オブジェクトリポジトリ連携
 	'Text': 'テキスト', // テキスト
 	'EmptyField': 'フィールドクリア', // 入力前にフィールドをクリア
 	'DelayBetweenKeys': 'キー間遅延', // キー入力間の遅延
 	'DelayBefore': '実行前遅延', // 実行前の遅延
 	'DelayAfter': '実行後遅延', // 実行後の遅延
+	'FullSelectorArgument': '厳密セレクター', // 厳密セレクター（完全一致）
+	'FuzzySelectorArgument': 'あいまいセレクター', // あいまいセレクター（ファジー一致）
+	'CursorMotionType': 'カーソル移動タイプ', // カーソルの移動方法
+	'AlterDisabledElement': '無効な要素を変更', // 無効な要素に対する操作
 };
 
 // === UI文字列の翻訳マップ（en/ja両方持つ） ===
@@ -89,7 +95,11 @@ const uiStringsMap: Record<string, Record<Language, string>> = {
 	'Options': { en: 'Options', ja: 'オプション' }, // プロパティグループ: オプション
 	'Misc': { en: 'Misc', ja: 'その他' }, // プロパティグループ: その他
 	'Common': { en: 'Common', ja: '共通' }, // プロパティグループ: 共通
+	'Target': { en: 'Target', ja: 'ターゲット' }, // プロパティグループ: ターゲット
 	'Toggle property panel': { en: 'Properties', ja: 'プロパティ' }, // サブパネルトグルボタンラベル
+	// オブジェクトリポジトリ連携状態
+	'Linked': { en: 'Linked', ja: 'リンク済み' }, // オブジェクトリポジトリ: 連携あり
+	'Not linked': { en: 'Not linked', ja: '未リンク' }, // オブジェクトリポジトリ: 連携なし
 };
 
 // === 翻訳関数 ===

@@ -44,18 +44,19 @@ const DEFAULT_MAIN_PROPERTIES = ['To', 'Value', 'Condition', 'Selector', 'Messag
 /** アクティビティ別の設定マップ */
 const ACTIVITY_CONFIGS: Record<string, ActivityPropertyConfig> = { // アクティビティタイプ → 設定
   'NApplicationCard': { // モダンアプリケーションカード
-    mainProperties: ['TargetApp'], // メイン: アプリ名（特殊レンダリング）
+    mainProperties: ['TargetApp'], // メイン: URL（特殊レンダリング）
     subGroups: [ // サブパネル内のグループ
+      { label: () => t('Target'), properties: ['Selector', 'ObjectRepository'] }, // ターゲットグループ: セレクター・リポジトリ状態
       { label: () => t('Input'), properties: ['AttachMode'] }, // 入力グループ
-      { label: () => t('Options'), properties: ['HealingAgentBehavior', 'Version'] }, // オプショングループ
-      { label: () => t('Misc'), properties: ['ScopeGuid'] }, // その他グループ
+      { label: () => t('Options'), properties: ['InteractionMode', 'HealingAgentBehavior'] }, // オプショングループ
     ],
   },
   'NClick': { // モダンクリック
     mainProperties: ['Target'], // メイン: ターゲット
-    subGroups: [ // サブパネル内のグループ
-      { label: () => t('Input'), properties: ['ClickType', 'MouseButton', 'KeyModifiers'] }, // 入力グループ
-      { label: () => t('Options'), properties: ['ActivateBefore', 'InteractionMode'] }, // オプショングループ
+    subGroups: [ // サブパネル内のグループ（UiPath Studioのプロパティパネル準拠）
+      { label: () => t('Target'), properties: ['FullSelectorArgument', 'FuzzySelectorArgument', 'ObjectRepository'] }, // ターゲットグループ: セレクター・リポジトリ状態
+      { label: () => t('Input'), properties: ['ClickType', 'CursorMotionType', 'MouseButton'] }, // 入力グループ
+      { label: () => t('Options'), properties: ['ActivateBefore', 'AlterDisabledElement', 'InteractionMode', 'KeyModifiers'] }, // オプショングループ
     ],
   },
   'NTypeInto': { // モダン文字入力
@@ -101,6 +102,10 @@ export function getSubProperties( // サブプロパティ抽出関数
     if (isHiddenProperty(key)) continue; // メタデータはスキップ
     if (key === 'DisplayName') continue; // 表示名はヘッダーに表示済み
     if (key === 'AssignOperations') continue; // MultipleAssignの専用プロパティはスキップ
+    if (key === 'ScopeGuid' || key === 'ScopeIdentifier') continue; // スコープGUIDは内部用（表示不要）
+    if (key === 'Version') continue; // バージョンは内部用（表示不要）
+    if (key === 'Body') continue; // Bodyはアクティビティコンテナ（表示不要）
+    if (key === 'VerifyOptions') continue; // 検証オプションは複合オブジェクト（表示不要）
     result[key] = value; // サブプロパティとして追加
   }
 

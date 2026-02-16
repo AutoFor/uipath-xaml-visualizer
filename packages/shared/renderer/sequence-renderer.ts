@@ -107,6 +107,26 @@ export class SequenceRenderer {
     // サブプロパティパネル挿入（メインプロパティの後、スクリーンショットの前）
     if (hasSubPanel(activity.type) && Object.keys(activity.properties).length > 0) {
       const subProps = getSubProperties(activity.properties, activity.type); // サブプロパティを抽出
+
+      // NApplicationCard: TargetApp内のSelector・リポジトリ状態をサブプロパティに注入
+      if (activity.type === 'NApplicationCard' && activity.properties['TargetApp']) {
+        const targetApp = activity.properties['TargetApp']; // TargetAppオブジェクトを取得
+        if (typeof targetApp === 'object' && targetApp !== null) {
+          if (targetApp.Selector) subProps['Selector'] = targetApp.Selector; // セレクターを注入
+          subProps['ObjectRepository'] = targetApp.Reference ? t('Linked') : t('Not linked'); // リポジトリ状態を注入
+        }
+      }
+
+      // NClick: Target（TargetAnchorable）内のセレクター・リポジトリ状態をサブプロパティに注入
+      if (activity.type === 'NClick' && activity.properties['Target']) {
+        const target = activity.properties['Target']; // Targetオブジェクトを取得
+        if (typeof target === 'object' && target !== null) {
+          if (target.FullSelectorArgument) subProps['FullSelectorArgument'] = target.FullSelectorArgument; // 厳密セレクター
+          if (target.FuzzySelectorArgument) subProps['FuzzySelectorArgument'] = target.FuzzySelectorArgument; // あいまいセレクター
+          subProps['ObjectRepository'] = target.Reference ? t('Linked') : t('Not linked'); // リポジトリ状態を注入
+        }
+      }
+
       if (Object.keys(subProps).length > 0) {
         const subPanel = this.renderSubPropertyPanel(subProps, activity.type); // サブパネルを生成
         card.appendChild(subPanel.toggle); // トグルボタンを追加
@@ -213,26 +233,26 @@ export class SequenceRenderer {
       return propsDiv;
     }
 
-    // NApplicationCardアクティビティの場合はTargetAppからアプリ名を表示
+    // NApplicationCardアクティビティの場合はTargetAppからURLを表示
     if (activityType === 'NApplicationCard' && properties['TargetApp']) {
-      const appName = this.formatTargetApp(properties['TargetApp']); // アプリ名を抽出
-      if (appName) {
-        const propItem = document.createElement('div'); // アプリ名表示用の行
-        propItem.className = 'property-item';
+      const targetApp = properties['TargetApp']; // TargetAppオブジェクトを取得
 
-        const propKey = document.createElement('span'); // ラベル
-        propKey.className = 'property-key';
-        propKey.textContent = `${translatePropertyName('TargetApp')}:`; // プロパティ名を翻訳
-
-        const propValue = document.createElement('span'); // アプリ名値
-        propValue.className = 'property-value';
-        propValue.textContent = appName; // 抽出したアプリ名
-
-        propItem.appendChild(propKey);
-        propItem.appendChild(propValue);
-        propsDiv.appendChild(propItem);
+      if (typeof targetApp === 'object' && targetApp !== null && targetApp.Url) {
+        const urlItem = document.createElement('div'); // URL表示用の行
+        urlItem.className = 'property-item';
+        const urlKey = document.createElement('span'); // ラベル
+        urlKey.className = 'property-key';
+        urlKey.textContent = `${translatePropertyName('Url')}:`; // プロパティ名を翻訳
+        const urlValue = document.createElement('span'); // URL値
+        urlValue.className = 'property-value';
+        urlValue.textContent = targetApp.Url; // URLをそのまま表示
+        urlItem.appendChild(urlKey);
+        urlItem.appendChild(urlValue);
+        propsDiv.appendChild(urlItem);
         return propsDiv;
       }
+
+      return null;
     }
 
     // NClick/NTypeInto/NGetTextアクティビティの場合はメインプロパティのみ表示
@@ -242,6 +262,14 @@ export class SequenceRenderer {
 
       for (const mainKey of config.mainProperties) { // メインプロパティのみループ
         if (properties[mainKey] !== undefined) {
+          const value = properties[mainKey]; // プロパティ値を取得
+
+          // Targetがオブジェクトの場合はメインには表示しない（サブパネルで表示）
+          if (mainKey === 'Target' && typeof value === 'object' && value !== null) {
+            continue; // サブプロパティに委譲
+          }
+
+          // その他のメインプロパティは通常通り表示
           const propItem = document.createElement('div'); // プロパティ行
           propItem.className = 'property-item';
 
@@ -251,7 +279,7 @@ export class SequenceRenderer {
 
           const propValue = document.createElement('span'); // 値
           propValue.className = 'property-value';
-          propValue.textContent = this.formatValue(properties[mainKey]); // フォーマット済み値
+          propValue.textContent = this.formatValue(value); // フォーマット済み値
 
           propItem.appendChild(propKey);
           propItem.appendChild(propValue);
