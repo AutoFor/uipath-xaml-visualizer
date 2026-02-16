@@ -39,6 +39,8 @@ let syncAbortController: AbortController | null = null; // カーソル同期イ
 let searchMatches: HTMLElement[] = []; // 検索一致カードのリスト
 let searchCurrentIndex: number = -1; // 現在フォーカス中の一致インデックス
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
+let originalBodyMarginRight: string = ''; // パネル表示前のbody marginRight
+let originalBodyOverflowX: string = ''; // パネル表示前のbody overflowX
 
 // ========== ページタイプ検出 ==========
 
@@ -498,15 +500,16 @@ function scanAndInjectDiffButtons(onClick?: (filePath: string) => void): void {
  * 差分ビジュアライザーを表示
  */
 async function showDiffVisualizer(filePath: string): Promise<void> {
-	// 既存パネルを削除
-	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
-	if (existingPanel) existingPanel.remove();
+	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
 	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
+	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
+	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
 	document.body.appendChild(panel); // ページに追加
+	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
 
 	try {
 		const pr = parsePrUrl(); // PR情報を取得
@@ -596,15 +599,16 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
  * コミット差分ビジュアライザーを表示（コメント機能なし）
  */
 async function showCommitDiffVisualizer(filePath: string): Promise<void> {
-	// 既存パネルを削除
-	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
-	if (existingPanel) existingPanel.remove();
+	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
 	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
+	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
+	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
 	document.body.appendChild(panel); // ページに追加
+	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
 
 	try {
 		const repoInfo = parseRepoInfo(); // リポジトリ情報を取得
@@ -1123,6 +1127,73 @@ function createSearchBar(): HTMLElement {
 // ========== パネルUI ==========
 
 /**
+ * パネルを閉じてページレイアウトを復元（閉じるロジックの集約）
+ */
+function closePanel(): void {
+	clearGithubHighlights(); // GitHub側ハイライトをクリア
+	syncAbortController?.abort(); // カーソル同期リスナーを全解除
+	syncAbortController = null; // 参照をクリア
+	searchMatches = []; // 検索一致リストをクリア
+	searchCurrentIndex = -1; // 検索インデックスをリセット
+	document.getElementById('uipath-visualizer-panel')?.remove(); // パネル削除
+	document.body.style.marginRight = originalBodyMarginRight; // body marginを復元
+	document.body.style.overflowX = originalBodyOverflowX; // body overflowXを復元
+}
+
+/**
+ * 既存のパネルとオーバーレイを削除
+ */
+function removeExistingPanel(): void {
+	closePanel(); // closePanel に委譲
+}
+
+/**
+ * ページコンテンツを左に縮めてサイドバー分の余白を確保
+ */
+function applyBodyShrink(panelWidth: number): void {
+	document.body.style.marginRight = panelWidth + 'px'; // サイドバー幅分のマージン
+	document.body.style.overflowX = 'hidden'; // 水平スクロール抑止
+}
+
+/**
+ * 左端リサイズハンドルでパネル幅変更
+ */
+function setupResize(panel: HTMLElement): void {
+	const handle = document.createElement('div'); // リサイズハンドル
+	handle.className = 'resize-handle'; // CSSクラス
+	panel.appendChild(handle); // パネルに追加
+
+	let isResizing = false; // リサイズ中フラグ
+	let startX = 0; // リサイズ開始X座標
+	let startWidth = 0; // リサイズ開始時の幅
+
+	handle.addEventListener('mousedown', (e: MouseEvent) => {
+		isResizing = true; // リサイズ開始
+		startX = e.clientX; // マウスX座標
+		startWidth = panel.offsetWidth; // 現在の幅
+		panel.classList.add('is-resizing'); // リサイズ中クラス追加
+		handle.classList.add('is-active'); // ハンドルアクティブ状態
+		e.preventDefault(); // デフォルト動作防止
+		e.stopPropagation(); // イベント伝播停止
+	});
+
+	document.addEventListener('mousemove', (e: MouseEvent) => {
+		if (!isResizing) return; // リサイズ中でなければスキップ
+		const dx = startX - e.clientX; // 左ドラッグ = 幅拡大（符号反転）
+		const newWidth = Math.max(320, Math.min(window.innerWidth * 0.7, startWidth + dx)); // 最小320px、最大70vw
+		panel.style.width = newWidth + 'px'; // 幅を更新
+		applyBodyShrink(newWidth); // ページ縮小も同時更新
+	});
+
+	document.addEventListener('mouseup', () => {
+		if (!isResizing) return; // リサイズ中でなければスキップ
+		isResizing = false; // リサイズ終了
+		panel.classList.remove('is-resizing'); // リサイズ中クラス除去
+		handle.classList.remove('is-active'); // ハンドルアクティブ解除
+	});
+}
+
+/**
  * ビジュアライザーパネルを作成
  */
 function createPanel(): HTMLElement {
@@ -1151,14 +1222,7 @@ function createPanel(): HTMLElement {
 	const closeButton = document.createElement('button'); // 閉じるボタン
 	closeButton.textContent = '✕'; // テキスト
 	closeButton.className = 'btn btn-sm'; // ボタンスタイル
-	closeButton.addEventListener('click', () => {
-		clearGithubHighlights(); // GitHub側ハイライトをクリア
-		syncAbortController?.abort(); // カーソル同期リスナーを全解除
-		syncAbortController = null; // 参照をクリア
-		searchMatches = []; // 検索一致リストをクリア
-		searchCurrentIndex = -1; // 検索インデックスをリセット
-		panel.remove(); // パネルを削除
-	});
+	closeButton.addEventListener('click', () => closePanel()); // パネルを閉じる
 
 	/**
 	 * パネル関連のCSSルールを抽出し、CSS変数を実値に解決して返す
@@ -1233,6 +1297,8 @@ function createPanel(): HTMLElement {
 	panel.appendChild(searchBar); // 検索バーを追加
 	panel.appendChild(content);
 
+	setupResize(panel); // リサイズを有効化
+
 	return panel;
 }
 
@@ -1301,9 +1367,7 @@ async function fetchXamlContent(): Promise<string> {
  * 個別ファイル用ビジュアライザーパネルを表示
  */
 function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex): void {
-	// 既存パネルを削除
-	const existingPanel = document.getElementById('uipath-visualizer-panel');
-	if (existingPanel) existingPanel.remove();
+	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
 
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
@@ -1312,7 +1376,10 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
 	const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
 	seqRenderer.render(workflowData, contentArea, lineIndex); // 行番号付きでレンダリング
 
+	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
+	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
 	document.body.appendChild(panel); // ページに追加
+	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
 
 	// カーソル同期をセットアップ（Blob view）
 	if (lineIndex) {
@@ -1415,15 +1482,16 @@ function injectAllWorkflowsButton(): void {
  * 全ワークフロービジュアライザーのメインオーケストレーター
  */
 async function showAllWorkflowsVisualizer(): Promise<void> {
-	// 既存パネルを削除
-	const existingPanel = document.getElementById('uipath-visualizer-panel'); // 既存パネル
-	if (existingPanel) existingPanel.remove();
+	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
 	contentArea.innerHTML = '<div class="status-message">全XAMLファイルを読み込み中...</div>'; // ローディング表示
+	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
+	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
 	document.body.appendChild(panel); // ページに追加
+	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
 
 	try {
 		const pr = parsePrUrl(); // PR情報を取得
@@ -1936,6 +2004,17 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 		searchInput.focus(); // フォーカスを設定
 		searchInput.select(); // テキストを全選択
 	}
+});
+
+// Escapeキーでパネルを閉じる
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+	if (e.key !== 'Escape') return; // Escape以外はスキップ
+	const panel = document.getElementById('uipath-visualizer-panel'); // パネルの存在チェック
+	if (!panel) return; // パネルがなければスキップ
+	// 検索入力にフォーカス中はスキップ（検索のEscapeが優先）
+	const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // 検索入力要素
+	if (searchInput && document.activeElement === searchInput) return; // 検索Escapeに委譲
+	closePanel(); // パネルを閉じてページレイアウトを復元
 });
 
 // ページロード時に初期化
