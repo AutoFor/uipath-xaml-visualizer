@@ -93,14 +93,18 @@
 
 #uipath-visualizer-panel {
   position: fixed;                          /* 固定位置 */
-  top: 0;                                   /* 上端 */
-  right: 0;                                 /* 右端 */
-  width: 50%;                               /* 幅 */
-  height: 100%;                             /* 高さ */
+  top: 0;                                   /* 上端に固定 */
+  right: 0;                                 /* 右端に固定 */
+  width: 40vw;                              /* ビューポート幅の40% */
+  height: 100%;                             /* 全高 */
+  min-width: 320px;                         /* 最小幅 */
+  max-width: 70vw;                          /* 最大幅 */
   background-color: var(--panel-bg);        /* 背景色 */
-  box-shadow: -2px 0 5px var(--panel-shadow); /* 影 */
+  border-radius: 0;                         /* 角丸なし（サイドバー） */
+  box-shadow: -2px 0 8px var(--panel-shadow); /* 左方向の影 */
+  border-left: 1px solid var(--panel-border); /* 左ボーダー */
   z-index: 10000;                           /* 最前面 */
-  overflow: auto;                           /* スクロール */
+  overflow: hidden;                         /* 内部の .panel-content がスクロール */
   display: flex;                            /* フレックスボックス */
   flex-direction: column;                   /* 縦方向 */
   color: var(--panel-text-primary);         /* テキスト色 */
@@ -114,6 +118,32 @@
   justify-content: space-between;           /* 両端揃え */
   align-items: center;                      /* 縦方向中央 */
   flex-shrink: 0;                           /* 縮小しない */
+  cursor: default;                           /* デフォルトカーソル */
+  user-select: none;                        /* テキスト選択防止 */
+}
+
+/* リサイズハンドル（左端の縦バー） */
+#uipath-visualizer-panel .resize-handle {
+  position: absolute;                       /* 絶対位置 */
+  left: 0;                                  /* 左端 */
+  top: 0;                                   /* 上端 */
+  width: 6px;                               /* 幅 */
+  height: 100%;                             /* 全高 */
+  cursor: ew-resize;                        /* 水平リサイズカーソル */
+  z-index: 10;                              /* ハンドルを前面に */
+}
+
+/* リサイズハンドルのホバー・アクティブ状態 */
+#uipath-visualizer-panel .resize-handle:hover,
+#uipath-visualizer-panel .resize-handle.is-active {
+  background-color: var(--panel-accent);    /* アクセント色 */
+  opacity: 0.5;                             /* 控えめな透明度 */
+}
+
+/* リサイズ中のtransition無効化 */
+#uipath-visualizer-panel.is-resizing {
+  transition: none !important;              /* アニメーション無効化 */
+  user-select: none !important;             /* テキスト選択防止 */
 }
 
 /* タイトル */
