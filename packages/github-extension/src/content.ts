@@ -1,5 +1,5 @@
-import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
-import type { ActivityLineIndex, ScreenshotPathResolver } from '@uipath-xaml-visualizer/shared'; // 型定義
+import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import type { ActivityLineIndex, ScreenshotPathResolver, Language } from '@uipath-xaml-visualizer/shared'; // 型定義
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
@@ -41,6 +41,63 @@ let searchCurrentIndex: number = -1; // 現在フォーカス中の一致イン�
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
 let originalBodyMarginRight: string = ''; // パネル表示前のbody marginRight
 let originalBodyOverflowX: string = ''; // パネル表示前のbody overflowX
+
+// ========== 言語切替用の再レンダリングコンテキスト ==========
+
+type RenderContext =
+	| { type: 'blob'; workflowData: any; lineIndex?: ActivityLineIndex; screenshotResolver?: ScreenshotPathResolver } // 個別ファイル表示
+	| { type: 'diff'; filePath: string } // PR差分表示
+	| { type: 'commit-diff'; filePath: string }; // コミット差分表示
+
+let lastRenderContext: RenderContext | null = null; // 最後のレンダリングコンテキスト
+
+/**
+ * chrome.storage.sync から言語設定を読み込み
+ */
+async function loadLanguagePreference(): Promise<void> {
+	try {
+		const result = await chrome.storage.sync.get('language'); // storage から取得
+		if (result.language) {
+			setLanguage(result.language as Language); // 言語を設定
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: 言語設定の読み込みに失敗:', e); // エラーログ
+	}
+}
+
+/**
+ * 言語設定を chrome.storage.sync に保存
+ */
+async function saveLanguagePreference(lang: Language): Promise<void> {
+	try {
+		await chrome.storage.sync.set({ language: lang }); // storage に保存
+	} catch (e) {
+		console.warn('UiPath Visualizer: 言語設定の保存に失敗:', e); // エラーログ
+	}
+}
+
+/**
+ * 現在のパネルを言語切替後に再レンダリング
+ */
+function reRenderCurrentPanel(): void {
+	if (!lastRenderContext) return; // コンテキストがなければ何もしない
+
+	switch (lastRenderContext.type) {
+		case 'blob':
+			displayBlobVisualizerPanel(
+				lastRenderContext.workflowData,
+				lastRenderContext.lineIndex,
+				lastRenderContext.screenshotResolver
+			); // 個別ファイルを再レンダリング
+			break;
+		case 'diff':
+			showDiffVisualizer(lastRenderContext.filePath); // PR差分を再レンダリング
+			break;
+		case 'commit-diff':
+			showCommitDiffVisualizer(lastRenderContext.filePath); // コミット差分を再レンダリング
+			break;
+	}
+}
 
 // ========== ページタイプ検出 ==========
 
@@ -508,6 +565,7 @@ function scanAndInjectDiffButtons(onClick?: (filePath: string) => void): void {
  */
 async function showDiffVisualizer(filePath: string): Promise<void> {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'diff', filePath }; // 再レンダリング用コンテキストを保存
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
@@ -565,7 +623,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
@@ -578,7 +636,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
@@ -608,6 +666,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
  */
 async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'commit-diff', filePath }; // 再レンダリング用コンテキストを保存
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
@@ -664,7 +723,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
@@ -677,7 +736,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
@@ -713,7 +772,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const addedCard = document.createElement('div'); // 追加カード
 	addedCard.className = 'summary-card';
 	addedCard.innerHTML = `
-		<span class="summary-label">Added</span>
+		<span class="summary-label">${t('Added')}</span>
 		<span class="count added">${diffResult.added.length}</span>
 	`;
 
@@ -721,7 +780,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const removedCard = document.createElement('div'); // 削除カード
 	removedCard.className = 'summary-card';
 	removedCard.innerHTML = `
-		<span class="summary-label">Removed</span>
+		<span class="summary-label">${t('Removed')}</span>
 		<span class="count removed">${diffResult.removed.length}</span>
 	`;
 
@@ -729,7 +788,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const modifiedCard = document.createElement('div'); // 変更カード
 	modifiedCard.className = 'summary-card';
 	modifiedCard.innerHTML = `
-		<span class="summary-label">Modified</span>
+		<span class="summary-label">${t('Modified')}</span>
 		<span class="count modified">${diffResult.modified.length}</span>
 	`;
 
@@ -1144,6 +1203,7 @@ function closePanel(): void {
 	syncAbortController = null; // 参照をクリア
 	searchMatches = []; // 検索一致リストをクリア
 	searchCurrentIndex = -1; // 検索インデックスをリセット
+	lastRenderContext = null; // 再レンダリングコンテキストをクリア
 	document.getElementById('uipath-visualizer-panel')?.remove(); // パネル削除
 	document.body.style.marginRight = originalBodyMarginRight; // body marginを復元
 	document.body.style.overflowX = originalBodyOverflowX; // body overflowXを復元
@@ -1288,9 +1348,22 @@ function createPanel(): HTMLElement {
 			});
 	});
 
+	// 言語切替ボタン
+	const langToggleButton = document.createElement('button'); // 言語切替ボタン
+	langToggleButton.className = 'btn btn-sm panel-lang-toggle'; // スタイル適用
+	langToggleButton.textContent = getLanguage() === 'en' ? '日本語' : 'English'; // 現在と逆の言語を表示
+	langToggleButton.title = getLanguage() === 'en' ? '日本語に切り替え' : 'Switch to English'; // ツールチップ
+	langToggleButton.addEventListener('click', async () => { // クリックイベント
+		const newLang: Language = getLanguage() === 'en' ? 'ja' : 'en'; // 言語を切替
+		setLanguage(newLang); // 言語を設定
+		await saveLanguagePreference(newLang); // 永続化
+		reRenderCurrentPanel(); // パネルを再レンダリング
+	});
+
 	// ヘッダーボタングループ
 	const headerButtons = document.createElement('div'); // ボタンコンテナ
 	headerButtons.className = 'panel-header-buttons'; // スタイル適用
+	headerButtons.appendChild(langToggleButton); // 言語切替ボタン追加
 	headerButtons.appendChild(copyHtmlButton); // コピーボタン追加
 	headerButtons.appendChild(closeButton); // 閉じるボタン追加
 
@@ -1385,6 +1458,7 @@ async function fetchXamlContent(): Promise<string> {
  */
 function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex, screenshotResolver?: ScreenshotPathResolver): void {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'blob', workflowData, lineIndex, screenshotResolver }; // 再レンダリング用コンテキストを保存
 
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
@@ -1401,350 +1475,6 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
 	// カーソル同期をセットアップ（Blob view）
 	if (lineIndex) {
 		setupCursorSync(panel, lineIndex, 'blob'); // 双方向同期を有効化
-	}
-}
-
-// ========== 全XAMLファイルビジュアライゼーション ==========
-
-/**
- * リポジトリ内の全XAMLファイル一覧を取得
- */
-async function fetchAllXamlFiles(owner: string, repo: string, sha: string): Promise<string[]> {
-	// 方法1: GitHub同一オリジンのtree-list API（プライベートリポジトリ対応）
-	try {
-		const treeListUrl = `https://github.com/${owner}/${repo}/tree-list/${sha}`; // ツリーリストURL
-		const response = await fetch(treeListUrl, { credentials: 'same-origin' }); // Cookie付きリクエスト
-		if (response.ok) {
-			const text = await response.text(); // レスポンステキスト
-			const paths = text.split('\n').filter(p => p.endsWith('.xaml')); // .xamlファイルのみフィルタ
-			if (paths.length > 0) {
-				console.log(`UiPath Visualizer: tree-list APIから${paths.length}個のXAMLファイルを取得`);
-				return paths;
-			}
-		}
-	} catch (e) {
-		console.warn('UiPath Visualizer: tree-list API失敗、Trees APIにフォールバック:', e);
-	}
-
-	// 方法2: GitHub REST API Trees（パブリックリポジトリ用フォールバック）
-	try {
-		const apiUrl = `https://api.github.com/repos/${owner}/${repo}/git/trees/${sha}?recursive=1`; // Trees API URL
-		const response = await fetch(apiUrl, {
-			headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
-		});
-		if (response.ok) {
-			const data = await response.json(); // レスポンスをパース
-			const paths = (data.tree as Array<{ path: string; type: string }>)
-				.filter(item => item.type === 'blob' && item.path.endsWith('.xaml')) // .xamlファイルのみ
-				.map(item => item.path); // パスのみ抽出
-			console.log(`UiPath Visualizer: Trees APIから${paths.length}個のXAMLファイルを取得`);
-			return paths;
-		}
-	} catch (e) {
-		console.warn('UiPath Visualizer: Trees API失敗:', e);
-	}
-
-	return []; // 取得失敗時は空配列
-}
-
-/**
- * PR差分ページのDOMから変更されたXAMLファイル一覧を取得
- */
-function getChangedXamlFiles(): Set<string> {
-	const changedFiles = new Set<string>(); // 変更ファイルセット
-	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // ファイルコンテナ
-	fileContainers.forEach(container => {
-		const filePath = container.getAttribute('data-tagsearch-path'); // ファイルパス
-		if (filePath && filePath.endsWith('.xaml')) {
-			changedFiles.add(filePath); // XAMLファイルをセットに追加
-		}
-	});
-	return changedFiles;
-}
-
-/**
- * PR diff ページに「View All Workflows」ボタンを注入
- */
-function injectAllWorkflowsButton(): void {
-	// 既にボタンが追加済みかチェック
-	if (document.querySelector('.uipath-all-workflows-btn')) return; // 重複防止
-
-	// PR diff ページのツールバーを探す
-	const toolbar = document.querySelector('.pr-review-tools, .diffbar, .js-diff-progressive-container')?.closest('.pr-review-tools')
-		|| document.querySelector('#files_bucket .pr-toolbar')
-		|| document.querySelector('.diffbar-item.d-flex'); // ツールバー候補
-
-	// ツールバーが見つからない場合はファイルバケットの先頭に追加
-	const insertTarget = toolbar || document.querySelector('#files_bucket'); // 挿入先
-
-	if (!insertTarget) return; // 挿入先が見つからない場合はスキップ
-
-	const button = document.createElement('button'); // ボタン要素
-	button.textContent = 'View All Workflows'; // ボタンテキスト
-	button.className = 'btn btn-sm uipath-all-workflows-btn'; // GitHubスタイル + 識別クラス
-	button.addEventListener('click', (e) => {
-		e.preventDefault(); // デフォルト動作を防止
-		e.stopPropagation(); // イベント伝播を停止
-		showAllWorkflowsVisualizer(); // 全ワークフロービジュアライザーを表示
-	});
-
-	if (toolbar) {
-		toolbar.appendChild(button); // ツールバーにボタンを追加
-	} else {
-		insertTarget.insertBefore(button, insertTarget.firstChild); // ファイルバケットの先頭に追加
-	}
-}
-
-/**
- * 全ワークフロービジュアライザーのメインオーケストレーター
- */
-async function showAllWorkflowsVisualizer(): Promise<void> {
-	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
-
-	// ローディングパネルを表示
-	const panel = createPanel(); // パネル作成
-	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
-	contentArea.innerHTML = '<div class="status-message">全XAMLファイルを読み込み中...</div>'; // ローディング表示
-	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
-	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
-	document.body.appendChild(panel); // ページに追加
-	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
-
-	try {
-		const pr = parsePrUrl(); // PR情報を取得
-		if (!pr) throw new Error('PR情報を取得できません');
-
-		// base/head SHAを取得
-		const refs = await fetchPrRefs(pr); // base/head SHAを取得
-
-		// 全XAMLファイルリストと変更ファイルリストを並行取得
-		const [allFiles, changedFiles] = await Promise.all([
-			fetchAllXamlFiles(pr.owner, pr.repo, refs.headSha), // head SHA のツリーから全ファイル取得
-			Promise.resolve(getChangedXamlFiles()) // DOMから変更ファイル取得
-		]);
-
-		if (allFiles.length === 0) {
-			contentArea.innerHTML = '<div class="status-message">XAMLファイルが見つかりません</div>'; // ファイルなし表示
-			return;
-		}
-
-		// base側にも存在するがhead側に存在しない（削除された）ファイルを検出
-		const baseFiles = await fetchAllXamlFiles(pr.owner, pr.repo, refs.baseSha); // base側の全ファイル
-		const headFileSet = new Set(allFiles); // head側ファイルセット
-		const deletedFiles = baseFiles.filter(f => !headFileSet.has(f)); // 削除ファイル
-
-		// 全ファイル = head側の全ファイル + 削除ファイル
-		const combinedFiles = [...allFiles, ...deletedFiles]; // 全ファイルリスト
-
-		// ファイルを分類してソート（変更ファイル先頭、次に未変更）
-		const sortedFiles = combinedFiles.sort((a, b) => {
-			const aChanged = changedFiles.has(a); // aが変更ファイルか
-			const bChanged = changedFiles.has(b); // bが変更ファイルか
-			if (aChanged !== bChanged) return aChanged ? -1 : 1; // 変更ファイルを先頭に
-			return a.localeCompare(b); // アルファベット順
-		});
-
-		// サマリーを表示
-		const changedCount = changedFiles.size; // 変更ファイル数
-		const unchangedCount = combinedFiles.length - changedCount; // 未変更ファイル数
-		contentArea.innerHTML = ''; // クリア
-
-		const summary = document.createElement('div'); // サマリー要素
-		summary.className = 'all-workflows-summary'; // CSSクラス
-		summary.innerHTML = `
-			<span>XAML Files: <strong>${combinedFiles.length}</strong></span>
-			<span>Changed: <strong>${changedCount}</strong></span>
-			<span>Unchanged: <strong>${unchangedCount}</strong></span>
-		`; // サマリーHTML
-		contentArea.appendChild(summary); // サマリーを追加
-
-		// 各ファイルのアコーディオンセクションを作成
-		for (const filePath of sortedFiles) {
-			const isChanged = changedFiles.has(filePath); // 変更ファイルか
-			const isDeleted = deletedFiles.includes(filePath); // 削除ファイルか
-			const isNew = isChanged && !baseFiles.includes(filePath); // 新規ファイルか（変更かつbase側に存在しない）
-			const section = createFileAccordionSection(filePath, isChanged, isNew, isDeleted, pr, refs); // アコーディオン作成
-			contentArea.appendChild(section); // コンテンツに追加
-		}
-
-	} catch (error) {
-		console.error('全ワークフロービジュアライザーエラー:', error); // エラーログ
-		contentArea.innerHTML = `
-			<div class="error-message">
-				<div class="error-title">エラー: ${(error as Error).message}</div>
-			</div>`; // エラー表示
-	}
-}
-
-/**
- * ファイル用アコーディオンセクションを作成（遅延読み込み対応）
- */
-function createFileAccordionSection(
-	filePath: string,
-	isChanged: boolean,
-	isNew: boolean,
-	isDeleted: boolean,
-	pr: PrInfo,
-	refs: PrRefs
-): HTMLElement {
-	const section = document.createElement('div'); // セクション要素
-	// ファイル状態に応じたCSSクラスを設定
-	let statusClass = 'file-unchanged'; // デフォルトは未変更
-	let badgeClass = 'badge-unchanged'; // デフォルトバッジ
-	let badgeText = 'Unchanged'; // デフォルトバッジテキスト
-	if (isNew) {
-		statusClass = 'file-new'; // 新規ファイル
-		badgeClass = 'badge-new';
-		badgeText = 'New';
-	} else if (isDeleted) {
-		statusClass = 'file-deleted'; // 削除ファイル
-		badgeClass = 'badge-deleted';
-		badgeText = 'Deleted';
-	} else if (isChanged) {
-		statusClass = 'file-changed'; // 変更ファイル
-		badgeClass = 'badge-modified';
-		badgeText = 'Changed';
-	}
-	section.className = `file-accordion-section ${statusClass}`; // CSSクラス
-
-	// ヘッダー部分
-	const header = document.createElement('div'); // ヘッダー要素
-	header.className = 'file-accordion-header'; // CSSクラス
-
-	const icon = document.createElement('span'); // 開閉アイコン
-	icon.className = 'accordion-icon'; // CSSクラス
-	icon.textContent = '\u25B6'; // ▶（閉じた状態）
-
-	const pathSpan = document.createElement('span'); // ファイルパス表示
-	pathSpan.className = 'file-path'; // CSSクラス
-	pathSpan.textContent = filePath; // ファイルパス
-	pathSpan.title = filePath; // ツールチップ（省略時に全パス表示）
-
-	const badge = document.createElement('span'); // ステータスバッジ
-	badge.className = `badge-file-status ${badgeClass}`; // CSSクラス
-	badge.textContent = badgeText; // バッジテキスト
-
-	header.appendChild(icon);
-	header.appendChild(pathSpan);
-	header.appendChild(badge);
-
-	// コンテンツ部分
-	const content = document.createElement('div'); // コンテンツ要素
-	content.className = 'file-accordion-content'; // CSSクラス
-
-	let loaded = false; // 読み込み済みフラグ
-
-	// ヘッダークリックで開閉
-	header.addEventListener('click', () => {
-		const isExpanded = section.classList.toggle('expanded'); // 開閉トグル
-		if (isExpanded && !loaded) {
-			loaded = true; // 読み込み済みに設定
-			loadFileContent(content, filePath, isChanged, isNew, isDeleted, pr, refs); // コンテンツを遅延読み込み
-		}
-	});
-
-	section.appendChild(header);
-	section.appendChild(content);
-
-	return section;
-}
-
-/**
- * アコーディオンセクション内にファイル内容を読み込んでレンダリング
- */
-async function loadFileContent(
-	container: HTMLElement,
-	filePath: string,
-	isChanged: boolean,
-	isNew: boolean,
-	isDeleted: boolean,
-	pr: PrInfo,
-	refs: PrRefs
-): Promise<void> {
-	container.innerHTML = '<div class="accordion-loading">読み込み中...</div>'; // ローディング表示
-
-	try {
-		const parser = new XamlParser(); // パーサーを初期化
-		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // スクリーンショットリゾルバー
-
-		if (isDeleted) {
-			// 削除ファイル: before のみ表示
-			const beforeXaml = await fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath); // ベース版取得
-			if (!beforeXaml) {
-				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
-				return;
-			}
-			const beforeData = parser.parse(beforeXaml); // パース
-			const lineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			container.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(beforeData, seqContainer, lineIndex); // レンダリング
-			container.appendChild(seqContainer); // 追加
-
-		} else if (isNew) {
-			// 新規ファイル: after のみ表示
-			const afterXaml = await fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath); // ヘッド版取得
-			if (!afterXaml) {
-				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
-				return;
-			}
-			const afterData = parser.parse(afterXaml); // パース
-			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			container.innerHTML = '<div class="status-new-file">New File</div>'; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
-			container.appendChild(seqContainer); // 追加
-
-		} else if (isChanged) {
-			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
-			const [beforeXaml, afterXaml] = await Promise.all([
-				fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath), // ベース版
-				fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath)  // ヘッド版
-			]);
-
-			const beforeData = parser.parse(beforeXaml); // ベース版をパース
-			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
-
-			const diffCalc = new DiffCalculator(); // 差分計算
-			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
-
-			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
-
-			// サマリーを表示
-			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
-			container.innerHTML = ''; // クリア
-			container.appendChild(summaryHtml); // サマリーを追加
-
-			// フルワークフローをレンダリング（head版）
-			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
-			container.appendChild(seqContainer); // コンテンツに追加
-
-			// 差分ハイライトをオーバーレイ適用
-			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
-
-		} else {
-			// 未変更ファイル: head のコンテンツを表示
-			const afterXaml = await fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath); // ヘッド版取得
-			if (!afterXaml) {
-				container.innerHTML = '<div class="accordion-error">ファイル内容を取得できません</div>'; // エラー表示
-				return;
-			}
-			const afterData = parser.parse(afterXaml); // パース
-			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			container.innerHTML = ''; // クリア
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
-			container.appendChild(seqContainer); // 追加
-		}
-
-	} catch (error) {
-		console.error(`ファイル読み込みエラー (${filePath}):`, error); // エラーログ
-		container.innerHTML = `<div class="accordion-error">読み込みエラー: ${(error as Error).message}</div>`; // エラー表示
 	}
 }
 
@@ -1876,6 +1606,15 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				if (propsDiv) {
 					(propsDiv as HTMLElement).style.display = 'none'; // 重複を防ぐため非表示
 				}
+				// サブプロパティパネルのトグル・パネルも非表示にする
+				const subToggle = card.querySelector(':scope > .property-sub-panel-toggle'); // サブパネルトグル
+				if (subToggle) {
+					(subToggle as HTMLElement).style.display = 'none'; // 非表示
+				}
+				const subPanel = card.querySelector(':scope > .property-sub-panel'); // サブパネル本体
+				if (subPanel) {
+					(subPanel as HTMLElement).style.display = 'none'; // 非表示
+				}
 
 				// To/Value以外のプロパティ変更は通常通り表示
 				const otherChanges = item.changes.filter( // To/Value以外を抽出
@@ -1989,8 +1728,9 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 /**
  * メイン初期化関数
  */
-function init(): void {
+async function init(): Promise<void> {
 	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
+	await loadLanguagePreference(); // 言語設定を読み込み
 	injectSyncHighlightStyles(); // GitHub側ハイライト用CSSを注入
 
 	const pageType = detectPageType(); // ページタイプを検出
@@ -2001,7 +1741,6 @@ function init(): void {
 			break;
 		case 'pr-diff':
 			scanAndInjectDiffButtons(); // PR diff ページにボタン注入
-			injectAllWorkflowsButton(); // 全ワークフローボタンを注入
 			break;
 		case 'commit-diff':
 			scanAndInjectDiffButtons(showCommitDiffVisualizer); // コミット/Compare差分ページにボタン注入

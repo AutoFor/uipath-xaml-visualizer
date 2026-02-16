@@ -221,8 +221,73 @@ body {
 
 .activity-card.collapsed > .activity-properties,
 .activity-card.collapsed > .informative-screenshot,
-.activity-card.collapsed > .activity-annotation {
-  display: none;                                /* プロパティ・スクリーンショット・注釈も非表示 */
+.activity-card.collapsed > .activity-annotation,
+.activity-card.collapsed > .property-sub-panel-toggle,
+.activity-card.collapsed > .property-sub-panel {
+  display: none;                                /* プロパティ・スクリーンショット・注釈・サブパネルも非表示 */
+}
+
+/* サブプロパティパネル トグルボタン */
+.property-sub-panel-toggle {
+  display: block;                               /* ブロック表示（全幅） */
+  width: 100%;                                  /* 全幅 */
+  padding: 4px 6px;                             /* パディング */
+  margin-top: 4px;                              /* 上マージン */
+  background: none;                             /* 背景なし */
+  border: 1px dashed #ccc;                      /* 点線ボーダー */
+  border-radius: 4px;                           /* 角丸 */
+  cursor: pointer;                              /* クリック可能カーソル */
+  font-size: 12px;                              /* フォントサイズ */
+  color: #888;                                  /* 控えめテキスト色 */
+  text-align: left;                             /* 左揃え */
+  transition: background-color 0.2s, color 0.2s; /* ホバーアニメーション */
+}
+
+.property-sub-panel-toggle:hover {
+  background-color: #f0f0f0;                    /* ホバー時の背景色 */
+  color: #555;                                  /* ホバー時のテキスト色 */
+}
+
+/* サブプロパティパネル本体 */
+.property-sub-panel {
+  margin-top: 4px;                              /* 上マージン */
+  padding: 6px;                                 /* パディング */
+  background-color: #f5f5f5;                    /* 薄い背景色 */
+  border: 1px solid #e0e0e0;                    /* ボーダー */
+  border-radius: 4px;                           /* 角丸 */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace; /* 等幅フォント */
+  font-size: 12px;                              /* コード風フォントサイズ */
+  line-height: 20px;                            /* 行高 */
+  font-weight: 400;                             /* 通常ウェイト（親の太字を上書き） */
+}
+
+.property-sub-panel .property-key {
+  font-weight: 400;                             /* サブパネル内は太字にしない */
+}
+
+/* プロパティグループ */
+.property-group {
+  display: flex;                                /* 横並びレイアウト */
+  align-items: baseline;                        /* ベースライン揃え */
+  flex-wrap: wrap;                              /* 折り返し可能 */
+  gap: 2px 8px;                                 /* 行間・列間 */
+  margin-bottom: 2px;                           /* グループ間の間隔 */
+}
+
+.property-group:last-child {
+  margin-bottom: 0;                             /* 最後のグループは間隔なし */
+}
+
+.property-group-header {
+  font-size: 12px;                              /* コード風フォントサイズ */
+  color: #555;                                  /* 控えめテキスト色 */
+  white-space: nowrap;                          /* 折り返さない */
+}
+
+.property-group-body {
+  display: flex;                                /* 横並びレイアウト */
+  flex-wrap: wrap;                              /* 折り返し可能 */
+  gap: 2px 8px;                                 /* 行間・列間 */
 }
 
 /* 注釈表示 */
