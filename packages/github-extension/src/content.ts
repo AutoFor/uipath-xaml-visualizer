@@ -1706,6 +1706,12 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 
 				changesDiv.appendChild(changeItem); // 変更詳細に追加
 
+				// 差分表示があるので通常のプロパティ表示を非表示にする
+				const propsDiv = card.querySelector(':scope > .activity-properties'); // 通常プロパティ
+				if (propsDiv) {
+					(propsDiv as HTMLElement).style.display = 'none'; // 重複を防ぐため非表示
+				}
+
 				// To/Value以外のプロパティ変更は通常通り表示
 				const otherChanges = item.changes.filter( // To/Value以外を抽出
 					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value'
