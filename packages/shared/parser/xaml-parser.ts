@@ -249,8 +249,10 @@ export class XamlParser {
     const properties = this.extractProperties(element);
     this.log(`  プロパティ数: ${Object.keys(properties).length}`);
 
-    // InformativeScreenshot属性を取得
-    const informativeScreenshot = element.getAttribute('InformativeScreenshot') || undefined;
+    // InformativeScreenshot属性を取得（要素自体 → TargetApp/TargetAnchorable の順で探索）
+    const informativeScreenshot = element.getAttribute('InformativeScreenshot')
+      || this.extractScreenshotFromTargetElements(element)  // ネストされたターゲット要素からも取得
+      || undefined;
     if (informativeScreenshot) {
       this.log(`  スクリーンショット: ${informativeScreenshot}`);
     }
@@ -277,6 +279,41 @@ export class XamlParser {
       annotations,
       informativeScreenshot
     };
+  }
+
+  /**
+   * TargetApp/TargetAnchorable要素からInformativeScreenshotを抽出
+   */
+  private extractScreenshotFromTargetElements(element: Element): string | null {
+    const targetElementNames = ['TargetApp', 'TargetAnchorable', 'Target']; // スクリーンショットを持ちうる要素
+
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const node = element.childNodes[i];
+      if (node.nodeType !== 1) continue;
+
+      const child = node as Element;
+      const childName = child.localName;
+      if (!childName) continue;
+
+      // プロパティ要素（例: NApplicationCard.TargetApp）の中を探索
+      if (childName.includes('.')) {
+        for (let j = 0; j < child.childNodes.length; j++) {
+          const inner = child.childNodes[j];
+          if (inner.nodeType !== 1) continue;
+
+          const innerEl = inner as Element;
+          if (targetElementNames.includes(innerEl.localName)) { // ターゲット要素を検出
+            const screenshot = innerEl.getAttribute('InformativeScreenshot'); // スクリーンショット属性を取得
+            if (screenshot) {
+              this.log(`  ターゲット要素からスクリーンショット検出: ${screenshot}`);
+              return screenshot;
+            }
+          }
+        }
+      }
+    }
+
+    return null;
   }
 
   /**

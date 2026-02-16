@@ -5,6 +5,7 @@ export { XamlLineMapper } from './parser/line-mapper'; // XAML行番号マッパ
 
 // レンダラーのエクスポート
 export { SequenceRenderer } from './renderer/sequence-renderer'; // Sequenceレンダリングクラス
+export type { ScreenshotPathResolver } from './renderer/sequence-renderer'; // スクリーンショットパスリゾルバー型
 export { TreeViewRenderer } from './renderer/tree-view-renderer'; // ツリービュークラス
 export { DiffRenderer } from './renderer/diff-renderer'; // 差分表示レンダリングクラス
 
