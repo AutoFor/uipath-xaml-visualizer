@@ -71,7 +71,10 @@
       "Bash(done)",
       "WebFetch(domain:docs.github.com)",
       "Bash(bash ~/.claude/skills/gh-worktree-branch/create-worktree.sh issue-157-fine-tune-layout)",
-      "Bash(bash ~/.claude/skills/_shared/copy-to-clipboard.sh \"cd /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-157-fine-tune-layout && claude\")"
+      "Bash(bash ~/.claude/skills/_shared/copy-to-clipboard.sh \"cd /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-157-fine-tune-layout && claude\")",
+      "Bash(xxd:*)",
+      "Bash(awk:*)",
+      "Bash(npx jest:*)"
     ],
     "deny": [],
     "ask": []
