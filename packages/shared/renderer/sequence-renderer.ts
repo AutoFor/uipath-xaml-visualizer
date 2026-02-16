@@ -176,6 +176,51 @@ export class SequenceRenderer {
       return propsDiv;
     }
 
+    // LogMessageアクティビティの場合はLevel/Messageを表示
+    if (activityType === 'LogMessage') {
+      let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
+
+      // Levelプロパティを表示
+      if (properties['Level']) {
+        const levelItem = document.createElement('div'); // レベル表示用の行
+        levelItem.className = 'property-item';
+
+        const levelKey = document.createElement('span'); // ラベル
+        levelKey.className = 'property-key';
+        levelKey.textContent = 'Level:';
+
+        const levelValue = document.createElement('span'); // レベル値
+        levelValue.className = 'property-value';
+        levelValue.textContent = this.formatValue(properties['Level']);
+
+        levelItem.appendChild(levelKey);
+        levelItem.appendChild(levelValue);
+        propsDiv.appendChild(levelItem);
+        hasVisibleProps = true;
+      }
+
+      // Messageプロパティを表示
+      if (properties['Message']) {
+        const msgItem = document.createElement('div'); // メッセージ表示用の行
+        msgItem.className = 'property-item';
+
+        const msgKey = document.createElement('span'); // ラベル
+        msgKey.className = 'property-key';
+        msgKey.textContent = 'Message:';
+
+        const msgValue = document.createElement('span'); // メッセージ値
+        msgValue.className = 'property-value';
+        msgValue.textContent = this.formatValue(properties['Message']);
+
+        msgItem.appendChild(msgKey);
+        msgItem.appendChild(msgValue);
+        propsDiv.appendChild(msgItem);
+        hasVisibleProps = true;
+      }
+
+      return hasVisibleProps ? propsDiv : null;
+    }
+
     // 主要なプロパティのみ表示（簡略表示）
     const importantProps = ['To', 'Value', 'Condition', 'Selector', 'Message'];
     let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
