@@ -49,6 +49,23 @@ const propertyNameMap: Record<string, string> = {
 	'Message': 'メッセージ', // メッセージプロパティ
 	'Level': 'レベル', // ログレベルプロパティ
 	'DisplayName': '表示名', // 表示名プロパティ
+	// N系アクティビティのプロパティ名
+	'AttachMode': 'アタッチモード', // アプリケーション接続方法
+	'HealingAgentBehavior': '修復エージェント', // 自動修復エージェント動作
+	'ScopeGuid': 'スコープGUID', // スコープ識別子
+	'Version': 'バージョン', // バージョン情報
+	'ClickType': 'クリック種別', // クリックの種類
+	'MouseButton': 'マウスボタン', // マウスボタン
+	'KeyModifiers': 'キー修飾子', // キー修飾子（Ctrl/Shift等）
+	'ActivateBefore': '事前アクティブ化', // 実行前にウィンドウをアクティブ化
+	'InteractionMode': '操作モード', // 操作モード（Simulate/Hardware等）
+	'TargetApp': 'ターゲットアプリ', // 対象アプリケーション
+	'Target': 'ターゲット', // ターゲット要素
+	'Text': 'テキスト', // テキスト
+	'EmptyField': 'フィールドクリア', // 入力前にフィールドをクリア
+	'DelayBetweenKeys': 'キー間遅延', // キー入力間の遅延
+	'DelayBefore': '実行前遅延', // 実行前の遅延
+	'DelayAfter': '実行後遅延', // 実行後の遅延
 };
 
 // === UI文字列の翻訳マップ（en/ja両方持つ） ===
@@ -67,6 +84,12 @@ const uiStringsMap: Record<string, Record<Language, string>> = {
 	'Deleted': { en: 'Deleted', ja: '削除済' }, // バッジ: Deleted
 	'Deleted File': { en: 'Deleted File', ja: '削除済ファイル' }, // 削除ファイルラベル
 	'New File': { en: 'New File', ja: '新規ファイル' }, // 新規ファイルラベル
+	// サブプロパティパネル用
+	'Input': { en: 'Input', ja: '入力' }, // プロパティグループ: 入力
+	'Options': { en: 'Options', ja: 'オプション' }, // プロパティグループ: オプション
+	'Misc': { en: 'Misc', ja: 'その他' }, // プロパティグループ: その他
+	'Common': { en: 'Common', ja: '共通' }, // プロパティグループ: 共通
+	'Toggle property panel': { en: 'Properties', ja: 'プロパティ' }, // サブパネルトグルボタンラベル
 };
 
 // === 翻訳関数 ===

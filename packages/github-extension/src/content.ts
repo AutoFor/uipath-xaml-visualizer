@@ -1606,6 +1606,15 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				if (propsDiv) {
 					(propsDiv as HTMLElement).style.display = 'none'; // 重複を防ぐため非表示
 				}
+				// サブプロパティパネルのトグル・パネルも非表示にする
+				const subToggle = card.querySelector(':scope > .property-sub-panel-toggle'); // サブパネルトグル
+				if (subToggle) {
+					(subToggle as HTMLElement).style.display = 'none'; // 非表示
+				}
+				const subPanel = card.querySelector(':scope > .property-sub-panel'); // サブパネル本体
+				if (subPanel) {
+					(subPanel as HTMLElement).style.display = 'none'; // 非表示
+				}
 
 				// To/Value以外のプロパティ変更は通常通り表示
 				const otherChanges = item.changes.filter( // To/Value以外を抽出
