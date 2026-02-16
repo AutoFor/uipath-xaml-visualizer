@@ -286,7 +286,7 @@
 }
 
 #uipath-visualizer-panel .property-value {
-  color: var(--panel-accent);               /* アクセント色 */
+  color: var(--panel-text-primary);         /* テキスト色 */
   word-break: break-all;                    /* 長い値を折り返す */
 }
 

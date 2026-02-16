@@ -204,7 +204,7 @@ body {
 }
 
 .property-value {
-  color: #0078d4;
+  color: #333;
   word-break: break-all;                        /* 長い値を折り返す */
 }
 
