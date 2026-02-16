@@ -78,7 +78,10 @@
       "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card log --oneline -20)",
       "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card show 7d38906 --stat)",
       "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer-issue-179-implement-napplication-card log --all --grep=\"179\" --oneline)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "WebFetch(domain:www.uipath.com)",
+      "WebFetch(domain:docs.uipath.com)"
     ],
     "deny": [],
     "ask": []

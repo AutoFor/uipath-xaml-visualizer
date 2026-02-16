@@ -352,7 +352,12 @@ export class XamlParser {
         if (childName && childName.includes('.')) {
           if (this.isMetadataElement(childElem)) continue; // メタデータ要素は除外
           const [, propName] = childName.split('.');
-          properties[propName] = this.extractPropertyValue(childElem);
+          // MultipleAssignのAssignOperationsは特殊処理（配列形式で抽出）
+          if (propName === 'AssignOperations') {
+            properties[propName] = this.extractAssignOperations(childElem);
+          } else {
+            properties[propName] = this.extractPropertyValue(childElem);
+          }
         }
       }
       this.log(`  子要素数: ${childElementCount}`);
@@ -397,6 +402,43 @@ export class XamlParser {
     }
 
     return null;
+  }
+
+  /**
+   * MultipleAssignのAssignOperationsを抽出（配列形式）
+   */
+  private extractAssignOperations(element: Element): Array<{ To: string; Value: string }> {
+    const operations: Array<{ To: string; Value: string }> = []; // 代入操作のリスト
+    this.findAssignOperations(element, operations); // 再帰的にAssignOperation要素を探索
+    this.log(`  AssignOperations抽出: ${operations.length}個`);
+    return operations;
+  }
+
+  /**
+   * AssignOperation要素を再帰的に探索（scg:List等のラッパーを貫通）
+   */
+  private findAssignOperations(element: Element, operations: Array<{ To: string; Value: string }>): void {
+    if (!element.childNodes) return; // 子要素がなければ終了
+
+    for (let i = 0; i < element.childNodes.length; i++) {
+      const child = element.childNodes[i];
+      if (child.nodeType !== 1) continue; // Element nodeのみ処理
+
+      const childElem = child as Element;
+      const name = childElem.localName;
+
+      if (name === 'AssignOperation') {
+        // AssignOperationのTo/Valueプロパティを抽出
+        const props = this.extractProperties(childElem); // 既存のプロパティ抽出を再利用
+        operations.push({
+          To: props['To'] || '', // 代入先（左辺）
+          Value: props['Value'] || '' // 代入値（右辺）
+        });
+      } else {
+        // scg:List等のラッパーは再帰的に探索
+        this.findAssignOperations(childElem, operations);
+      }
+    }
   }
 
   /**
@@ -520,6 +562,7 @@ export class XamlParser {
       'InOutArgument',
       'DelegateInArgument',
       'DelegateOutArgument',
+      'AssignOperation', // MultipleAssign内の代入操作（プロパティとして処理済み）
       'TargetApp',
       'TargetAnchorable',
       'Target'
@@ -542,8 +585,8 @@ export class XamlParser {
 
     // よくあるアクティビティタイプ（基本）
     const activityTypes = [
-      'Activity', 'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'If', 'While',
-      'ForEach', 'Switch', 'TryCatch', 'Click', 'TypeInto', 'GetText',
+      'Activity', 'Sequence', 'Flowchart', 'StateMachine', 'Assign', 'MultipleAssign',
+      'If', 'While', 'ForEach', 'Switch', 'TryCatch', 'Click', 'TypeInto', 'GetText',
       'LogMessage', 'WriteLine', 'InvokeWorkflowFile', 'Delay',
       // UiPath UIAutomation Next アクティビティ
       'NApplicationCard', 'NClick', 'NTypeInto', 'NGetText', 'NHover',
