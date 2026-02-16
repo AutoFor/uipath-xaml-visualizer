@@ -303,8 +303,75 @@
 
 #uipath-visualizer-panel .activity-card.collapsed > .activity-properties,
 #uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot,
-#uipath-visualizer-panel .activity-card.collapsed > .activity-annotation {
-  display: none;                            /* プロパティ・スクリーンショット・注釈も非表示 */
+#uipath-visualizer-panel .activity-card.collapsed > .activity-annotation,
+#uipath-visualizer-panel .activity-card.collapsed > .property-sub-panel-toggle,
+#uipath-visualizer-panel .activity-card.collapsed > .property-sub-panel {
+  display: none;                            /* プロパティ・スクリーンショット・注釈・サブパネルも非表示 */
+}
+
+/* ========== サブプロパティパネル ========== */
+
+/* トグルボタン */
+#uipath-visualizer-panel .property-sub-panel-toggle {
+  display: block;                           /* ブロック表示（全幅） */
+  width: 100%;                              /* 全幅 */
+  padding: 4px 6px;                         /* パディング */
+  margin-top: 4px;                          /* 上マージン */
+  background: none;                         /* 背景なし */
+  border: 1px dashed var(--panel-border-light); /* 点線ボーダー */
+  border-radius: 4px;                       /* 角丸 */
+  cursor: pointer;                          /* クリック可能カーソル */
+  font-size: 12px;                          /* フォントサイズ */
+  color: var(--panel-text-muted);           /* 控えめテキスト色 */
+  text-align: left;                         /* 左揃え */
+  transition: background-color 0.2s, color 0.2s; /* ホバーアニメーション */
+}
+
+#uipath-visualizer-panel .property-sub-panel-toggle:hover {
+  background-color: var(--panel-hover-bg);  /* ホバー時の背景色 */
+  color: var(--panel-text-secondary);       /* ホバー時のテキスト色 */
+}
+
+/* パネル本体 */
+#uipath-visualizer-panel .property-sub-panel {
+  margin-top: 4px;                          /* 上マージン */
+  padding: 6px;                             /* パディング */
+  background-color: var(--panel-bg-tertiary); /* 薄い背景色 */
+  border: 1px solid var(--panel-border);    /* ボーダー */
+  border-radius: 4px;                       /* 角丸 */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace; /* 等幅フォント */
+  font-size: 12px;                          /* コード風フォントサイズ */
+  line-height: 20px;                        /* 行高 */
+  font-weight: 400;                         /* 通常ウェイト */
+}
+
+#uipath-visualizer-panel .property-sub-panel .property-key {
+  font-weight: 400;                         /* サブパネル内は太字にしない */
+}
+
+/* プロパティグループ */
+#uipath-visualizer-panel .property-group {
+  display: flex;                            /* 横並びレイアウト */
+  align-items: baseline;                    /* ベースライン揃え */
+  flex-wrap: wrap;                          /* 折り返し可能 */
+  gap: 2px 8px;                             /* 行間・列間 */
+  margin-bottom: 2px;                       /* グループ間の間隔 */
+}
+
+#uipath-visualizer-panel .property-group:last-child {
+  margin-bottom: 0;                         /* 最後のグループは間隔なし */
+}
+
+#uipath-visualizer-panel .property-group-header {
+  font-size: 12px;                          /* コード風フォントサイズ */
+  color: var(--panel-text-secondary);       /* 控えめテキスト色 */
+  white-space: nowrap;                      /* 折り返さない */
+}
+
+#uipath-visualizer-panel .property-group-body {
+  display: flex;                            /* 横並びレイアウト */
+  flex-wrap: wrap;                          /* 折り返し可能 */
+  gap: 2px 8px;                             /* 行間・列間 */
 }
 
 /* ========== スクリーンショット表示 ========== */

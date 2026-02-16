@@ -2,6 +2,7 @@ import { Activity } from '../parser/xaml-parser';
 import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
 import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
 import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
+import { getSubProperties, getActivityPropertyConfig, hasSubPanel } from './property-config'; // プロパティ分類設定
 
 /**
  * Sequenceワークフローのレンダラー
@@ -103,6 +104,16 @@ export class SequenceRenderer {
       }
     }
 
+    // サブプロパティパネル挿入（メインプロパティの後、スクリーンショットの前）
+    if (hasSubPanel(activity.type) && Object.keys(activity.properties).length > 0) {
+      const subProps = getSubProperties(activity.properties, activity.type); // サブプロパティを抽出
+      if (Object.keys(subProps).length > 0) {
+        const subPanel = this.renderSubPropertyPanel(subProps, activity.type); // サブパネルを生成
+        card.appendChild(subPanel.toggle); // トグルボタンを追加
+        card.appendChild(subPanel.panel); // パネル本体を追加
+      }
+    }
+
     // InformativeScreenshot表示
     if (activity.informativeScreenshot) {
       const screenshotDiv = this.renderScreenshot(activity.informativeScreenshot);
@@ -200,6 +211,56 @@ export class SequenceRenderer {
       });
 
       return propsDiv;
+    }
+
+    // NApplicationCardアクティビティの場合はTargetAppからアプリ名を表示
+    if (activityType === 'NApplicationCard' && properties['TargetApp']) {
+      const appName = this.formatTargetApp(properties['TargetApp']); // アプリ名を抽出
+      if (appName) {
+        const propItem = document.createElement('div'); // アプリ名表示用の行
+        propItem.className = 'property-item';
+
+        const propKey = document.createElement('span'); // ラベル
+        propKey.className = 'property-key';
+        propKey.textContent = `${translatePropertyName('TargetApp')}:`; // プロパティ名を翻訳
+
+        const propValue = document.createElement('span'); // アプリ名値
+        propValue.className = 'property-value';
+        propValue.textContent = appName; // 抽出したアプリ名
+
+        propItem.appendChild(propKey);
+        propItem.appendChild(propValue);
+        propsDiv.appendChild(propItem);
+        return propsDiv;
+      }
+    }
+
+    // NClick/NTypeInto/NGetTextアクティビティの場合はメインプロパティのみ表示
+    if (activityType && activityType.startsWith('N') && activityType !== 'NApplicationCard') {
+      const config = getActivityPropertyConfig(activityType); // アクティビティ別設定を取得
+      let hasVisibleMainProps = false; // メインプロパティがあるかフラグ
+
+      for (const mainKey of config.mainProperties) { // メインプロパティのみループ
+        if (properties[mainKey] !== undefined) {
+          const propItem = document.createElement('div'); // プロパティ行
+          propItem.className = 'property-item';
+
+          const propKey = document.createElement('span'); // ラベル
+          propKey.className = 'property-key';
+          propKey.textContent = `${translatePropertyName(mainKey)}:`; // プロパティ名を翻訳
+
+          const propValue = document.createElement('span'); // 値
+          propValue.className = 'property-value';
+          propValue.textContent = this.formatValue(properties[mainKey]); // フォーマット済み値
+
+          propItem.appendChild(propKey);
+          propItem.appendChild(propValue);
+          propsDiv.appendChild(propItem);
+          hasVisibleMainProps = true;
+        }
+      }
+
+      return hasVisibleMainProps ? propsDiv : null;
     }
 
     // LogMessageアクティビティの場合はLevel/Messageを表示
@@ -362,6 +423,147 @@ export class SequenceRenderer {
         </div>
       `)
       .join('');
+  }
+
+  /**
+   * サブプロパティパネルをレンダリング（トグルボタン + パネル本体）
+   */
+  private renderSubPropertyPanel(
+    subProps: Record<string, any>, // サブプロパティ
+    activityType: string // アクティビティタイプ
+  ): { toggle: HTMLElement; panel: HTMLElement } { // トグルボタンとパネルを返す
+    // トグルボタン
+    const toggle = document.createElement('button'); // トグルボタン要素
+    toggle.className = 'property-sub-panel-toggle'; // CSSクラス
+    toggle.textContent = `${t('Toggle property panel')} ▶`; // ボタンラベル（折りたたみ状態）
+
+    // パネル本体（初期非表示）
+    const panel = document.createElement('div'); // パネル要素
+    panel.className = 'property-sub-panel'; // CSSクラス
+    panel.style.display = 'none'; // 初期非表示
+
+    // アクティビティ設定のグループを取得
+    const config = getActivityPropertyConfig(activityType); // 設定を取得
+
+    if (config.subGroups.length > 0) {
+      // グループ別に表示
+      const groupedKeys = new Set<string>(); // グループに属するキーの集合
+      for (const group of config.subGroups) { // 各グループをループ
+        const groupProps: Record<string, any> = {}; // グループ内のプロパティ
+        for (const propName of group.properties) { // グループ内の各プロパティ名
+          if (subProps[propName] !== undefined) { // サブプロパティに存在するか
+            groupProps[propName] = subProps[propName]; // グループに追加
+            groupedKeys.add(propName); // 使用済みとしてマーク
+          }
+        }
+        if (Object.keys(groupProps).length > 0) { // グループに表示対象があれば
+          const groupDiv = this.renderPropertyGroup(group.label(), groupProps); // グループをレンダリング
+          panel.appendChild(groupDiv); // パネルに追加
+        }
+      }
+
+      // グループに属さないプロパティを「共通」グループで表示
+      const ungrouped: Record<string, any> = {}; // 未グループのプロパティ
+      for (const [key, value] of Object.entries(subProps)) { // サブプロパティ全体をループ
+        if (!groupedKeys.has(key)) { // グループに属していない場合
+          ungrouped[key] = value; // 未グループに追加
+        }
+      }
+      if (Object.keys(ungrouped).length > 0) { // 未グループのプロパティがあれば
+        const commonDiv = this.renderPropertyGroup(t('Common'), ungrouped); // 共通グループとしてレンダリング
+        panel.appendChild(commonDiv); // パネルに追加
+      }
+    } else {
+      // グループなし: フラットにプロパティを表示
+      for (const [key, value] of Object.entries(subProps)) { // サブプロパティ全体をループ
+        const propItem = document.createElement('div'); // プロパティ行
+        propItem.className = 'property-item'; // CSSクラス
+
+        const propKey = document.createElement('span'); // プロパティ名
+        propKey.className = 'property-key'; // CSSクラス
+        propKey.textContent = `${translatePropertyName(key)}:`; // 翻訳済みプロパティ名
+
+        const propValue = document.createElement('span'); // プロパティ値
+        propValue.className = 'property-value'; // CSSクラス
+        propValue.textContent = this.formatValue(value); // フォーマット済み値
+
+        propItem.appendChild(propKey); // 名前を追加
+        propItem.appendChild(propValue); // 値を追加
+        panel.appendChild(propItem); // パネルに追加
+      }
+    }
+
+    // トグルボタンのクリックイベント
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation(); // カードのクリックイベントを阻止
+      const isExpanded = panel.style.display !== 'none'; // 現在の表示状態を取得
+      panel.style.display = isExpanded ? 'none' : 'block'; // 表示/非表示を切り替え
+      toggle.textContent = isExpanded
+        ? `${t('Toggle property panel')} ▶` // 折りたたみ状態
+        : `${t('Toggle property panel')} ▼`; // 展開状態
+    });
+
+    return { toggle, panel }; // トグルとパネルを返す
+  }
+
+  /**
+   * プロパティグループをレンダリング（UiPath Studio風のカテゴリ表示）
+   */
+  private renderPropertyGroup(label: string, properties: Record<string, any>): HTMLElement { // グループ名とプロパティを受け取る
+    const groupDiv = document.createElement('div'); // グループコンテナ
+    groupDiv.className = 'property-group'; // CSSクラス
+
+    const headerDiv = document.createElement('div'); // グループヘッダー
+    headerDiv.className = 'property-group-header'; // CSSクラス
+    headerDiv.textContent = label; // グループ名
+    groupDiv.appendChild(headerDiv); // ヘッダーを追加
+
+    const bodyDiv = document.createElement('div'); // グループ本体
+    bodyDiv.className = 'property-group-body'; // CSSクラス
+
+    for (const [key, value] of Object.entries(properties)) { // プロパティをループ
+      const propItem = document.createElement('div'); // プロパティ行
+      propItem.className = 'property-item'; // CSSクラス
+
+      const propKey = document.createElement('span'); // プロパティ名
+      propKey.className = 'property-key'; // CSSクラス
+      propKey.textContent = `${translatePropertyName(key)}:`; // 翻訳済みプロパティ名
+
+      const propValue = document.createElement('span'); // プロパティ値
+      propValue.className = 'property-value'; // CSSクラス
+      propValue.textContent = this.formatValue(value); // フォーマット済み値
+
+      propItem.appendChild(propKey); // 名前を追加
+      propItem.appendChild(propValue); // 値を追加
+      bodyDiv.appendChild(propItem); // グループ本体に追加
+    }
+
+    groupDiv.appendChild(bodyDiv); // 本体をグループに追加
+    return groupDiv; // グループ要素を返す
+  }
+
+  /**
+   * TargetAppオブジェクトからアプリ名を抽出
+   * FilePathまたはSelectorのtitle属性からアプリ名を取得
+   */
+  private formatTargetApp(targetApp: any): string { // TargetAppプロパティからアプリ名を抽出
+    if (typeof targetApp === 'string') return targetApp; // 文字列ならそのまま返す
+    if (typeof targetApp !== 'object' || targetApp === null) return ''; // オブジェクト以外は空文字
+
+    // FilePathからアプリ名を取得
+    if (targetApp.FilePath) return String(targetApp.FilePath); // ファイルパスがあればそれを返す
+
+    // Selectorのtitle属性からアプリ名を取得
+    if (targetApp.Selector) {
+      const selector = String(targetApp.Selector); // セレクターを文字列化
+      const titleMatch = selector.match(/title='([^']+)'/); // title属性を抽出
+      if (titleMatch) return titleMatch[1]; // 一致すればtitle値を返す
+    }
+
+    // AppDescriptorからアプリ名を取得
+    if (targetApp.AppDescriptor) return String(targetApp.AppDescriptor); // AppDescriptorがあればそれを返す
+
+    return this.formatValue(targetApp); // フォールバック: JSON文字列化
   }
 
   /**
