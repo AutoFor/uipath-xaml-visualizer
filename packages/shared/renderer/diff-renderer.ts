@@ -109,11 +109,21 @@ export class DiffRenderer {
       if (expr) card.appendChild(expr);          // 代入式があれば表示
     }
 
+    // MultipleAssignアクティビティの代入式を表示（追加・削除の場合）
+    if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
+        && diffActivity.activity.type === 'MultipleAssign') {
+      const expr = this.renderMultipleAssignExpression(diffActivity.activity, diffActivity.diffType);
+      if (expr) card.appendChild(expr);          // 代入式があれば表示
+    }
+
     // 変更内容を表示（変更の場合のみ）
     if (diffActivity.diffType === DiffType.MODIFIED && diffActivity.changes) {
       if (diffActivity.activity.type === 'Assign') {
         const assignChanges = this.renderAssignChanges(diffActivity);  // Assign専用の変更表示
         card.appendChild(assignChanges);
+      } else if (diffActivity.activity.type === 'MultipleAssign') {
+        const multiChanges = this.renderMultipleAssignChanges(diffActivity); // MultipleAssign専用の変更表示
+        card.appendChild(multiChanges);
       } else {
         const changesDiv = this.renderPropertyChanges(diffActivity.changes);
         card.appendChild(changesDiv);
@@ -310,6 +320,75 @@ export class DiffRenderer {
 
     if (otherChanges.length > 0) {
       const otherDiv = this.renderPropertyChanges(otherChanges);
+      container.appendChild(otherDiv);
+    }
+
+    return container;
+  }
+
+  /**
+   * MultipleAssignアクティビティの代入式をレンダリング（追加・削除用）
+   */
+  private renderMultipleAssignExpression(activity: Activity, diffType: DiffType): HTMLElement | null {
+    const operations = activity.properties['AssignOperations'] as Array<{ To: string; Value: string }>;
+    if (!operations || operations.length === 0) return null; // 代入操作がなければ表示しない
+
+    const container = document.createElement('div'); // コンテナ
+    container.className = 'property-changes';
+    const isAdded = diffType === DiffType.ADDED; // 追加か削除かで表示を切替
+
+    operations.forEach(op => {
+      const div = document.createElement('div'); // 各代入式の行
+      div.className = isAdded ? 'diff-after' : 'diff-before';
+      const prefix = isAdded ? '+' : '-'; // プレフィックス
+      div.textContent = `${prefix} ${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // [左辺] = [右辺]
+      container.appendChild(div);
+    });
+
+    return container;
+  }
+
+  /**
+   * MultipleAssignアクティビティの変更詳細をレンダリング
+   */
+  private renderMultipleAssignChanges(diffActivity: DiffActivity): HTMLElement {
+    const container = document.createElement('div'); // コンテナ
+    container.className = 'property-changes';
+
+    const hasAssignOpsChange = diffActivity.changes?.some(
+      c => c.propertyName === 'AssignOperations'
+    ); // AssignOperationsの変更があるか
+
+    if (hasAssignOpsChange && diffActivity.beforeActivity) {
+      const beforeOps = (diffActivity.beforeActivity.properties['AssignOperations'] || []) as Array<{ To: string; Value: string }>;
+      const afterOps = (diffActivity.activity.properties['AssignOperations'] || []) as Array<{ To: string; Value: string }>;
+
+      // 変更前の各代入式を表示
+      beforeOps.forEach(op => {
+        const beforeText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // 変更前テキスト
+        const beforeDiv = document.createElement('div'); // 行要素
+        beforeDiv.className = 'diff-before';
+        beforeDiv.textContent = `- ${beforeText}`; // 削除プレフィックス
+        container.appendChild(beforeDiv);
+      });
+
+      // 変更後の各代入式を表示
+      afterOps.forEach(op => {
+        const afterText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // 変更後テキスト
+        const afterDiv = document.createElement('div'); // 行要素
+        afterDiv.className = 'diff-after';
+        afterDiv.textContent = `+ ${afterText}`; // 追加プレフィックス
+        container.appendChild(afterDiv);
+      });
+    }
+
+    // AssignOperations以外のプロパティ変更は通常通り表示
+    const otherChanges = diffActivity.changes?.filter(
+      c => c.propertyName !== 'AssignOperations'
+    ) || [];
+
+    if (otherChanges.length > 0) {
+      const otherDiv = this.renderPropertyChanges(otherChanges); // 汎用プロパティ変更表示
       container.appendChild(otherDiv);
     }
 
