@@ -19,12 +19,14 @@
   --panel-accent-hover: #005a9e;
   --panel-hover-bg: #f0f0f0;
   --panel-shadow: rgba(0, 0, 0, 0.1);
-  --diff-added-fg: #28a745;
-  --diff-added-bg: #f0fff4;
-  --diff-removed-fg: #d73a49;
-  --diff-removed-bg: #ffeef0;
-  --diff-modified-fg: #ffa500;
-  --diff-modified-bg: #fff8e1;
+  --diff-added-fg: #1a7f37;
+  --diff-added-bg: #dafbe1;
+  --diff-added-word-bg: #aceebb;
+  --diff-removed-fg: #cf222e;
+  --diff-removed-bg: #ffebe9;
+  --diff-removed-word-bg: #ffcecb;
+  --diff-modified-fg: #9a6700;
+  --diff-modified-bg: #fff8c5;
   --panel-error-fg: #d13438;
   --panel-error-bg: #fef0f0;
   --screenshot-bg: #f0f7ff;
@@ -34,25 +36,27 @@
 /* ダークモード（GitHub Primer dark パレット準拠） */
 [data-color-mode="dark"] #uipath-visualizer-panel {
   --panel-bg: #0d1117;
-  --panel-bg-secondary: #161b22;
+  --panel-bg-secondary: #151b23;
   --panel-bg-tertiary: #1c2128;
   --panel-bg-code: #161b22;
-  --panel-border: #30363d;
-  --panel-border-light: #21262d;
-  --panel-text-primary: #e6edf3;
-  --panel-text-secondary: #c9d1d9;
-  --panel-text-tertiary: #8b949e;
-  --panel-text-muted: #6e7681;
-  --panel-accent: #58a6ff;
+  --panel-border: #3d444d;
+  --panel-border-light: #3d444d;
+  --panel-text-primary: #f0f6fc;
+  --panel-text-secondary: #f0f6fc;
+  --panel-text-tertiary: #9198a1;
+  --panel-text-muted: #9198a1;
+  --panel-accent: #4493f8;
   --panel-accent-hover: #79c0ff;
   --panel-hover-bg: #1c2128;
   --panel-shadow: rgba(0, 0, 0, 0.4);
   --diff-added-fg: #3fb950;
-  --diff-added-bg: #122117;
+  --diff-added-bg: #2ea04326;
+  --diff-added-word-bg: #2ea04366;
   --diff-removed-fg: #f85149;
-  --diff-removed-bg: #2d1115;
+  --diff-removed-bg: #f851491a;
+  --diff-removed-word-bg: #f8514966;
   --diff-modified-fg: #d29922;
-  --diff-modified-bg: #2d2208;
+  --diff-modified-bg: #388bfd1a;
   --panel-error-fg: #f85149;
   --panel-error-bg: #2d1115;
   --screenshot-bg: #0d1f3c;
@@ -63,25 +67,27 @@
 @media (prefers-color-scheme: dark) {
   [data-color-mode="auto"] #uipath-visualizer-panel {
     --panel-bg: #0d1117;
-    --panel-bg-secondary: #161b22;
+    --panel-bg-secondary: #151b23;
     --panel-bg-tertiary: #1c2128;
     --panel-bg-code: #161b22;
-    --panel-border: #30363d;
-    --panel-border-light: #21262d;
-    --panel-text-primary: #e6edf3;
-    --panel-text-secondary: #c9d1d9;
-    --panel-text-tertiary: #8b949e;
-    --panel-text-muted: #6e7681;
-    --panel-accent: #58a6ff;
+    --panel-border: #3d444d;
+    --panel-border-light: #3d444d;
+    --panel-text-primary: #f0f6fc;
+    --panel-text-secondary: #f0f6fc;
+    --panel-text-tertiary: #9198a1;
+    --panel-text-muted: #9198a1;
+    --panel-accent: #4493f8;
     --panel-accent-hover: #79c0ff;
     --panel-hover-bg: #1c2128;
     --panel-shadow: rgba(0, 0, 0, 0.4);
     --diff-added-fg: #3fb950;
-    --diff-added-bg: #122117;
+    --diff-added-bg: #2ea04326;
+    --diff-added-word-bg: #2ea04366;
     --diff-removed-fg: #f85149;
-    --diff-removed-bg: #2d1115;
+    --diff-removed-bg: #f851491a;
+    --diff-removed-word-bg: #f8514966;
     --diff-modified-fg: #d29922;
-    --diff-modified-bg: #2d2208;
+    --diff-modified-bg: #388bfd1a;
     --panel-error-fg: #f85149;
     --panel-error-bg: #2d1115;
     --screenshot-bg: #0d1f3c;
@@ -173,7 +179,7 @@
 /* デバッグ情報 */
 #uipath-visualizer-panel .debug-info {
   font-size: 12px;                          /* フォントサイズ */
-  font-family: 'Courier New', monospace;    /* 等幅フォント */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;    /* 等幅フォント */
   background: var(--panel-bg-code);         /* コード背景 */
   padding: 12px;                            /* パディング */
   border-radius: 4px;                       /* 角丸 */
@@ -188,7 +194,7 @@
 #uipath-visualizer-panel .activity-card {
   background-color: var(--panel-bg);        /* 背景色 */
   border: 1px solid var(--panel-border);    /* ボーダー */
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 2px;
   margin-bottom: 4px;
   box-shadow: 0 1px 2px var(--panel-shadow); /* 影 */
@@ -394,7 +400,7 @@
   margin-left: auto;                          /* 右端に寄せる */
   padding: 1px 6px;                           /* パディング */
   font-size: 11px;                            /* 小さめフォント */
-  font-family: 'Courier New', monospace;      /* 等幅フォント */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;      /* 等幅フォント */
   font-weight: 400;                           /* 通常ウェイト */
   color: var(--panel-text-muted);             /* 控えめテキスト色 */
   background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
@@ -445,22 +451,45 @@
 
 #uipath-visualizer-panel .assign-expression {
   color: var(--panel-text-primary);            /* 白: 変更なしの値 */
-  font-family: 'Courier New', monospace;
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  font-size: 12px;                             /* GitHub diff準拠 */
+  line-height: 20px;                           /* GitHub diff準拠 */
   border-radius: 4px;
 }
 
 #uipath-visualizer-panel .diff-before {
-  color: var(--diff-removed-fg);            /* 赤: 削除された値 */
-  font-family: 'Courier New', monospace;
-  background-color: var(--diff-removed-bg); /* 薄い赤の背景 */
-  border-radius: 4px;
+  color: var(--panel-text-primary);         /* GitHub準拠: テキスト色はデフォルト */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  background-color: var(--diff-removed-bg); /* GitHub diffBlob-deletionLine-bgColor（行レベル） */
+  border-radius: 3px;                       /* GitHub準拠 */
+  padding: 0 10px;                          /* GitHub .blob-code 準拠 */
+  font-size: 12px;                          /* GitHub diff準拠 */
+  line-height: 20px;                        /* GitHub diff準拠 */
+  display: block;                           /* 行全体の背景色を表示 */
 }
 
 #uipath-visualizer-panel .diff-after {
-  color: var(--diff-added-fg);              /* 緑: 追加された値 */
-  font-family: 'Courier New', monospace;
-  background-color: var(--diff-added-bg);   /* 薄い緑の背景 */
-  border-radius: 4px;
+  color: var(--panel-text-primary);         /* GitHub準拠: テキスト色はデフォルト */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+  background-color: var(--diff-added-bg);   /* GitHub diffBlob-additionLine-bgColor（行レベル） */
+  border-radius: 3px;                       /* GitHub準拠 */
+  padding: 0 10px;                          /* GitHub .blob-code 準拠 */
+  font-size: 12px;                          /* GitHub diff準拠 */
+  line-height: 20px;                        /* GitHub diff準拠 */
+  display: block;                           /* 行全体の背景色を表示 */
+}
+
+/* ワードレベルハイライト（GitHub .x-highlight 準拠） */
+#uipath-visualizer-panel .diff-before .word-highlight {
+  background-color: var(--diff-removed-word-bg); /* GitHub diffBlob-deletionWord-bgColor */
+  border-radius: 3px;                       /* GitHub .x-highlight 準拠 */
+  padding: 1px 2px;                         /* GitHub .x-highlight 準拠 */
+}
+
+#uipath-visualizer-panel .diff-after .word-highlight {
+  background-color: var(--diff-added-word-bg); /* GitHub diffBlob-additionWord-bgColor */
+  border-radius: 3px;                       /* GitHub .x-highlight 準拠 */
+  padding: 1px 2px;                         /* GitHub .x-highlight 準拠 */
 }
 
 /* 差分コンテンツエリア */
@@ -721,7 +750,7 @@
 #uipath-visualizer-panel .file-accordion-header .file-path {
   flex: 1;                                    /* 残り幅を占める */
   font-size: 13px;                            /* フォントサイズ */
-  font-family: 'Courier New', monospace;      /* 等幅フォント */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;      /* 等幅フォント */
   color: var(--panel-text-primary);           /* テキスト色 */
   overflow: hidden;                           /* はみ出し非表示 */
   text-overflow: ellipsis;                    /* 省略記号 */
