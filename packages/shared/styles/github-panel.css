@@ -307,6 +307,43 @@
   display: none;                            /* プロパティ・スクリーンショット・注釈も非表示 */
 }
 
+/* ========== スクリーンショット表示 ========== */
+
+#uipath-visualizer-panel .informative-screenshot {
+  margin-top: 4px;                           /* 上マージン */
+  padding: 8px;                              /* パディング */
+  background-color: var(--screenshot-bg);    /* 背景色 */
+  border-radius: 4px;                        /* 角丸 */
+  border: 1px solid var(--screenshot-border); /* ボーダー */
+  overflow: hidden;                          /* はみ出し防止 */
+}
+
+#uipath-visualizer-panel .screenshot-label {
+  font-weight: 600;                          /* 太字 */
+  margin-bottom: 4px;                        /* 下マージン */
+  color: var(--panel-accent);                /* アクセントカラー */
+  font-size: 12px;                           /* フォントサイズ */
+}
+
+#uipath-visualizer-panel .screenshot-thumbnail {
+  max-width: 100%;                           /* 最大幅 */
+  max-height: 200px;                         /* 最大高さ */
+  border: 1px solid var(--panel-border-light); /* ボーダー */
+  border-radius: 4px;                        /* 角丸 */
+  display: block;                            /* ブロック表示 */
+  object-fit: contain;                       /* アスペクト比を維持 */
+}
+
+#uipath-visualizer-panel .screenshot-error {
+  color: var(--panel-error-fg);              /* エラーテキスト色 */
+  padding: 8px;                              /* パディング */
+  background-color: var(--panel-error-bg);   /* エラー背景色 */
+  border: 1px solid var(--panel-error-fg);   /* エラーボーダー */
+  border-radius: 4px;                        /* 角丸 */
+  text-align: center;                        /* 中央揃え */
+  font-size: 12px;                           /* フォントサイズ */
+}
+
 /* ========== 注釈表示 ========== */
 
 #uipath-visualizer-panel .activity-annotation {

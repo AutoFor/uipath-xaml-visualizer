@@ -5,10 +5,17 @@ import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピ
 /**
  * 差分レンダラー
  */
+export type DiffScreenshotPathResolver = (filename: string) => string; // スクリーンショットパス解決関数の型
+
 export class DiffRenderer {
   private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
   private headLineIndex: ActivityLineIndex | null = null; // head側の行番号マッピング
   private baseLineIndex: ActivityLineIndex | null = null; // base側の行番号マッピング
+  private screenshotPathResolver: DiffScreenshotPathResolver; // スクリーンショットパスリゾルバー
+
+  constructor(screenshotPathResolver?: DiffScreenshotPathResolver) {
+    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // デフォルトは相対パス
+  }
 
   /**
    * 差分結果をHTMLとしてレンダリング
@@ -226,7 +233,7 @@ export class DiffRenderer {
       beforeDiv.className = 'screenshot-before';
       beforeDiv.innerHTML = `
         <div class="label">Before</div>
-        <img src=".screenshots/${beforeScreenshot}" alt="Before" />
+        <img src="${this.screenshotPathResolver(beforeScreenshot)}" alt="Before" />
       `;
       compareContainer.appendChild(beforeDiv);
     }
@@ -238,7 +245,7 @@ export class DiffRenderer {
       afterDiv.className = 'screenshot-after';
       afterDiv.innerHTML = `
         <div class="label">After</div>
-        <img src=".screenshots/${afterScreenshot}" alt="After" />
+        <img src="${this.screenshotPathResolver(afterScreenshot)}" alt="After" />
       `;
       compareContainer.appendChild(afterDiv);
     }

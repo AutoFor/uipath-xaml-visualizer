@@ -5,9 +5,16 @@ import { buildActivityKey } from '../parser/diff-calculator'; // アクティビ
 /**
  * Sequenceワークフローのレンダラー
  */
+export type ScreenshotPathResolver = (filename: string) => string; // スクリーンショットパス解決関数の型
+
 export class SequenceRenderer {
   private lineIndex: ActivityLineIndex | null = null; // 行番号マッピング
   private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
+  private screenshotPathResolver: ScreenshotPathResolver; // スクリーンショットパスリゾルバー
+
+  constructor(screenshotPathResolver?: ScreenshotPathResolver) {
+    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // デフォルトは相対パス
+  }
 
   /**
    * アクティビティツリーをHTMLとしてレンダリング
@@ -266,10 +273,6 @@ export class SequenceRenderer {
     const screenshotDiv = document.createElement('div');
     screenshotDiv.className = 'informative-screenshot';
 
-    const label = document.createElement('div');
-    label.className = 'screenshot-label';
-    label.textContent = 'Informative Screenshot:';
-
     const img = document.createElement('img');
     img.className = 'screenshot-thumbnail';
     img.src = this.resolveScreenshotPath(filename); // スクリーンショットパスを解決
@@ -286,18 +289,7 @@ export class SequenceRenderer {
       `;
     };
 
-    // 拡大ボタン
-    const expandBtn = document.createElement('button');
-    expandBtn.className = 'screenshot-expand-btn';
-    expandBtn.textContent = 'Zoom';
-    expandBtn.onclick = (e) => {
-      e.stopPropagation();                      // カードのクリックイベントを阻止
-      this.showScreenshotModal(filename, img.src);
-    };
-
-    screenshotDiv.appendChild(label);
     screenshotDiv.appendChild(img);
-    screenshotDiv.appendChild(expandBtn);
 
     return screenshotDiv;
   }
@@ -306,45 +298,7 @@ export class SequenceRenderer {
    * スクリーンショットのパスを解決
    */
   private resolveScreenshotPath(filename: string): string {
-    // TODO: Azure DevOps APIを使用して実際のパスを取得
-    // 現時点ではプレースホルダーを返す
-    return `.screenshots/${filename}`;
-  }
-
-  /**
-   * スクリーンショット拡大モーダルを表示
-   */
-  private showScreenshotModal(filename: string, src: string): void {
-    // モーダルを作成
-    const modal = document.createElement('div');
-    modal.className = 'screenshot-modal';
-
-    modal.innerHTML = `
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3>${filename}</h3>
-          <button class="modal-close">X</button>
-        </div>
-        <div class="modal-body">
-          <img src="${src}" alt="${filename}" />
-        </div>
-      </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    // 閉じるボタンのイベント
-    const closeBtn = modal.querySelector('.modal-close');
-    closeBtn?.addEventListener('click', () => {
-      document.body.removeChild(modal);
-    });
-
-    // モーダル背景クリックで閉じる
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal);
-      }
-    });
+    return this.screenshotPathResolver(filename); // リゾルバーで解決
   }
 
   /**

@@ -1,5 +1,5 @@
 import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
-import type { ActivityLineIndex } from '@uipath-xaml-visualizer/shared'; // 型定義
+import type { ActivityLineIndex, ScreenshotPathResolver } from '@uipath-xaml-visualizer/shared'; // 型定義
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
@@ -170,6 +170,13 @@ function parseRepoInfo(): { owner: string; repo: string } | null {
 	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)/); // URLからowner/repoを抽出
 	if (!match) return null;
 	return { owner: match[1], repo: match[2] }; // リポジトリ情報を返す
+}
+
+/**
+ * GitHubのraw URLでスクリーンショットパスを解決するリゾルバーを生成
+ */
+function createScreenshotResolver(owner: string, repo: string, sha: string): ScreenshotPathResolver {
+	return (filename: string) => `https://github.com/${owner}/${repo}/raw/${sha}/.screenshots/${filename}`; // GitHub raw URL
 }
 
 /**
@@ -516,6 +523,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 		if (!pr) throw new Error('PR情報を取得できません');
 
 		const refs = await fetchPrRefs(pr); // base/head SHAを取得
+		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // スクリーンショットリゾルバー
 
 		// before/afterのXAMLを並列で取得
 		const [beforeXaml, afterXaml] = await Promise.all([
@@ -543,7 +551,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 
 			// フルワークフローをレンダリング（head版）
 			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
 			contentArea.appendChild(seqContainer); // コンテンツに追加
 
@@ -559,7 +567,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -572,7 +580,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -615,6 +623,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 		if (!repoInfo) throw new Error('リポジトリ情報を取得できません');
 
 		const refs = await fetchCommitRefs(repoInfo.owner, repoInfo.repo); // base/head SHAを取得
+		const screenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.headSha); // スクリーンショットリゾルバー
 
 		// before/afterのXAMLを並列で取得
 		const [beforeXaml, afterXaml] = await Promise.all([
@@ -641,7 +650,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 
 			// フルワークフローをレンダリング（head版）
 			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
 			contentArea.appendChild(seqContainer); // コンテンツに追加
 
@@ -657,7 +666,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -670,7 +679,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
 			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
 			contentArea.appendChild(seqContainer); // 追加
 
@@ -1337,7 +1346,15 @@ async function showBlobVisualizer(): Promise<void> {
 		const workflowData = parser.parse(xamlContent); // XAML解析
 		const lineIndex = XamlLineMapper.buildLineMap(xamlContent); // 行マップ構築
 
-		displayBlobVisualizerPanel(workflowData, lineIndex); // パネル表示（行番号付き）
+		// blob URLからスクリーンショットリゾルバーを作成
+		const repoInfo = parseRepoInfo(); // リポジトリ情報
+		const blobMatch = window.location.pathname.match(/^\/[^/]+\/[^/]+\/blob\/([^/]+)/); // blob URLからrefを抽出
+		const ref = blobMatch?.[1] || 'HEAD'; // ref（SHA またはブランチ名）
+		const screenshotResolver = repoInfo
+			? createScreenshotResolver(repoInfo.owner, repoInfo.repo, ref) // リゾルバー生成
+			: undefined;
+
+		displayBlobVisualizerPanel(workflowData, lineIndex, screenshotResolver); // パネル表示（行番号付き）
 	} catch (error) {
 		console.error('ビジュアライザー表示エラー:', error); // エラーログ
 		alert('XAMLファイルの解析に失敗しました'); // アラート表示
@@ -1366,14 +1383,14 @@ async function fetchXamlContent(): Promise<string> {
 /**
  * 個別ファイル用ビジュアライザーパネルを表示
  */
-function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex): void {
+function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex, screenshotResolver?: ScreenshotPathResolver): void {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
 
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
 
 	// SequenceRendererでレンダリング
-	const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+	const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 	seqRenderer.render(workflowData, contentArea, lineIndex); // 行番号付きでレンダリング
 
 	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
@@ -1648,6 +1665,7 @@ async function loadFileContent(
 
 	try {
 		const parser = new XamlParser(); // パーサーを初期化
+		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // スクリーンショットリゾルバー
 
 		if (isDeleted) {
 			// 削除ファイル: before のみ表示
@@ -1660,7 +1678,7 @@ async function loadFileContent(
 			const lineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
 			container.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, lineIndex); // レンダリング
 			container.appendChild(seqContainer); // 追加
 
@@ -1675,7 +1693,7 @@ async function loadFileContent(
 			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
 			container.innerHTML = '<div class="status-new-file">New File</div>'; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
 			container.appendChild(seqContainer); // 追加
 
@@ -1701,7 +1719,7 @@ async function loadFileContent(
 
 			// フルワークフローをレンダリング（head版）
 			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
 			container.appendChild(seqContainer); // コンテンツに追加
 
@@ -1719,7 +1737,7 @@ async function loadFileContent(
 			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
 			container.innerHTML = ''; // クリア
 			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(); // シーケンスレンダラー
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
 			container.appendChild(seqContainer); // 追加
 		}
