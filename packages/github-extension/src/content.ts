@@ -1665,6 +1665,82 @@ async function loadFileContent(
 /**
  * フルワークフロー上に差分ハイライトを適用（data-activity-keyで照合）
  */
+/**
+ * 2つの文字列の共通部分と差分部分を計算
+ */
+function findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
+	const result: { value: string; same: boolean }[] = []; // 結果配列
+	let ai = 0; // aのインデックス
+	let bi = 0; // bのインデックス
+
+	while (ai < a.length && bi < b.length) {
+		if (a[ai] === b[bi]) {
+			let start = ai; // 共通部分の開始位置
+			while (ai < a.length && bi < b.length && a[ai] === b[bi]) {
+				ai++;
+				bi++;
+			}
+			result.push({ value: a.substring(start, ai), same: true }); // 共通部分
+		} else {
+			// 次の同期位置を探す（3パターン）
+			let foundA = -1;    // aだけスキップ（aに余分な文字がある）
+			let foundB = -1;    // bだけスキップ（bに余分な文字がある）
+			let foundBoth = -1; // 両方同じ量スキップ（文字の置換）
+			const searchLimit = Math.min(Math.max(a.length - ai, b.length - bi), 20); // 探索範囲
+			for (let d = 1; d < searchLimit; d++) {
+				if (foundBoth < 0 && ai + d < a.length && bi + d < b.length && a[ai + d] === b[bi + d]) {
+					foundBoth = d; // 両方d文字進めると一致（置換）
+				}
+				if (foundA < 0 && ai + d < a.length && a[ai + d] === b[bi]) {
+					foundA = d; // a側にd文字進めると一致（aに余分）
+				}
+				if (foundB < 0 && bi + d < b.length && a[ai] === b[bi + d]) {
+					foundB = d; // b側にd文字進めると一致（bに余分）
+				}
+				if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // いずれか見つかったら終了
+			}
+			// 最小コストの戦略を選択
+			if (foundBoth >= 0 && (foundA < 0 || foundBoth <= foundA) && (foundB < 0 || foundBoth <= foundB)) {
+				result.push({ value: a.substring(ai, ai + foundBoth), same: false }); // 置換部分
+				ai += foundBoth;
+				bi += foundBoth;
+			} else if (foundA >= 0 && (foundB < 0 || foundA <= foundB)) {
+				result.push({ value: a.substring(ai, ai + foundA), same: false }); // aの余分な文字
+				ai += foundA;
+			} else if (foundB >= 0) {
+				bi += foundB; // bの余分な文字をスキップ（aには出力なし）
+			} else {
+				result.push({ value: a.substring(ai), same: false }); // 残り全部が差分
+				ai = a.length;
+				bi = b.length;
+			}
+		}
+	}
+	if (ai < a.length) {
+		result.push({ value: a.substring(ai), same: false }); // aの残り
+	}
+	return result;
+}
+
+/**
+ * ワードレベルdiffでHTMLを構築（変更箇所だけ<span class="word-highlight">で囲む）
+ */
+function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, otherText: string): void {
+	const parts = findCommonParts(text, otherText); // 共通部分と差分部分を計算
+	div.textContent = ''; // textContentをクリア
+	div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+	parts.forEach(part => {
+		if (part.same) {
+			div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
+		} else {
+			const span = document.createElement('span'); // 差分部分はspanで囲む
+			span.className = 'word-highlight'; // ワードハイライトクラス
+			span.textContent = part.value;
+			div.appendChild(span);
+		}
+	});
+}
+
 function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 	// 変更アクティビティをハイライト
 	for (const item of diffResult.modified) {
@@ -1694,14 +1770,17 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				const changeItem = document.createElement('div'); // 統合変更要素
 				changeItem.className = 'property-change-item'; // CSSクラス
 
-				const beforeDiv = document.createElement('div'); // 変更前の行（赤）
+				const beforeText = `${String(beforeTo ?? '')} = ${String(beforeVal ?? '')}`; // 変更前テキスト
+				const afterText = `${String(afterTo ?? '')} = ${String(afterVal ?? '')}`; // 変更後テキスト
+
+				const beforeDiv = document.createElement('div'); // 変更前の行
 				beforeDiv.className = 'diff-before'; // CSSクラス
-				beforeDiv.textContent = `- ${String(beforeTo ?? '')} = ${String(beforeVal ?? '')}`; // 変更前テキスト
+				buildWordDiffHtml(beforeDiv, '-', beforeText, afterText); // ワードレベルdiff
 				changeItem.appendChild(beforeDiv);
 
-				const afterDiv = document.createElement('div'); // 変更後の行（緑）
+				const afterDiv = document.createElement('div'); // 変更後の行
 				afterDiv.className = 'diff-after'; // CSSクラス
-				afterDiv.textContent = `+ ${String(afterTo ?? '')} = ${String(afterVal ?? '')}`; // 変更後テキスト
+				buildWordDiffHtml(afterDiv, '+', afterText, beforeText); // ワードレベルdiff
 				changeItem.appendChild(afterDiv);
 
 				changesDiv.appendChild(changeItem); // 変更詳細に追加
@@ -1725,14 +1804,17 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
 					otherItem.appendChild(propName);
 
+					const bText = String(change.before ?? '(なし)'); // 変更前テキスト
+					const aText = String(change.after ?? '(なし)'); // 変更後テキスト
+
 					const bDiv = document.createElement('div'); // 変更前の値
 					bDiv.className = 'diff-before'; // CSSクラス
-					bDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+					buildWordDiffHtml(bDiv, '-', bText, aText); // ワードレベルdiff
 					otherItem.appendChild(bDiv);
 
 					const aDiv = document.createElement('div'); // 変更後の値
 					aDiv.className = 'diff-after'; // CSSクラス
-					aDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+					buildWordDiffHtml(aDiv, '+', aText, bText); // ワードレベルdiff
 					otherItem.appendChild(aDiv);
 
 					changesDiv.appendChild(otherItem); // 変更詳細に追加
@@ -1748,14 +1830,17 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
 					changeItem.appendChild(propName);
 
+					const bfText = String(change.before ?? '(なし)'); // 変更前テキスト
+					const afText = String(change.after ?? '(なし)'); // 変更後テキスト
+
 					const beforeDiv = document.createElement('div'); // 変更前の値
 					beforeDiv.className = 'diff-before'; // CSSクラス
-					beforeDiv.textContent = `- ${String(change.before ?? '(なし)')}`; // 変更前テキスト
+					buildWordDiffHtml(beforeDiv, '-', bfText, afText); // ワードレベルdiff
 					changeItem.appendChild(beforeDiv);
 
 					const afterDiv = document.createElement('div'); // 変更後の値
 					afterDiv.className = 'diff-after'; // CSSクラス
-					afterDiv.textContent = `+ ${String(change.after ?? '(なし)')}`; // 変更後テキスト
+					buildWordDiffHtml(afterDiv, '+', afText, bfText); // ワードレベルdiff
 					changeItem.appendChild(afterDiv);
 
 					changesDiv.appendChild(changeItem); // 変更詳細に追加

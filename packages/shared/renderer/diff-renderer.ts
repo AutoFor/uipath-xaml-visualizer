@@ -153,15 +153,18 @@ export class DiffRenderer {
       propName.className = 'prop-name';
       propName.textContent = `${change.propertyName}:`;
 
-      // Before値
+      // Before値（ワードレベルdiff付き）
+      const beforeText = this.formatValue(change.before); // 変更前テキスト
+      const afterText = this.formatValue(change.after);   // 変更後テキスト
+
       const beforeValue = document.createElement('div');
       beforeValue.className = 'diff-before';
-      beforeValue.textContent = `- ${this.formatValue(change.before)}`;
+      this.buildWordDiffHtml(beforeValue, '-', beforeText, afterText); // 差分部分をハイライト
 
-      // After値
+      // After値（ワードレベルdiff付き）
       const afterValue = document.createElement('div');
       afterValue.className = 'diff-after';
-      afterValue.textContent = `+ ${this.formatValue(change.after)}`;
+      this.buildWordDiffHtml(afterValue, '+', afterText, beforeText); // 差分部分をハイライト
 
       changeItem.appendChild(propName);
       changeItem.appendChild(beforeValue);
@@ -267,16 +270,20 @@ export class DiffRenderer {
       const afterTo = afterAct.properties['To'];        // 変更後の左辺
       const afterVal = afterAct.properties['Value'];    // 変更後の右辺
 
-      // 変更前の行（赤）
+      // 変更前/後のテキストを生成
+      const beforeText = `${this.formatValue(beforeTo)} = ${this.formatValue(beforeVal)}`; // 変更前テキスト
+      const afterText = `${this.formatValue(afterTo)} = ${this.formatValue(afterVal)}`;   // 変更後テキスト
+
+      // 変更前の行（ワードレベルdiff付き）
       const beforeDiv = document.createElement('div');
       beforeDiv.className = 'diff-before';
-      beforeDiv.textContent = `- ${this.formatValue(beforeTo)} = ${this.formatValue(beforeVal)}`;
+      this.buildWordDiffHtml(beforeDiv, '-', beforeText, afterText); // 差分部分をハイライト
       container.appendChild(beforeDiv);
 
-      // 変更後の行（緑）
+      // 変更後の行（ワードレベルdiff付き）
       const afterDiv = document.createElement('div');
       afterDiv.className = 'diff-after';
-      afterDiv.textContent = `+ ${this.formatValue(afterTo)} = ${this.formatValue(afterVal)}`;
+      this.buildWordDiffHtml(afterDiv, '+', afterText, beforeText); // 差分部分をハイライト
       container.appendChild(afterDiv);
     }
 
@@ -319,6 +326,83 @@ export class DiffRenderer {
     }
 
     return this.decodeXmlEntities(String(value));  // 文字列化してXMLエンティティをデコード
+  }
+
+  /**
+   * ワードレベルdiffでHTMLを構築（変更箇所だけ<span class="word-highlight">で囲む）
+   */
+  private buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, otherText: string): void {
+    const common = this.findCommonParts(text, otherText); // 共通部分と差分部分を計算
+    div.textContent = ''; // textContentをクリア
+    div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+    common.forEach(part => {
+      if (part.same) {
+        div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
+      } else {
+        const span = document.createElement('span'); // 差分部分はspanで囲む
+        span.className = 'word-highlight'; // ワードハイライトクラス
+        span.textContent = part.value;
+        div.appendChild(span);
+      }
+    });
+  }
+
+  /**
+   * 2つの文字列の共通部分と差分部分を計算
+   */
+  private findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
+    const result: { value: string; same: boolean }[] = [];
+    let ai = 0; // aのインデックス
+    let bi = 0; // bのインデックス
+
+    while (ai < a.length && bi < b.length) {
+      if (a[ai] === b[bi]) {
+        let start = ai; // 共通部分の開始位置
+        while (ai < a.length && bi < b.length && a[ai] === b[bi]) {
+          ai++;
+          bi++;
+        }
+        result.push({ value: a.substring(start, ai), same: true }); // 共通部分
+      } else {
+        // 次の同期位置を探す（3パターン）
+        let foundA = -1;    // aだけスキップ（aに余分な文字がある）
+        let foundB = -1;    // bだけスキップ（bに余分な文字がある）
+        let foundBoth = -1; // 両方同じ量スキップ（文字の置換）
+        const searchLimit = Math.min(Math.max(a.length - ai, b.length - bi), 20); // 探索範囲
+        for (let d = 1; d < searchLimit; d++) {
+          if (foundBoth < 0 && ai + d < a.length && bi + d < b.length && a[ai + d] === b[bi + d]) {
+            foundBoth = d; // 両方d文字進めると一致（置換）
+          }
+          if (foundA < 0 && ai + d < a.length && a[ai + d] === b[bi]) {
+            foundA = d; // a側にd文字進めると一致（aに余分）
+          }
+          if (foundB < 0 && bi + d < b.length && a[ai] === b[bi + d]) {
+            foundB = d; // b側にd文字進めると一致（bに余分）
+          }
+          if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // いずれか見つかったら終了
+        }
+
+        // 最小コストの戦略を選択
+        if (foundBoth >= 0 && (foundA < 0 || foundBoth <= foundA) && (foundB < 0 || foundBoth <= foundB)) {
+          result.push({ value: a.substring(ai, ai + foundBoth), same: false }); // 置換部分
+          ai += foundBoth;
+          bi += foundBoth;
+        } else if (foundA >= 0 && (foundB < 0 || foundA <= foundB)) {
+          result.push({ value: a.substring(ai, ai + foundA), same: false }); // aの余分な文字
+          ai += foundA;
+        } else if (foundB >= 0) {
+          bi += foundB; // bの余分な文字をスキップ（aには出力なし）
+        } else {
+          result.push({ value: a.substring(ai), same: false }); // 残り全部が差分
+          ai = a.length;
+          bi = b.length;
+        }
+      }
+    }
+    if (ai < a.length) {
+      result.push({ value: a.substring(ai), same: false }); // aの残り
+    }
+    return result;
   }
 
   /**
