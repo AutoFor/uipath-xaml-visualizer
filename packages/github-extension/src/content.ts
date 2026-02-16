@@ -1,5 +1,5 @@
-import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
-import type { ActivityLineIndex, ScreenshotPathResolver } from '@uipath-xaml-visualizer/shared'; // 型定義
+import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import type { ActivityLineIndex, ScreenshotPathResolver, Language } from '@uipath-xaml-visualizer/shared'; // 型定義
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
 /**
@@ -41,6 +41,67 @@ let searchCurrentIndex: number = -1; // 現在フォーカス中の一致イン�
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
 let originalBodyMarginRight: string = ''; // パネル表示前のbody marginRight
 let originalBodyOverflowX: string = ''; // パネル表示前のbody overflowX
+
+// ========== 言語切替用の再レンダリングコンテキスト ==========
+
+type RenderContext =
+	| { type: 'blob'; workflowData: any; lineIndex?: ActivityLineIndex; screenshotResolver?: ScreenshotPathResolver } // 個別ファイル表示
+	| { type: 'diff'; filePath: string } // PR差分表示
+	| { type: 'commit-diff'; filePath: string } // コミット差分表示
+	| { type: 'all-workflows' }; // 全ワークフロー表示
+
+let lastRenderContext: RenderContext | null = null; // 最後のレンダリングコンテキスト
+
+/**
+ * chrome.storage.sync から言語設定を読み込み
+ */
+async function loadLanguagePreference(): Promise<void> {
+	try {
+		const result = await chrome.storage.sync.get('language'); // storage から取得
+		if (result.language) {
+			setLanguage(result.language as Language); // 言語を設定
+		}
+	} catch (e) {
+		console.warn('UiPath Visualizer: 言語設定の読み込みに失敗:', e); // エラーログ
+	}
+}
+
+/**
+ * 言語設定を chrome.storage.sync に保存
+ */
+async function saveLanguagePreference(lang: Language): Promise<void> {
+	try {
+		await chrome.storage.sync.set({ language: lang }); // storage に保存
+	} catch (e) {
+		console.warn('UiPath Visualizer: 言語設定の保存に失敗:', e); // エラーログ
+	}
+}
+
+/**
+ * 現在のパネルを言語切替後に再レンダリング
+ */
+function reRenderCurrentPanel(): void {
+	if (!lastRenderContext) return; // コンテキストがなければ何もしない
+
+	switch (lastRenderContext.type) {
+		case 'blob':
+			displayBlobVisualizerPanel(
+				lastRenderContext.workflowData,
+				lastRenderContext.lineIndex,
+				lastRenderContext.screenshotResolver
+			); // 個別ファイルを再レンダリング
+			break;
+		case 'diff':
+			showDiffVisualizer(lastRenderContext.filePath); // PR差分を再レンダリング
+			break;
+		case 'commit-diff':
+			showCommitDiffVisualizer(lastRenderContext.filePath); // コミット差分を再レンダリング
+			break;
+		case 'all-workflows':
+			showAllWorkflowsVisualizer(); // 全ワークフローを再レンダリング
+			break;
+	}
+}
 
 // ========== ページタイプ検出 ==========
 
@@ -508,6 +569,7 @@ function scanAndInjectDiffButtons(onClick?: (filePath: string) => void): void {
  */
 async function showDiffVisualizer(filePath: string): Promise<void> {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'diff', filePath }; // 再レンダリング用コンテキストを保存
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
@@ -565,7 +627,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
@@ -578,7 +640,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
@@ -608,6 +670,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
  */
 async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'commit-diff', filePath }; // 再レンダリング用コンテキストを保存
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
@@ -664,7 +727,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			// 新規ファイル: after のみ表示
 			const afterData = parser.parse(afterXaml); // パース
 			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-new-file">新規ファイル</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
@@ -677,7 +740,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			// 削除ファイル: before のみ表示
 			const beforeData = parser.parse(beforeXaml); // パース
 			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
@@ -713,7 +776,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const addedCard = document.createElement('div'); // 追加カード
 	addedCard.className = 'summary-card';
 	addedCard.innerHTML = `
-		<span class="summary-label">Added</span>
+		<span class="summary-label">${t('Added')}</span>
 		<span class="count added">${diffResult.added.length}</span>
 	`;
 
@@ -721,7 +784,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const removedCard = document.createElement('div'); // 削除カード
 	removedCard.className = 'summary-card';
 	removedCard.innerHTML = `
-		<span class="summary-label">Removed</span>
+		<span class="summary-label">${t('Removed')}</span>
 		<span class="count removed">${diffResult.removed.length}</span>
 	`;
 
@@ -729,7 +792,7 @@ function createDiffSummary(diffResult: any): HTMLElement {
 	const modifiedCard = document.createElement('div'); // 変更カード
 	modifiedCard.className = 'summary-card';
 	modifiedCard.innerHTML = `
-		<span class="summary-label">Modified</span>
+		<span class="summary-label">${t('Modified')}</span>
 		<span class="count modified">${diffResult.modified.length}</span>
 	`;
 
@@ -1144,6 +1207,7 @@ function closePanel(): void {
 	syncAbortController = null; // 参照をクリア
 	searchMatches = []; // 検索一致リストをクリア
 	searchCurrentIndex = -1; // 検索インデックスをリセット
+	lastRenderContext = null; // 再レンダリングコンテキストをクリア
 	document.getElementById('uipath-visualizer-panel')?.remove(); // パネル削除
 	document.body.style.marginRight = originalBodyMarginRight; // body marginを復元
 	document.body.style.overflowX = originalBodyOverflowX; // body overflowXを復元
@@ -1288,9 +1352,22 @@ function createPanel(): HTMLElement {
 			});
 	});
 
+	// 言語切替ボタン
+	const langToggleButton = document.createElement('button'); // 言語切替ボタン
+	langToggleButton.className = 'btn btn-sm panel-lang-toggle'; // スタイル適用
+	langToggleButton.textContent = getLanguage() === 'en' ? '日本語' : 'English'; // 現在と逆の言語を表示
+	langToggleButton.title = getLanguage() === 'en' ? '日本語に切り替え' : 'Switch to English'; // ツールチップ
+	langToggleButton.addEventListener('click', async () => { // クリックイベント
+		const newLang: Language = getLanguage() === 'en' ? 'ja' : 'en'; // 言語を切替
+		setLanguage(newLang); // 言語を設定
+		await saveLanguagePreference(newLang); // 永続化
+		reRenderCurrentPanel(); // パネルを再レンダリング
+	});
+
 	// ヘッダーボタングループ
 	const headerButtons = document.createElement('div'); // ボタンコンテナ
 	headerButtons.className = 'panel-header-buttons'; // スタイル適用
+	headerButtons.appendChild(langToggleButton); // 言語切替ボタン追加
 	headerButtons.appendChild(copyHtmlButton); // コピーボタン追加
 	headerButtons.appendChild(closeButton); // 閉じるボタン追加
 
@@ -1385,6 +1462,7 @@ async function fetchXamlContent(): Promise<string> {
  */
 function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex, screenshotResolver?: ScreenshotPathResolver): void {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'blob', workflowData, lineIndex, screenshotResolver }; // 再レンダリング用コンテキストを保存
 
 	const panel = createPanel(); // パネル作成
 	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
@@ -1500,6 +1578,7 @@ function injectAllWorkflowsButton(): void {
  */
 async function showAllWorkflowsVisualizer(): Promise<void> {
 	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
+	lastRenderContext = { type: 'all-workflows' }; // 再レンダリング用コンテキストを保存
 
 	// ローディングパネルを表示
 	const panel = createPanel(); // パネル作成
@@ -1591,19 +1670,19 @@ function createFileAccordionSection(
 	// ファイル状態に応じたCSSクラスを設定
 	let statusClass = 'file-unchanged'; // デフォルトは未変更
 	let badgeClass = 'badge-unchanged'; // デフォルトバッジ
-	let badgeText = 'Unchanged'; // デフォルトバッジテキスト
+	let badgeText = t('Unchanged'); // デフォルトバッジテキスト（翻訳済み）
 	if (isNew) {
 		statusClass = 'file-new'; // 新規ファイル
 		badgeClass = 'badge-new';
-		badgeText = 'New';
+		badgeText = t('New'); // 翻訳済みバッジテキスト
 	} else if (isDeleted) {
 		statusClass = 'file-deleted'; // 削除ファイル
 		badgeClass = 'badge-deleted';
-		badgeText = 'Deleted';
+		badgeText = t('Deleted'); // 翻訳済みバッジテキスト
 	} else if (isChanged) {
 		statusClass = 'file-changed'; // 変更ファイル
 		badgeClass = 'badge-modified';
-		badgeText = 'Changed';
+		badgeText = t('Changed'); // 翻訳済みバッジテキスト
 	}
 	section.className = `file-accordion-section ${statusClass}`; // CSSクラス
 
@@ -1676,7 +1755,7 @@ async function loadFileContent(
 			}
 			const beforeData = parser.parse(beforeXaml); // パース
 			const lineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			container.innerHTML = '<div class="status-deleted-file">Deleted File</div>'; // ラベル
+			container.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル（翻訳済み）
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(beforeData, seqContainer, lineIndex); // レンダリング
@@ -1691,7 +1770,7 @@ async function loadFileContent(
 			}
 			const afterData = parser.parse(afterXaml); // パース
 			const lineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			container.innerHTML = '<div class="status-new-file">New File</div>'; // ラベル
+			container.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル（翻訳済み）
 			const seqContainer = document.createElement('div'); // コンテナ
 			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
 			seqRenderer.render(afterData, seqContainer, lineIndex); // レンダリング
@@ -1989,8 +2068,9 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 /**
  * メイン初期化関数
  */
-function init(): void {
+async function init(): Promise<void> {
 	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
+	await loadLanguagePreference(); // 言語設定を読み込み
 	injectSyncHighlightStyles(); // GitHub側ハイライト用CSSを注入
 
 	const pageType = detectPageType(); // ページタイプを検出

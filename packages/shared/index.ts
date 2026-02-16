@@ -9,6 +9,10 @@ export type { ScreenshotPathResolver } from './renderer/sequence-renderer'; // �
 export { TreeViewRenderer } from './renderer/tree-view-renderer'; // ツリービュークラス
 export { DiffRenderer } from './renderer/diff-renderer'; // 差分表示レンダリングクラス
 
+// i18n（国際化）のエクスポート
+export { setLanguage, getLanguage, translateActivityType, translatePropertyName, t } from './i18n/i18n'; // 翻訳関数
+export type { Language } from './i18n/i18n'; // 言語型
+
 // 型定義のエクスポート
 export type { Activity, ParsedXaml, Variable, Argument } from './parser/xaml-parser'; // 型定義
 export type { DiffResult, DiffActivity, DiffType, PropertyChange } from './parser/diff-calculator'; // 差分型定義

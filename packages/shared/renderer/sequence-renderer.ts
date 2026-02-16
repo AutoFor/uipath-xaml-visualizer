@@ -1,6 +1,7 @@
 import { Activity } from '../parser/xaml-parser';
 import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
 import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
+import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
 
 /**
  * Sequenceワークフローのレンダラー
@@ -53,7 +54,7 @@ export class SequenceRenderer {
 
     const title = document.createElement('span');
     title.className = 'activity-title';
-    title.textContent = `${activity.type}: ${activity.displayName}`;
+    title.textContent = `${translateActivityType(activity.type)}: ${activity.displayName}`; // アクティビティタイプを翻訳
 
     header.appendChild(title);
 
@@ -168,7 +169,7 @@ export class SequenceRenderer {
 
           const otherKey = document.createElement('span');
           otherKey.className = 'property-key';
-          otherKey.textContent = `${key}:`;
+          otherKey.textContent = `${translatePropertyName(key)}:`; // プロパティ名を翻訳
 
           const otherValue = document.createElement('span');
           otherValue.className = 'property-value';
@@ -212,7 +213,7 @@ export class SequenceRenderer {
 
         const levelKey = document.createElement('span'); // ラベル
         levelKey.className = 'property-key';
-        levelKey.textContent = 'Level:';
+        levelKey.textContent = `${translatePropertyName('Level')}:`; // プロパティ名を翻訳
 
         const levelValue = document.createElement('span'); // レベル値
         levelValue.className = 'property-value';
@@ -231,7 +232,7 @@ export class SequenceRenderer {
 
         const msgKey = document.createElement('span'); // ラベル
         msgKey.className = 'property-key';
-        msgKey.textContent = 'Message:';
+        msgKey.textContent = `${translatePropertyName('Message')}:`; // プロパティ名を翻訳
 
         const msgValue = document.createElement('span'); // メッセージ値
         msgValue.className = 'property-value';
@@ -257,7 +258,7 @@ export class SequenceRenderer {
 
         const propKey = document.createElement('span');
         propKey.className = 'property-key';
-        propKey.textContent = `${key}:`;
+        propKey.textContent = `${translatePropertyName(key)}:`; // プロパティ名を翻訳
 
         const propValue = document.createElement('span');
         propValue.className = 'property-value';
@@ -331,16 +332,16 @@ export class SequenceRenderer {
     // 詳細情報をレンダリング
     detailContent.innerHTML = `
       <div class="detail-section">
-        <h4>${activity.type}</h4>
-        <p><strong>DisplayName:</strong> ${activity.displayName}</p>
+        <h4>${translateActivityType(activity.type)}</h4>
+        <p><strong>${translatePropertyName('DisplayName')}:</strong> ${activity.displayName}</p>
       </div>
       <div class="detail-section">
-        <h4>Properties</h4>
+        <h4>${t('Properties')}</h4>
         ${this.renderAllProperties(activity.properties)}
       </div>
       ${activity.annotations ? `
         <div class="detail-section">
-          <h4>Annotations</h4>
+          <h4>${t('Annotations')}</h4>
           <p>${activity.annotations}</p>
         </div>
       ` : ''}
@@ -356,7 +357,7 @@ export class SequenceRenderer {
     return Object.entries(properties)
       .map(([key, value]) => `
         <div class="property-row">
-          <span class="prop-key">${key}:</span>
+          <span class="prop-key">${translatePropertyName(key)}:</span>
           <span class="prop-value">${this.formatValue(value)}</span>
         </div>
       `)

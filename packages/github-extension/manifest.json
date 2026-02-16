@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "GitHub上でUiPath XAMLファイルを視覚的に表示するChrome拡張機能",
   "permissions": [
-    "activeTab"
+    "activeTab",
+    "storage"
   ],
   "host_permissions": [
     "https://github.com/*",
