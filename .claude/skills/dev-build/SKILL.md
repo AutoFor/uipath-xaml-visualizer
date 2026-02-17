@@ -34,11 +34,11 @@ git branch --show-current
 ### 2. ビルド
 
 ```bash
-npm run build:shared && cd packages/github-extension && npx webpack --mode development
+npm run build:shared && (cd packages/github-extension && npx webpack --mode development)
 ```
 
 - `npm run build:shared` はプロジェクトルート（現在のディレクトリ）から実行
-- `npx webpack` は `cd packages/github-extension` で移動してから実行
+- `npx webpack` はサブシェル内で `cd packages/github-extension` してから実行（CWD を変更しない）
 
 **注意**: `npm run dev:github` はwatchモードのため、スキルでは `npx webpack --mode development` を直接実行して1回だけビルドする。
 
