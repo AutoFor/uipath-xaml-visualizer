@@ -346,7 +346,46 @@ function extractShasFromDom(): PrRefs | null {
 }
 
 /**
- * PRのbase/head SHAを取得（DOM抽出 → 同一オリジンfetch → API フォールバック）
+ * blobリンクからhead SHAを抽出（PR filesページ用）
+ */
+function extractBlobHeadSha(): string | null {
+	const blobLinks = document.querySelectorAll('a[href*="/blob/"]'); // blobリンク
+	const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
+	for (const link of Array.from(blobLinks)) {
+		const href = (link as HTMLAnchorElement).href; // リンクURL
+		const match = href.match(blobShaPattern); // SHA候補を検索
+		if (match) return match[1]; // 最初に見つかったSHAを返す
+	}
+	return null;
+}
+
+/**
+ * ブランチ名からコミットSHAを解決（GitHub同一オリジンfetch）
+ * ブランチのコミット一覧ページを取得し、最新コミットSHAを抽出する
+ */
+async function resolveBranchSha(owner: string, repo: string, branch: string): Promise<string | null> {
+	// ブランチ名が既にSHA（40文字16進数）ならそのまま返す
+	if (/^[a-f0-9]{40}$/.test(branch)) return branch;
+	try {
+		const url = `https://github.com/${owner}/${repo}/commits/${encodeURIComponent(branch)}`; // ブランチのコミット一覧ページ
+		console.log(`UiPath Visualizer: ブランチSHA解決: ${branch} → ${url}`);
+		const response = await fetch(url, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		if (response.ok) {
+			const html = await response.text(); // HTMLテキスト
+			const shaMatch = html.match(/\/commit\/([a-f0-9]{40})/); // コミットリンクからSHA抽出
+			if (shaMatch) {
+				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA: ${shaMatch[1]}`);
+				return shaMatch[1]; // 最初のコミットSHA（最新）
+			}
+		}
+	} catch (e) {
+		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗:`, e);
+	}
+	return null;
+}
+
+/**
+ * PRのbase/head SHAを取得（DOM抽出 → ブランチ解決 → 同一オリジンfetch → API フォールバック）
  */
 async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 	// キャッシュがあればそれを返す
@@ -360,12 +399,46 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 		cachedPrRefs = domRefs;
 		return cachedPrRefs;
 	}
-	console.log('UiPath Visualizer: DOMからSHA取得できず、fetch にフォールバック');
+	console.log('UiPath Visualizer: DOMからSHA取得できず、ブランチ解決にフォールバック');
 
-	// 方法2: PRページをHTMLとして取得してSHA抽出（同一オリジン → Cookie送信）
+	// 方法2: .commit-ref のブランチ名からSHAを解決（プライベートリポジトリ対応）
+	const commitRefs = document.querySelectorAll('.commit-ref'); // コミット参照要素
+	if (commitRefs.length >= 2) {
+		const baseBranch = commitRefs[0].textContent?.trim(); // baseブランチ名
+		const headBranch = commitRefs[1].textContent?.trim(); // headブランチ名
+		if (baseBranch && headBranch) {
+			console.log(`UiPath Visualizer: .commit-ref からブランチ名取得: base=${baseBranch}, head=${headBranch}`);
+
+			// blobリンクからhead SHAを取得できれば、baseのみ解決で往復を1回に削減
+			const blobHeadSha = extractBlobHeadSha(); // blobリンクからhead SHA取得
+			if (blobHeadSha) {
+				console.log(`UiPath Visualizer: blobリンクからhead SHA取得: ${blobHeadSha}`);
+				const baseSha = await resolveBranchSha(pr.owner, pr.repo, baseBranch); // baseのみ解決
+				if (baseSha) {
+					console.log('UiPath Visualizer: blob SHA + ブランチ解決でSHA取得成功');
+					cachedPrRefs = { baseSha, headSha: blobHeadSha };
+					return cachedPrRefs;
+				}
+			}
+
+			// フォールバック: 両方のブランチをSHAに解決
+			const [baseSha, headSha] = await Promise.all([ // 並列で解決
+				resolveBranchSha(pr.owner, pr.repo, baseBranch),
+				resolveBranchSha(pr.owner, pr.repo, headBranch)
+			]);
+			if (baseSha && headSha) {
+				console.log('UiPath Visualizer: ブランチ名からSHA解決成功');
+				cachedPrRefs = { baseSha, headSha };
+				return cachedPrRefs;
+			}
+		}
+	}
+	console.log('UiPath Visualizer: ブランチ解決できず、fetch にフォールバック');
+
+	// 方法3: PRページをHTMLとして取得してSHA抽出（同一オリジン → Cookie送信）
 	const prPageUrl = `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.prNumber}`; // PRページURL
 
-	// 2a: credentials: 'same-origin' で試行
+	// 3a: credentials: 'same-origin' で試行
 	try {
 		console.log(`UiPath Visualizer: HTML fetch (same-origin) 開始: ${prPageUrl}`);
 		const response = await fetch(prPageUrl, { credentials: 'same-origin' }); // 同一オリジンCookie送信
@@ -387,7 +460,7 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 		console.warn('UiPath Visualizer: PRページfetchエラー (same-origin):', e);
 	}
 
-	// 2b: credentials: 'include' で再試行（Chrome拡張でのCookie送信挙動の違いに対応）
+	// 3b: credentials: 'include' で再試行（Chrome拡張でのCookie送信挙動の違いに対応）
 	try {
 		console.log(`UiPath Visualizer: HTML fetch (include) 開始: ${prPageUrl}`);
 		const response = await fetch(prPageUrl, { credentials: 'include' }); // Cookie含むリクエスト
@@ -406,7 +479,7 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 		console.warn('UiPath Visualizer: PRページfetchエラー (include):', e);
 	}
 
-	// 方法3: GitHub REST API（パブリックリポジトリ用フォールバック）
+	// 方法4: GitHub REST API（パブリックリポジトリ用フォールバック）
 	try {
 		const apiUrl = `https://api.github.com/repos/${pr.owner}/${pr.repo}/pulls/${pr.prNumber}`; // API URL
 		console.log(`UiPath Visualizer: API fetch 開始: ${apiUrl}`);

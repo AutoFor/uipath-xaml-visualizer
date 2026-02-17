@@ -2,7 +2,7 @@ import { Activity } from '../parser/xaml-parser';
 import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
 import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
 import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
-import { getSubProperties, getActivityPropertyConfig, hasSubPanel } from './property-config'; // プロパティ分類設定
+import { getSubProperties, getActivityPropertyConfig, hasSubPanel, isDefinedActivity } from './property-config'; // プロパティ分類設定
 
 /**
  * Sequenceワークフローのレンダラー
@@ -40,12 +40,20 @@ export class SequenceRenderer {
     card.dataset.id = activity.id;              // データ属性にIDを設定
     card.dataset.type = activity.type;          // データ属性にタイプを設定
 
+    // 未定義アクティビティで、子が全て内部XML要素（定義済み子孫なし）の場合のみ子を非表示
+    // 一つでも定義済み子孫がある子がいれば全子要素を表示（SendMailConnections等のカード自体は残す）
+    const childrenToRender = (
+      !isDefinedActivity(activity.type) && // 自身が未定義
+      activity.children.length > 0 && // 子がある
+      !activity.children.some(child => this.hasDefinedDescendant(child)) // 全子が未定義ツリー
+    ) ? [] : activity.children; // 条件を満たす場合のみ子を非表示、それ以外は全子を表示
+
     // ヘッダー
     const header = document.createElement('div');
     header.className = 'activity-header';
 
-    // 折りたたみボタン（子要素がある場合のみ表示）
-    if (activity.children.length > 0) {
+    // 折りたたみボタン（表示対象の子要素がある場合のみ表示）
+    if (childrenToRender.length > 0) {
       const collapseBtn = document.createElement('button');
       collapseBtn.className = 'collapse-btn';
       collapseBtn.textContent = '▼'; // 展開状態のアイコン
@@ -105,7 +113,7 @@ export class SequenceRenderer {
     }
 
     // サブプロパティパネル挿入（メインプロパティの後、スクリーンショットの前）
-    if (hasSubPanel(activity.type) && Object.keys(activity.properties).length > 0) {
+    if (isDefinedActivity(activity.type) && hasSubPanel(activity.type) && Object.keys(activity.properties).length > 0) {
       const subProps = getSubProperties(activity.properties, activity.type); // サブプロパティを抽出
 
       // NApplicationCard: TargetApp内のSelector・リポジトリ状態をサブプロパティに注入
@@ -140,12 +148,12 @@ export class SequenceRenderer {
       card.appendChild(screenshotDiv);
     }
 
-    // 子アクティビティを再帰的にレンダリング
-    if (activity.children.length > 0) {
+    // 子アクティビティを再帰的にレンダリング（フィルタ済み）
+    if (childrenToRender.length > 0) {
       const childrenContainer = document.createElement('div');
       childrenContainer.className = 'activity-children';
 
-      activity.children.forEach(child => {
+      childrenToRender.forEach(child => {
         const childElement = this.renderActivity(child);
         childrenContainer.appendChild(childElement);
       });
@@ -170,6 +178,15 @@ export class SequenceRenderer {
     });
 
     return card;
+  }
+
+  /**
+   * アクティビティのサブツリー内に定義済みアクティビティが存在するか判定
+   * 未定義アクティビティの内部XML要素（BackupSlot等）をフィルタするために使用
+   */
+  private hasDefinedDescendant(activity: Activity): boolean {
+    if (isDefinedActivity(activity.type)) return true; // 自身が定義済み
+    return activity.children.some(child => this.hasDefinedDescendant(child)); // 子孫に定義済みがあるか再帰チェック
   }
 
   /**
@@ -336,32 +353,8 @@ export class SequenceRenderer {
       return hasVisibleProps ? propsDiv : null;
     }
 
-    // 主要なプロパティのみ表示（簡略表示）
-    const importantProps = ['To', 'Value', 'Condition', 'Selector', 'Message'];
-    let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
-
-    Object.entries(properties).forEach(([key, value]) => {
-      if (importantProps.includes(key)) {
-        const propItem = document.createElement('div');
-        propItem.className = 'property-item';
-
-        const propKey = document.createElement('span');
-        propKey.className = 'property-key';
-        propKey.textContent = `${translatePropertyName(key)}:`; // プロパティ名を翻訳
-
-        const propValue = document.createElement('span');
-        propValue.className = 'property-value';
-        propValue.textContent = this.formatValue(value);
-
-        propItem.appendChild(propKey);
-        propItem.appendChild(propValue);
-        propsDiv.appendChild(propItem);
-        hasVisibleProps = true; // プロパティが追加された
-      }
-    });
-
-    // 表示可能なプロパティがない場合はnullを返す
-    return hasVisibleProps ? propsDiv : null;
+    // 未定義アクティビティはプロパティを非表示
+    return null;
   }
 
   /**
