@@ -186,6 +186,14 @@ export class DiffRenderer {
     changesList.className = 'property-diff-detail';
 
     changes.forEach(change => {
+      // オブジェクト同士の比較は属性レベルで展開
+      if (typeof change.before === 'object' && change.before !== null
+          && typeof change.after === 'object' && change.after !== null
+          && !Array.isArray(change.before) && !Array.isArray(change.after)) {
+        this.renderObjectPropertyDiff(changesList, change.before, change.after);
+        return;
+      }
+
       const changeItem = document.createElement('div');
       changeItem.className = 'property-change-item';
 
@@ -215,6 +223,43 @@ export class DiffRenderer {
 
     changesDiv.appendChild(changesList);
     return changesDiv;
+  }
+
+  /**
+   * オブジェクト型プロパティの差分を属性レベルで展開表示
+   */
+  private renderObjectPropertyDiff(
+    container: HTMLElement,
+    beforeObj: Record<string, any>,
+    afterObj: Record<string, any>
+  ): void {
+    const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // 全キーを収集
+    for (const key of allKeys) {
+      if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
+      const bStr = this.formatValue(beforeObj[key]);                     // 変更前テキスト
+      const aStr = this.formatValue(afterObj[key]);                      // 変更後テキスト
+      if (bStr === aStr) continue;                                       // 同じなら差分なし
+
+      const changeItem = document.createElement('div');
+      changeItem.className = 'property-change-item';
+
+      const propName = document.createElement('div');
+      propName.className = 'prop-name';
+      propName.textContent = `${key}:`;                                  // サブキー名を表示
+
+      const beforeValue = document.createElement('div');
+      beforeValue.className = 'diff-before';
+      this.buildWordDiffHtml(beforeValue, '-', bStr, aStr);             // ワードレベルdiff
+
+      const afterValue = document.createElement('div');
+      afterValue.className = 'diff-after';
+      this.buildWordDiffHtml(afterValue, '+', aStr, bStr);             // ワードレベルdiff
+
+      changeItem.appendChild(propName);
+      changeItem.appendChild(beforeValue);
+      changeItem.appendChild(afterValue);
+      container.appendChild(changeItem);
+    }
   }
 
   /**
@@ -478,6 +523,21 @@ export class DiffRenderer {
     const common = this.findCommonParts(text, otherText); // 共通部分と差分部分を計算
     div.textContent = ''; // textContentをクリア
     div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+
+    // 共通部分の割合を計算（低すぎる場合は全体をハイライト）
+    const sameLen = common.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0); // 共通文字数
+    const totalLen = common.reduce((sum, p) => sum + p.value.length, 0);                // 全文字数
+    const similarity = totalLen > 0 ? sameLen / totalLen : 0;                          // 類似度(0〜1)
+
+    if (similarity < 0.5) {
+      // 類似度50%未満: 全体をハイライト（ハッシュ等の偶然一致を防ぐ）
+      const span = document.createElement('span');
+      span.className = 'word-highlight';
+      span.textContent = text;
+      div.appendChild(span);
+      return;
+    }
+
     common.forEach(part => {
       if (part.same) {
         div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
