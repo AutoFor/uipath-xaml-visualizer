@@ -116,3 +116,16 @@ export function hasSubPanel(activityType: string): boolean { // サブパネル�
   if (activityType === 'MultipleAssign') return false; // MultipleAssignは専用レンダリング
   return true; // その他はサブパネル対象
 }
+
+/**
+ * アクティビティがACTIVITY_CONFIGSまたは専用レンダリングに登録済みか判定
+ * 未定義アクティビティのプロパティ・サブパネル非表示に使用
+ */
+export function isDefinedActivity(type: string): boolean { // 定義済みアクティビティ判定
+  if (type === 'Assign') return true; // Assignは専用レンダリングあり
+  if (type === 'MultipleAssign') return true; // MultipleAssignは専用レンダリングあり
+  if (type === 'LogMessage') return true; // LogMessageは専用レンダリングあり
+  if (type in ACTIVITY_CONFIGS) return true; // ACTIVITY_CONFIGSに登録済み
+  if (type.startsWith('N')) return true; // Nプレフィックス（モダンアクティビティ）は専用レンダリングあり
+  return false; // 上記以外は未定義
+}
