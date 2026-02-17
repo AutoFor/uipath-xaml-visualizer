@@ -114,6 +114,8 @@
   display: flex;                            /* フレックスボックス */
   flex-direction: column;                   /* 縦方向 */
   color: var(--panel-text-primary);         /* テキスト色 */
+  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace; /* GitHubモノスペースフォント */
+  font-size: 13px;                          /* ベースフォントサイズ */
 }
 
 /* ヘッダー */
@@ -209,7 +211,6 @@
 /* デバッグ情報 */
 #uipath-visualizer-panel .debug-info {
   font-size: 12px;                          /* フォントサイズ */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;    /* 等幅フォント */
   background: var(--panel-bg-code);         /* コード背景 */
   padding: 12px;                            /* パディング */
   border-radius: 4px;                       /* 角丸 */
@@ -222,32 +223,39 @@
 /* ========== アクティビティカード ========== */
 
 #uipath-visualizer-panel .activity-card {
-  background-color: var(--panel-bg);        /* 背景色 */
-  border: 1px solid var(--panel-border);    /* ボーダー */
-  border-radius: 6px;
+  background-color: transparent;             /* 背景透過（ツリーライン方式） */
+  border: none;                              /* ボーダーなし */
   padding: 2px;
   margin-bottom: 4px;
-  box-shadow: 0 1px 2px var(--panel-shadow); /* 影 */
-  transition: border-color 0.2s, box-shadow 0.2s; /* アニメーション */
 }
 
+/* Propertiesトグル・サブパネルの枠線も除去 */
+#uipath-visualizer-panel .activity-card > .property-sub-panel-toggle {
+  border: none;                              /* 点線ボーダー除去 */
+}
+
+#uipath-visualizer-panel .activity-card > .property-sub-panel {
+  border: none;                              /* ボーダー除去 */
+}
+
+/* ホバー（背景色で表現） */
 #uipath-visualizer-panel .activity-card:hover:not(:has(.activity-card:hover)) {
-  border-color: var(--panel-accent);        /* ホバー時のボーダー色 */
-  box-shadow: 0 2px 6px rgba(0, 120, 212, 0.2);
+  background-color: var(--panel-hover-bg);   /* ホバー背景色 */
+  border-radius: 4px;                        /* 角丸 */
 }
 
 #uipath-visualizer-panel .activity-card.highlighted {
-  border-color: var(--diff-modified-fg);    /* ハイライト時のボーダー色 */
   background-color: var(--diff-modified-bg); /* ハイライト背景 */
+  outline: 2px solid var(--diff-modified-fg); /* アウトラインで強調 */
+  outline-offset: -2px;
+  border-radius: 4px;
 }
 
 #uipath-visualizer-panel .activity-header {
   display: flex;                            /* フレックスボックスで横並び */
   align-items: center;                      /* 縦方向中央揃え */
-  font-weight: 600;
   font-size: 14px;
   margin-bottom: 4px;
-  color: var(--panel-text-primary);         /* テキスト色 */
 }
 
 /* 折りたたみボタン */
@@ -258,7 +266,7 @@
   cursor: pointer;
   padding: 2px;
   margin-right: 4px;
-  color: var(--panel-accent);               /* アクセント色 */
+  color: var(--panel-text-muted);            /* 控えめテキスト色 */
   transition: transform 0.2s;               /* 回転アニメーション */
 }
 
@@ -286,14 +294,14 @@
 }
 
 #uipath-visualizer-panel .property-value {
-  color: var(--panel-text-primary);         /* テキスト色 */
   word-break: break-all;                    /* 長い値を折り返す */
 }
 
 /* 子アクティビティ */
 #uipath-visualizer-panel .activity-children {
   margin-top: 4px;
-  padding-left: 2px;
+  padding-left: 8px;                            /* インデントガイド用パディング */
+  border-left: 1px solid var(--panel-border);    /* 縦のインデントガイドライン */
 }
 
 /* 折りたたまれた状態 */
@@ -339,10 +347,8 @@
   background-color: var(--panel-bg-tertiary); /* 薄い背景色 */
   border: 1px solid var(--panel-border);    /* ボーダー */
   border-radius: 4px;                       /* 角丸 */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace; /* 等幅フォント */
   font-size: 12px;                          /* コード風フォントサイズ */
   line-height: 20px;                        /* 行高 */
-  font-weight: 400;                         /* 通常ウェイト */
 }
 
 #uipath-visualizer-panel .property-sub-panel .property-key {
@@ -547,8 +553,6 @@
   margin-left: auto;                          /* 右端に寄せる */
   padding: 1px 6px;                           /* パディング */
   font-size: 11px;                            /* 小さめフォント */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;      /* 等幅フォント */
-  font-weight: 400;                           /* 通常ウェイト */
   color: var(--panel-text-muted);             /* 控えめテキスト色 */
   background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
   border: 1px solid var(--panel-border-light); /* ボーダー */
@@ -597,17 +601,14 @@
 }
 
 #uipath-visualizer-panel .assign-expression {
-  color: var(--panel-text-primary);            /* 白: 変更なしの値 */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
   font-size: 12px;                             /* GitHub diff準拠 */
   line-height: 20px;                           /* GitHub diff準拠 */
   border-radius: 4px;
 }
 
-#uipath-visualizer-panel .diff-before {
-  color: var(--panel-text-primary);         /* GitHub準拠: テキスト色はデフォルト */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  background-color: var(--diff-removed-bg); /* GitHub diffBlob-deletionLine-bgColor（行レベル） */
+/* 差分行の共通スタイル（GitHub diff準拠） */
+#uipath-visualizer-panel .diff-before,
+#uipath-visualizer-panel .diff-after {
   border-radius: 3px;                       /* GitHub準拠 */
   padding: 0 10px;                          /* GitHub .blob-code 準拠 */
   font-size: 12px;                          /* GitHub diff準拠 */
@@ -615,15 +616,12 @@
   display: block;                           /* 行全体の背景色を表示 */
 }
 
+#uipath-visualizer-panel .diff-before {
+  background-color: var(--diff-removed-bg); /* GitHub diffBlob-deletionLine-bgColor */
+}
+
 #uipath-visualizer-panel .diff-after {
-  color: var(--panel-text-primary);         /* GitHub準拠: テキスト色はデフォルト */
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  background-color: var(--diff-added-bg);   /* GitHub diffBlob-additionLine-bgColor（行レベル） */
-  border-radius: 3px;                       /* GitHub準拠 */
-  padding: 0 10px;                          /* GitHub .blob-code 準拠 */
-  font-size: 12px;                          /* GitHub diff準拠 */
-  line-height: 20px;                        /* GitHub diff準拠 */
-  display: block;                           /* 行全体の背景色を表示 */
+  background-color: var(--diff-added-bg);   /* GitHub diffBlob-additionLine-bgColor */
 }
 
 /* ワードレベルハイライト（GitHub .x-highlight 準拠） */
@@ -699,10 +697,11 @@
 
 /* Visualizer内カードの同期ハイライト（GitHub行クリック時） */
 #uipath-visualizer-panel .activity-card.sync-highlighted {
-  border-color: var(--panel-accent);        /* アクセント色ボーダー */
-  box-shadow: 0 0 0 2px var(--panel-accent), 0 2px 8px rgba(0, 120, 212, 0.3); /* グローシャドウ */
   background-color: var(--diff-modified-bg); /* 変更時の背景色 */
-  transition: border-color 0.3s, box-shadow 0.3s, background-color 0.3s; /* スムーズなトランジション */
+  outline: 2px solid var(--panel-accent);    /* アクセント色アウトライン */
+  outline-offset: -2px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0, 120, 212, 0.3); /* グローシャドウ */
 }
 
 /* ========== 検索バー ========== */
@@ -775,14 +774,18 @@
 
 /* 一致カードのハイライト */
 #uipath-visualizer-panel .activity-card.search-match {
-  border-color: var(--panel-accent);        /* アクセント色ボーダー */
+  outline: 1px solid var(--panel-accent);   /* アクセント色アウトライン */
+  outline-offset: -1px;
+  border-radius: 4px;
 }
 
 /* 現在フォーカス中の一致カード */
 #uipath-visualizer-panel .activity-card.search-current {
-  border-color: var(--panel-accent);        /* アクセント色ボーダー */
-  box-shadow: 0 0 0 2px var(--panel-accent), 0 2px 8px rgba(0, 120, 212, 0.3); /* 強調シャドウ */
   background-color: var(--diff-modified-bg); /* 強調背景色 */
+  outline: 2px solid var(--panel-accent);   /* アクセント色アウトライン */
+  outline-offset: -2px;
+  border-radius: 4px;
+  box-shadow: 0 0 8px rgba(0, 120, 212, 0.3); /* グローシャドウ */
 }
 
 /* 非一致カードのディム表示 */

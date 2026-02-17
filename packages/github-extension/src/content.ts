@@ -361,25 +361,58 @@ function extractBlobHeadSha(): string | null {
 
 /**
  * ブランチ名からコミットSHAを解決（GitHub同一オリジンfetch）
- * ブランチのコミット一覧ページを取得し、最新コミットSHAを抽出する
+ * 複数の方法を試行して最新コミットSHAを取得する
  */
 async function resolveBranchSha(owner: string, repo: string, branch: string): Promise<string | null> {
 	// ブランチ名が既にSHA（40文字16進数）ならそのまま返す
 	if (/^[a-f0-9]{40}$/.test(branch)) return branch;
+	const commitShaPattern = /\/commit\/([a-f0-9]{40})/; // コミットSHAパターン
+
+	// 方法1: /commit/<branch> ページ（GitHubがSHA付きURLにリダイレクト or HTML内にSHA）
 	try {
-		const url = `https://github.com/${owner}/${repo}/commits/${encodeURIComponent(branch)}`; // ブランチのコミット一覧ページ
-		console.log(`UiPath Visualizer: ブランチSHA解決: ${branch} → ${url}`);
-		const response = await fetch(url, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		const commitUrl = `https://github.com/${owner}/${repo}/commit/${encodeURIComponent(branch)}`; // 単一コミットページ
+		console.log(`UiPath Visualizer: ブランチSHA解決: ${branch} → ${commitUrl}`);
+		const response = await fetch(commitUrl, { credentials: 'same-origin' }); // 同一オリジンCookie送信
 		if (response.ok) {
+			// リダイレクト後のURLからSHA抽出（GitHubは /commit/<branch> → /commit/<sha> にリダイレクト）
+			const urlMatch = response.url.match(commitShaPattern); // リダイレクトURL
+			if (urlMatch) {
+				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (URL): ${urlMatch[1]}`);
+				return urlMatch[1];
+			}
+			// HTMLからcanonical URL・og:url・commitリンクを検索
 			const html = await response.text(); // HTMLテキスト
-			const shaMatch = html.match(/\/commit\/([a-f0-9]{40})/); // コミットリンクからSHA抽出
+			const canonicalMatch = html.match(/<link[^>]*rel="canonical"[^>]*href="[^"]*\/commit\/([a-f0-9]{40})"/) // canonical URL
+				|| html.match(/<meta[^>]*property="og:url"[^>]*content="[^"]*\/commit\/([a-f0-9]{40})"/); // OG URL
+			if (canonicalMatch) {
+				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (canonical): ${canonicalMatch[1]}`);
+				return canonicalMatch[1];
+			}
+			const shaMatch = html.match(commitShaPattern); // commitリンクからSHA抽出
 			if (shaMatch) {
-				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA: ${shaMatch[1]}`);
-				return shaMatch[1]; // 最初のコミットSHA（最新）
+				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (HTML): ${shaMatch[1]}`);
+				return shaMatch[1];
 			}
 		}
 	} catch (e) {
-		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗:`, e);
+		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗 (/commit):`, e);
+	}
+
+	// 方法2: /commits/<branch> ページ（コミット一覧からSHA抽出、フォールバック）
+	try {
+		const url = `https://github.com/${owner}/${repo}/commits/${encodeURIComponent(branch)}`; // コミット一覧ページ
+		console.log(`UiPath Visualizer: ブランチSHA解決 (fallback): ${branch} → ${url}`);
+		const response = await fetch(url, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		if (response.ok) {
+			const html = await response.text(); // HTMLテキスト
+			const shaMatch = html.match(commitShaPattern); // コミットリンクからSHA抽出
+			if (shaMatch) {
+				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (commits): ${shaMatch[1]}`);
+				return shaMatch[1];
+			}
+		}
+	} catch (e) {
+		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗 (/commits):`, e);
 	}
 	return null;
 }
@@ -419,6 +452,10 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 					cachedPrRefs = { baseSha, headSha: blobHeadSha };
 					return cachedPrRefs;
 				}
+				// base SHA解決失敗時はブランチ名を直接使用（GitHub raw URLはブランチ名も受け付ける）
+				console.log(`UiPath Visualizer: base SHA解決失敗、ブランチ名を直接使用: ${baseBranch}`);
+				cachedPrRefs = { baseSha: baseBranch, headSha: blobHeadSha };
+				return cachedPrRefs;
 			}
 
 			// フォールバック: 両方のブランチをSHAに解決
@@ -431,6 +468,10 @@ async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
 				cachedPrRefs = { baseSha, headSha };
 				return cachedPrRefs;
 			}
+			// 部分的にSHA解決できた場合、残りはブランチ名を直接使用
+			console.log(`UiPath Visualizer: SHA解決一部失敗、ブランチ名を直接使用: base=${baseSha || baseBranch}, head=${headSha || headBranch}`);
+			cachedPrRefs = { baseSha: baseSha || baseBranch, headSha: headSha || headBranch };
+			return cachedPrRefs;
 		}
 	}
 	console.log('UiPath Visualizer: ブランチ解決できず、fetch にフォールバック');
@@ -1618,6 +1659,21 @@ function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, other
 	const parts = findCommonParts(text, otherText); // 共通部分と差分部分を計算
 	div.textContent = ''; // textContentをクリア
 	div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+
+	// 共通部分の割合を計算（低すぎる場合は全体をハイライト）
+	const sameLen = parts.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0); // 共通文字数
+	const totalLen = parts.reduce((sum, p) => sum + p.value.length, 0);                // 全文字数
+	const similarity = totalLen > 0 ? sameLen / totalLen : 0;                          // 類似度(0〜1)
+
+	if (similarity < 0.5) {
+		// 類似度50%未満: 全体をハイライト（ハッシュ等の偶然一致を防ぐ）
+		const span = document.createElement('span');
+		span.className = 'word-highlight';
+		span.textContent = text;
+		div.appendChild(span);
+		return;
+	}
+
 	parts.forEach(part => {
 		if (part.same) {
 			div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
@@ -1628,6 +1684,55 @@ function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, other
 			div.appendChild(span);
 		}
 	});
+}
+
+/**
+ * 差分表示用の値フォーマット（オブジェクトはJSON文字列化）
+ */
+function formatDiffValue(value: any): string {
+	if (value === null || value === undefined) return '(なし)';            // null/undefinedは「なし」表示
+	if (typeof value === 'object') return JSON.stringify(value);           // オブジェクトはJSON文字列化
+	return String(value);                                                  // プリミティブはそのまま文字列化
+}
+
+/**
+ * オブジェクト型プロパティの差分を属性レベルで展開表示
+ * 変更があった属性のみ before/after を表示する
+ */
+function renderObjectPropertyDiff(
+	container: HTMLElement,
+	beforeObj: Record<string, any>,
+	afterObj: Record<string, any>
+): void {
+	const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // 全キーを収集
+	for (const key of allKeys) {
+		if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
+		const bVal = beforeObj[key];
+		const aVal = afterObj[key];
+		const bStr = formatDiffValue(bVal);                                // 変更前テキスト
+		const aStr = formatDiffValue(aVal);                                // 変更後テキスト
+		if (bStr === aStr) continue;                                       // 同じなら差分なし
+
+		const changeItem = document.createElement('div');                  // 個別変更要素
+		changeItem.className = 'property-change-item';                     // CSSクラス
+
+		const propName = document.createElement('span');                   // プロパティ名
+		propName.className = 'prop-name';                                  // CSSクラス
+		propName.textContent = `${key}:`;                                  // サブキー名を表示
+		changeItem.appendChild(propName);
+
+		const beforeDiv = document.createElement('div');                   // 変更前の行
+		beforeDiv.className = 'diff-before';                               // CSSクラス
+		buildWordDiffHtml(beforeDiv, '-', bStr, aStr);                     // ワードレベルdiff
+		changeItem.appendChild(beforeDiv);
+
+		const afterDiv = document.createElement('div');                    // 変更後の行
+		afterDiv.className = 'diff-after';                                 // CSSクラス
+		buildWordDiffHtml(afterDiv, '+', aStr, bStr);                      // ワードレベルdiff
+		changeItem.appendChild(afterDiv);
+
+		container.appendChild(changeItem);                                 // 変更詳細に追加
+	}
 }
 
 function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
@@ -1659,8 +1764,8 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				const changeItem = document.createElement('div'); // 統合変更要素
 				changeItem.className = 'property-change-item'; // CSSクラス
 
-				const beforeText = `${String(beforeTo ?? '')} = ${String(beforeVal ?? '')}`; // 変更前テキスト
-				const afterText = `${String(afterTo ?? '')} = ${String(afterVal ?? '')}`; // 変更後テキスト
+				const beforeText = `${formatDiffValue(beforeTo)} = ${formatDiffValue(beforeVal)}`; // 変更前テキスト
+				const afterText = `${formatDiffValue(afterTo)} = ${formatDiffValue(afterVal)}`; // 変更後テキスト
 
 				const beforeDiv = document.createElement('div'); // 変更前の行
 				beforeDiv.className = 'diff-before'; // CSSクラス
@@ -1694,6 +1799,14 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value'
 				);
 				for (const change of otherChanges) {
+					// オブジェクト同士の比較は属性レベルで展開
+					if (typeof change.before === 'object' && change.before !== null
+						&& typeof change.after === 'object' && change.after !== null
+						&& !Array.isArray(change.before) && !Array.isArray(change.after)) {
+						renderObjectPropertyDiff(changesDiv, change.before, change.after);
+						continue;
+					}
+
 					const otherItem = document.createElement('div'); // 個別変更要素
 					otherItem.className = 'property-change-item'; // CSSクラス
 
@@ -1702,8 +1815,8 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
 					otherItem.appendChild(propName);
 
-					const bText = String(change.before ?? '(なし)'); // 変更前テキスト
-					const aText = String(change.after ?? '(なし)'); // 変更後テキスト
+					const bText = formatDiffValue(change.before); // 変更前テキスト
+					const aText = formatDiffValue(change.after); // 変更後テキスト
 
 					const bDiv = document.createElement('div'); // 変更前の値
 					bDiv.className = 'diff-before'; // CSSクラス
@@ -1720,6 +1833,14 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 			} else {
 				// 通常のプロパティ変更表示
 				for (const change of item.changes) {
+					// オブジェクト同士の比較は属性レベルで展開
+					if (typeof change.before === 'object' && change.before !== null
+						&& typeof change.after === 'object' && change.after !== null
+						&& !Array.isArray(change.before) && !Array.isArray(change.after)) {
+						renderObjectPropertyDiff(changesDiv, change.before, change.after);
+						continue;
+					}
+
 					const changeItem = document.createElement('div'); // 個別変更要素
 					changeItem.className = 'property-change-item'; // CSSクラス
 
@@ -1728,8 +1849,8 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
 					changeItem.appendChild(propName);
 
-					const bfText = String(change.before ?? '(なし)'); // 変更前テキスト
-					const afText = String(change.after ?? '(なし)'); // 変更後テキスト
+					const bfText = formatDiffValue(change.before); // 変更前テキスト
+					const afText = formatDiffValue(change.after); // 変更後テキスト
 
 					const beforeDiv = document.createElement('div'); // 変更前の値
 					beforeDiv.className = 'diff-before'; // CSSクラス
