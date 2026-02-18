@@ -84,7 +84,8 @@
       "WebFetch(domain:docs.uipath.com)",
       "WebFetch(domain:api.github.com)",
       "Bash(pip3 list:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "Skill(smart-commit)"
     ],
     "deny": [],
     "ask": []
