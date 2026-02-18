@@ -1,4 +1,4 @@
-import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
+import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t, categorizeDiffChanges } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
 import type { ActivityLineIndex, ScreenshotPathResolver, Language } from '@uipath-xaml-visualizer/shared'; // 型定義
 import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
 
@@ -1600,56 +1600,137 @@ function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineI
 /**
  * 2つの文字列の共通部分と差分部分を計算
  */
-function findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
-	const result: { value: string; same: boolean }[] = []; // 結果配列
-	let ai = 0; // aのインデックス
-	let bi = 0; // bのインデックス
+/**
+ * セレクター文字列を属性名・属性値の単位でトークン化
+ * 例: `<webctrl aaname='ショッピング' tag='SPAN' />`
+ * → [`<webctrl `, `aaname`, `='ショッピング' `, `tag`, `='SPAN' `, `/>`]
+ */
+function tokenizeSelector(s: string): string[] { // セレクター文字列をトークン分割
+	const tokens: string[] = []; // 結果配列
+	let i = 0; // 現在位置
 
-	while (ai < a.length && bi < b.length) {
-		if (a[ai] === b[bi]) {
+	// 先頭の <タグ名 を取得
+	const tagMatch = s.match(/^<[\w]+\s*/); // <webctrl 等にマッチ
+	if (tagMatch) { // タグ名がある場合
+		tokens.push(tagMatch[0]); // タグ名トークンを追加
+		i = tagMatch[0].length; // タグ名の後に進む
+	}
+
+	while (i < s.length) { // 残り文字列を処理
+		// 閉じタグ /> をチェック
+		if (s[i] === '/' && i + 1 < s.length && s[i + 1] === '>') { // />
+			tokens.push('/>'); // 閉じタグトークン
+			i += 2;
+			continue;
+		}
+		if (s[i] === '>') { // > のみ
+			tokens.push('>'); // 閉じタグトークン
+			i++;
+			continue;
+		}
+
+		// 空白はスキップ（属性値トークンの末尾に含めるため）
+		if (/\s/.test(s[i])) { // 空白文字
+			i++;
+			continue;
+		}
+
+		// 属性名を取得（英数字、コロン、ハイフン、ドット等）
+		if (/[a-zA-Z_:]/.test(s[i])) { // 属性名の開始文字
+			let start = i; // 属性名の開始位置
+			while (i < s.length && s[i] !== '=' && !/\s/.test(s[i]) && s[i] !== '/' && s[i] !== '>') { // 属性名の終端まで
+				i++;
+			}
+			tokens.push(s.substring(start, i)); // 属性名トークン（例: aaname, check:innerText）
+
+			// = に続くクォートされた値を取得
+			if (i < s.length && s[i] === '=') { // 値がある場合
+				let valStart = i; // = の位置から
+				i++; // = をスキップ
+				if (i < s.length && (s[i] === "'" || s[i] === '"')) { // クォート開始
+					const quote = s[i]; // クォート文字を記憶
+					i++; // 開きクォートをスキップ
+					while (i < s.length && s[i] !== quote) i++; // 閉じクォートまで進む
+					if (i < s.length) i++; // 閉じクォートをスキップ
+				}
+				tokens.push(s.substring(valStart, i)); // 値トークン（例: ='ショッピング'）
+			}
+			continue;
+		}
+
+		// その他の文字はそのまま
+		tokens.push(s[i]); // 単一文字トークン
+		i++;
+	}
+	return tokens; // トークン配列を返す
+}
+
+/**
+ * 文字列をトークン化（セレクター文字列は属性単位、それ以外は空白区切り）
+ */
+function tokenize(s: string): string[] { // 文字列を適切な単位でトークン化
+	if (s.startsWith('<') && s.includes('>')) { // セレクター文字列の場合
+		return tokenizeSelector(s); // 属性名・属性値の単位で分割
+	}
+	if (s.includes(',')) { // カンマ区切りの場合（座標値等）
+		return s.split(/(,\s*)/); // カンマ+空白を区切りとして分割
+	}
+	return s.split(/(\s+)/); // それ以外は空白区切りで分割
+}
+
+function findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
+	// トークン化して比較（セレクターは属性単位、それ以外は空白区切り）
+	const tokensA = tokenize(a); // aをトークン化
+	const tokensB = tokenize(b); // bをトークン化
+	const result: { value: string; same: boolean }[] = []; // 結果配列
+	let ai = 0; // tokensAのインデックス
+	let bi = 0; // tokensBのインデックス
+
+	while (ai < tokensA.length && bi < tokensB.length) {
+		if (tokensA[ai] === tokensB[bi]) {
 			let start = ai; // 共通部分の開始位置
-			while (ai < a.length && bi < b.length && a[ai] === b[bi]) {
+			while (ai < tokensA.length && bi < tokensB.length && tokensA[ai] === tokensB[bi]) {
 				ai++;
 				bi++;
 			}
-			result.push({ value: a.substring(start, ai), same: true }); // 共通部分
+			result.push({ value: tokensA.slice(start, ai).join(''), same: true }); // 共通トークン群
 		} else {
 			// 次の同期位置を探す（3パターン）
-			let foundA = -1;    // aだけスキップ（aに余分な文字がある）
-			let foundB = -1;    // bだけスキップ（bに余分な文字がある）
-			let foundBoth = -1; // 両方同じ量スキップ（文字の置換）
-			const searchLimit = Math.min(Math.max(a.length - ai, b.length - bi), 20); // 探索範囲
+			let foundA = -1;    // aだけスキップ（aに余分なトークンがある）
+			let foundB = -1;    // bだけスキップ（bに余分なトークンがある）
+			let foundBoth = -1; // 両方同じ量スキップ（トークンの置換）
+			const searchLimit = Math.min(Math.max(tokensA.length - ai, tokensB.length - bi), 20); // 探索範囲
 			for (let d = 1; d < searchLimit; d++) {
-				if (foundBoth < 0 && ai + d < a.length && bi + d < b.length && a[ai + d] === b[bi + d]) {
-					foundBoth = d; // 両方d文字進めると一致（置換）
+				if (foundBoth < 0 && ai + d < tokensA.length && bi + d < tokensB.length && tokensA[ai + d] === tokensB[bi + d]) {
+					foundBoth = d; // 両方dトークン進めると一致（置換）
 				}
-				if (foundA < 0 && ai + d < a.length && a[ai + d] === b[bi]) {
-					foundA = d; // a側にd文字進めると一致（aに余分）
+				if (foundA < 0 && ai + d < tokensA.length && tokensA[ai + d] === tokensB[bi]) {
+					foundA = d; // a側にdトークン進めると一致（aに余分）
 				}
-				if (foundB < 0 && bi + d < b.length && a[ai] === b[bi + d]) {
-					foundB = d; // b側にd文字進めると一致（bに余分）
+				if (foundB < 0 && bi + d < tokensB.length && tokensA[ai] === tokensB[bi + d]) {
+					foundB = d; // b側にdトークン進めると一致（bに余分）
 				}
 				if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // いずれか見つかったら終了
 			}
 			// 最小コストの戦略を選択
 			if (foundBoth >= 0 && (foundA < 0 || foundBoth <= foundA) && (foundB < 0 || foundBoth <= foundB)) {
-				result.push({ value: a.substring(ai, ai + foundBoth), same: false }); // 置換部分
+				result.push({ value: tokensA.slice(ai, ai + foundBoth).join(''), same: false }); // 置換部分
 				ai += foundBoth;
 				bi += foundBoth;
 			} else if (foundA >= 0 && (foundB < 0 || foundA <= foundB)) {
-				result.push({ value: a.substring(ai, ai + foundA), same: false }); // aの余分な文字
+				result.push({ value: tokensA.slice(ai, ai + foundA).join(''), same: false }); // aの余分なトークン
 				ai += foundA;
 			} else if (foundB >= 0) {
-				bi += foundB; // bの余分な文字をスキップ（aには出力なし）
+				bi += foundB; // bの余分なトークンをスキップ（aには出力なし）
 			} else {
-				result.push({ value: a.substring(ai), same: false }); // 残り全部が差分
-				ai = a.length;
-				bi = b.length;
+				result.push({ value: tokensA.slice(ai).join(''), same: false }); // 残り全部が差分
+				ai = tokensA.length;
+				bi = tokensB.length;
 			}
 		}
 	}
-	if (ai < a.length) {
-		result.push({ value: a.substring(ai), same: false }); // aの残り
+	if (ai < tokensA.length) {
+		result.push({ value: tokensA.slice(ai).join(''), same: false }); // aの残り
 	}
 	return result;
 }
@@ -1710,6 +1791,7 @@ function renderObjectPropertyDiff(
 	for (const key of allKeys) {
 		if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
 		if (key === 'InformativeScreenshot') continue;                     // スクリーンショットは別途比較表示
+		if (key === 'ImageBase64') continue;                               // バイナリデータは非表示
 		const bVal = beforeObj[key];
 		const aVal = afterObj[key];
 		const bStr = formatDiffValue(bVal);                                // 変更前テキスト
@@ -1735,6 +1817,45 @@ function renderObjectPropertyDiff(
 		changeItem.appendChild(afterDiv);
 
 		container.appendChild(changeItem);                                 // 変更詳細に追加
+	}
+}
+
+/**
+ * 差分プロパティ変更を描画する共通関数
+ * オブジェクト同士の比較は属性レベルで展開、プリミティブは before/after 行で表示
+ */
+function renderDiffChangeList(container: HTMLElement, changes: any[]): void { // 変更リストをコンテナに描画
+	for (const change of changes) { // 各変更をループ
+		// オブジェクト同士の比較は属性レベルで展開
+		if (typeof change.before === 'object' && change.before !== null // 変更前がオブジェクト
+			&& typeof change.after === 'object' && change.after !== null // 変更後もオブジェクト
+			&& !Array.isArray(change.before) && !Array.isArray(change.after)) { // 配列でない
+			renderObjectPropertyDiff(container, change.before, change.after); // 属性レベルで展開
+			continue;
+		}
+
+		const changeItem = document.createElement('div'); // 個別変更要素
+		changeItem.className = 'property-change-item'; // CSSクラス
+
+		const propName = document.createElement('span'); // プロパティ名
+		propName.className = 'prop-name'; // CSSクラス
+		propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
+		changeItem.appendChild(propName);
+
+		const bfText = formatDiffValue(change.before); // 変更前テキスト
+		const afText = formatDiffValue(change.after); // 変更後テキスト
+
+		const beforeDiv = document.createElement('div'); // 変更前の値
+		beforeDiv.className = 'diff-before'; // CSSクラス
+		buildWordDiffHtml(beforeDiv, '-', bfText, afText); // ワードレベルdiff
+		changeItem.appendChild(beforeDiv);
+
+		const afterDiv = document.createElement('div'); // 変更後の値
+		afterDiv.className = 'diff-after'; // CSSクラス
+		buildWordDiffHtml(afterDiv, '+', afText, bfText); // ワードレベルdiff
+		changeItem.appendChild(afterDiv);
+
+		container.appendChild(changeItem); // コンテナに追加
 	}
 }
 
@@ -1803,75 +1924,41 @@ function applyDiffHighlights(
 				}
 
 				// To/Value以外のプロパティ変更は通常通り表示
-				const otherChanges = item.changes.filter( // To/Value・InformativeScreenshot以外を抽出
-					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value' && c.propertyName !== 'InformativeScreenshot'
+				const otherChanges = item.changes.filter( // To/Value・InformativeScreenshot・ImageBase64以外を抽出
+					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value' && c.propertyName !== 'InformativeScreenshot' && c.propertyName !== 'ImageBase64'
 				);
-				for (const change of otherChanges) {
-					// オブジェクト同士の比較は属性レベルで展開
-					if (typeof change.before === 'object' && change.before !== null
-						&& typeof change.after === 'object' && change.after !== null
-						&& !Array.isArray(change.before) && !Array.isArray(change.after)) {
-						renderObjectPropertyDiff(changesDiv, change.before, change.after);
-						continue;
-					}
-
-					const otherItem = document.createElement('div'); // 個別変更要素
-					otherItem.className = 'property-change-item'; // CSSクラス
-
-					const propName = document.createElement('span'); // プロパティ名
-					propName.className = 'prop-name'; // CSSクラス
-					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
-					otherItem.appendChild(propName);
-
-					const bText = formatDiffValue(change.before); // 変更前テキスト
-					const aText = formatDiffValue(change.after); // 変更後テキスト
-
-					const bDiv = document.createElement('div'); // 変更前の値
-					bDiv.className = 'diff-before'; // CSSクラス
-					buildWordDiffHtml(bDiv, '-', bText, aText); // ワードレベルdiff
-					otherItem.appendChild(bDiv);
-
-					const aDiv = document.createElement('div'); // 変更後の値
-					aDiv.className = 'diff-after'; // CSSクラス
-					buildWordDiffHtml(aDiv, '+', aText, bText); // ワードレベルdiff
-					otherItem.appendChild(aDiv);
-
-					changesDiv.appendChild(otherItem); // 変更詳細に追加
-				}
+				renderDiffChangeList(changesDiv, otherChanges); // ヘルパー関数で描画
 			} else {
-				// 通常のプロパティ変更表示
-				for (const change of item.changes) {
-					if (change.propertyName === 'InformativeScreenshot') continue; // スクリーンショットは別途比較表示
-					// オブジェクト同士の比較は属性レベルで展開
-					if (typeof change.before === 'object' && change.before !== null
-						&& typeof change.after === 'object' && change.after !== null
-						&& !Array.isArray(change.before) && !Array.isArray(change.after)) {
-						renderObjectPropertyDiff(changesDiv, change.before, change.after);
-						continue;
-					}
+				// 通常のプロパティ変更表示（メイン/サブに分類、スクリーンショットは別途比較表示）
+				const nonScreenshotChanges = item.changes.filter( // InformativeScreenshot・ImageBase64以外を抽出
+					(c: any) => c.propertyName !== 'InformativeScreenshot' && c.propertyName !== 'ImageBase64'
+				);
+				const { main: mainChanges, sub: subChanges } = categorizeDiffChanges(nonScreenshotChanges, item.activity.type); // 変更を分類
+				renderDiffChangeList(changesDiv, mainChanges); // メイン変更を表示
 
-					const changeItem = document.createElement('div'); // 個別変更要素
-					changeItem.className = 'property-change-item'; // CSSクラス
+				// サブプロパティ変更を折りたたみパネルで表示
+				if (subChanges.length > 0) { // サブ変更がある場合
+					const subToggle = document.createElement('button'); // トグルボタン
+					subToggle.className = 'property-sub-panel-toggle'; // CSSクラス
+					subToggle.textContent = `${t('Toggle property panel')} ▶`; // 折りたたみ状態のラベル
 
-					const propName = document.createElement('span'); // プロパティ名
-					propName.className = 'prop-name'; // CSSクラス
-					propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
-					changeItem.appendChild(propName);
+					const subPanel = document.createElement('div'); // サブパネル
+					subPanel.className = 'property-sub-panel'; // CSSクラス
+					subPanel.style.display = 'none'; // 初期非表示
 
-					const bfText = formatDiffValue(change.before); // 変更前テキスト
-					const afText = formatDiffValue(change.after); // 変更後テキスト
+					renderDiffChangeList(subPanel, subChanges); // サブ変更をパネル内に描画
 
-					const beforeDiv = document.createElement('div'); // 変更前の値
-					beforeDiv.className = 'diff-before'; // CSSクラス
-					buildWordDiffHtml(beforeDiv, '-', bfText, afText); // ワードレベルdiff
-					changeItem.appendChild(beforeDiv);
+					subToggle.addEventListener('click', (e) => { // トグルクリックイベント
+						e.stopPropagation(); // 親要素への伝播を阻止
+						const isExpanded = subPanel.style.display !== 'none'; // 現在の表示状態
+						subPanel.style.display = isExpanded ? 'none' : 'block'; // 表示切替
+						subToggle.textContent = isExpanded // ラベル更新
+							? `${t('Toggle property panel')} ▶` // 折りたたみ状態
+							: `${t('Toggle property panel')} ▼`; // 展開状態
+					});
 
-					const afterDiv = document.createElement('div'); // 変更後の値
-					afterDiv.className = 'diff-after'; // CSSクラス
-					buildWordDiffHtml(afterDiv, '+', afText, bfText); // ワードレベルdiff
-					changeItem.appendChild(afterDiv);
-
-					changesDiv.appendChild(changeItem); // 変更詳細に追加
+					changesDiv.appendChild(subToggle); // トグルボタンを追加
+					changesDiv.appendChild(subPanel); // パネルを追加
 				}
 			}
 			// activity-header の後に挿入

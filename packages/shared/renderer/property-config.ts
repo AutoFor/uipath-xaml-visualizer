@@ -134,3 +134,37 @@ export function isDefinedActivity(type: string): boolean { // 定義済みアク
   if (type.startsWith('N')) return true; // Nプレフィックス（モダンアクティビティ）は専用レンダリングあり
   return false; // 上記以外は未定義
 }
+
+/**
+ * 差分表示時にプロパティ変更をメイン表示とサブパネルに分類
+ * ACTIVITY_CONFIGSに登録されたアクティビティのみ分類を適用
+ * 未登録アクティビティは全てメイン表示（従来どおり）
+ */
+export function categorizeDiffChanges<T extends { propertyName: string; before?: any; after?: any }>( // 差分プロパティ分類関数
+  changes: T[], // プロパティ変更の配列
+  activityType: string // アクティビティタイプ
+): { main: T[]; sub: T[] } { // メインとサブに分類して返す
+  if (!(activityType in ACTIVITY_CONFIGS)) { // ACTIVITY_CONFIGSに未登録の場合
+    return { main: changes, sub: [] }; // 全てメイン表示（従来どおり）
+  }
+  const config = ACTIVITY_CONFIGS[activityType]; // アクティビティ設定を取得
+  const mainSet = new Set(config.mainProperties); // メインプロパティ名をSetに変換
+  const main: T[] = []; // メイン表示用
+  const sub: T[] = []; // サブパネル用
+  for (const change of changes) { // 各変更を分類
+    if (!mainSet.has(change.propertyName)) { // メインプロパティ以外
+      sub.push(change); // サブに追加
+      continue;
+    }
+    // オブジェクト型のメインプロパティは展開すると多数の属性になるためサブに移動
+    const b = change.before; // 変更前の値
+    const a = change.after; // 変更後の値
+    if (typeof b === 'object' && b !== null && typeof a === 'object' && a !== null // 前後ともオブジェクト
+      && !Array.isArray(b) && !Array.isArray(a)) { // 配列でない
+      sub.push(change); // サブに移動（展開時にノイズが多いため）
+    } else {
+      main.push(change); // フラットな変更はメインに残す
+    }
+  }
+  return { main, sub }; // 分類結果を返す
+}
