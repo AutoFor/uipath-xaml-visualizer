@@ -311,10 +311,11 @@
 
 #uipath-visualizer-panel .activity-card.collapsed > .activity-properties,
 #uipath-visualizer-panel .activity-card.collapsed > .informative-screenshot,
+#uipath-visualizer-panel .activity-card.collapsed > .screenshot-compare,
 #uipath-visualizer-panel .activity-card.collapsed > .activity-annotation,
 #uipath-visualizer-panel .activity-card.collapsed > .property-sub-panel-toggle,
 #uipath-visualizer-panel .activity-card.collapsed > .property-sub-panel {
-  display: none;                            /* プロパティ・スクリーンショット・注釈・サブパネルも非表示 */
+  display: none;                            /* プロパティ・スクリーンショット・比較・注釈・サブパネルも非表示 */
 }
 
 /* ========== サブプロパティパネル ========== */
@@ -415,6 +416,60 @@
   border-radius: 4px;                        /* 角丸 */
   text-align: center;                        /* 中央揃え */
   font-size: 12px;                           /* フォントサイズ */
+}
+
+/* ========== スクリーンショット比較表示 ========== */
+
+/* 比較コンテナ */
+#uipath-visualizer-panel .screenshot-compare {
+  margin-top: 4px;                           /* 上マージン */
+  display: flex;                             /* フレックスレイアウト */
+  flex-direction: column;                    /* 縦並び */
+  gap: 2px;                                  /* 画像間の間隔 */
+}
+
+/* 変更前・変更後共通（色付きバー + 記号） */
+#uipath-visualizer-panel .screenshot-compare .screenshot-before,
+#uipath-visualizer-panel .screenshot-compare .screenshot-after {
+  position: relative;                        /* 疑似要素の基準 */
+  padding-left: 20px;                        /* バー幅＋間隔分のパディング */
+}
+
+/* 共通の色付きバー（疑似要素） */
+#uipath-visualizer-panel .screenshot-compare .screenshot-before::before,
+#uipath-visualizer-panel .screenshot-compare .screenshot-after::before {
+  position: absolute;                        /* 絶対配置 */
+  left: 0;                                   /* 左端 */
+  top: 0;                                    /* 上端 */
+  width: 14px;                               /* バー幅 */
+  height: 100%;                              /* 全高 */
+  display: flex;                             /* フレックスで中央配置 */
+  align-items: center;                       /* 縦中央 */
+  justify-content: center;                   /* 横中央 */
+  color: white;                              /* 白色テキスト */
+  font-size: 12px;                           /* フォントサイズ */
+  font-weight: 600;                          /* 太字 */
+  border-radius: 2px;                        /* 角丸 */
+}
+
+/* 変更前バー（赤 + 「-」） */
+#uipath-visualizer-panel .screenshot-compare .screenshot-before::before {
+  content: '-';                              /* マイナス記号 */
+  background-color: var(--diff-removed-word-bg); /* 赤色バー */
+}
+
+/* 変更後バー（緑 + 「+」） */
+#uipath-visualizer-panel .screenshot-compare .screenshot-after::before {
+  content: '+';                              /* プラス記号 */
+  background-color: var(--diff-added-word-bg); /* 緑色バー */
+}
+
+/* 比較コンテナ内の画像 */
+#uipath-visualizer-panel .screenshot-compare img {
+  max-width: 100%;                           /* 最大幅 */
+  max-height: 200px;                         /* 最大高さ */
+  display: block;                            /* ブロック表示 */
+  object-fit: contain;                       /* アスペクト比を維持 */
 }
 
 /* ========== 注釈表示 ========== */

@@ -696,6 +696,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 
 		const refs = await fetchPrRefs(pr); // base/head SHAを取得
 		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // スクリーンショットリゾルバー
+		const baseScreenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.baseSha); // 変更前スクリーンショットリゾルバー
 
 		// before/afterのXAMLを並列で取得
 		const [beforeXaml, afterXaml] = await Promise.all([
@@ -728,7 +729,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			contentArea.appendChild(seqContainer); // コンテンツに追加
 
 			// 差分ハイライトをオーバーレイ適用
-			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
+			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // 変更・追加・削除をハイライト（スクリーンショット比較付き）
 
 			// カーソル同期をセットアップ（Diff view）
 			setupCursorSync(panel, headLineIndex, 'diff', filePath);
@@ -797,6 +798,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 
 		const refs = await fetchCommitRefs(repoInfo.owner, repoInfo.repo); // base/head SHAを取得
 		const screenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.headSha); // スクリーンショットリゾルバー
+		const baseScreenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.baseSha); // 変更前スクリーンショットリゾルバー
 
 		// before/afterのXAMLを並列で取得
 		const [beforeXaml, afterXaml] = await Promise.all([
@@ -828,7 +830,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 			contentArea.appendChild(seqContainer); // コンテンツに追加
 
 			// 差分ハイライトをオーバーレイ適用
-			applyDiffHighlights(seqContainer, diffResult); // 変更・追加・削除をハイライト
+			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // 変更・追加・削除をハイライト（スクリーンショット比較付き）
 
 			// カーソル同期をセットアップ（Diff view）
 			setupCursorSync(panel, headLineIndex, 'diff', filePath);
@@ -1707,6 +1709,7 @@ function renderObjectPropertyDiff(
 	const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // 全キーを収集
 	for (const key of allKeys) {
 		if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
+		if (key === 'InformativeScreenshot') continue;                     // スクリーンショットは別途比較表示
 		const bVal = beforeObj[key];
 		const aVal = afterObj[key];
 		const bStr = formatDiffValue(bVal);                                // 変更前テキスト
@@ -1735,7 +1738,12 @@ function renderObjectPropertyDiff(
 	}
 }
 
-function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
+function applyDiffHighlights(
+	container: HTMLElement,
+	diffResult: any,
+	baseScreenshotResolver?: ScreenshotPathResolver, // 変更前スクリーンショットのURL解決
+	headScreenshotResolver?: ScreenshotPathResolver   // 変更後スクリーンショットのURL解決
+): void {
 	// 変更アクティビティをハイライト
 	for (const item of diffResult.modified) {
 		const key = buildActivityKey(item.activity, 0); // キーを生成（IdRef優先）
@@ -1795,8 +1803,8 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				}
 
 				// To/Value以外のプロパティ変更は通常通り表示
-				const otherChanges = item.changes.filter( // To/Value以外を抽出
-					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value'
+				const otherChanges = item.changes.filter( // To/Value・InformativeScreenshot以外を抽出
+					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value' && c.propertyName !== 'InformativeScreenshot'
 				);
 				for (const change of otherChanges) {
 					// オブジェクト同士の比較は属性レベルで展開
@@ -1833,6 +1841,7 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 			} else {
 				// 通常のプロパティ変更表示
 				for (const change of item.changes) {
+					if (change.propertyName === 'InformativeScreenshot') continue; // スクリーンショットは別途比較表示
 					// オブジェクト同士の比較は属性レベルで展開
 					if (typeof change.before === 'object' && change.before !== null
 						&& typeof change.after === 'object' && change.after !== null
@@ -1871,6 +1880,41 @@ function applyDiffHighlights(container: HTMLElement, diffResult: any): void {
 				card.insertBefore(changesDiv, header.nextSibling); // ヘッダーの直後に挿入
 			} else {
 				card.appendChild(changesDiv); // フォールバック: カード末尾に追加
+			}
+
+			// InformativeScreenshot の変更があれば比較表示を構築
+			const screenshotChange = item.changes.find( // スクリーンショット変更を探す
+				(c: any) => c.propertyName === 'InformativeScreenshot'
+			);
+			if (screenshotChange && baseScreenshotResolver && headScreenshotResolver) {
+				// 既存のスクリーンショット表示を削除
+				const existingScreenshot = card.querySelector(':scope > .informative-screenshot'); // 既存要素
+				if (existingScreenshot) existingScreenshot.remove(); // 削除
+
+				// 比較コンテナを構築
+				const compareDiv = document.createElement('div'); // 比較コンテナ
+				compareDiv.className = 'screenshot-compare'; // CSSクラス
+
+				// 変更前（Before）
+				const beforeBox = document.createElement('div'); // 変更前ボックス
+				beforeBox.className = 'screenshot-before'; // CSSクラス（赤の左ボーダー）
+				const beforeImg = document.createElement('img'); // 変更前画像
+				beforeImg.src = baseScreenshotResolver(screenshotChange.before); // base側のURL
+				beforeImg.alt = 'Before screenshot'; // alt属性
+				beforeImg.onerror = () => { beforeImg.style.display = 'none'; }; // 読み込みエラー時は非表示
+				beforeBox.appendChild(beforeImg);
+				compareDiv.appendChild(beforeBox);
+
+				// 変更後（After）
+				const afterBox = document.createElement('div'); // 変更後ボックス
+				afterBox.className = 'screenshot-after'; // CSSクラス（緑の左ボーダー）
+				const afterImg = document.createElement('img'); // 変更後画像
+				afterImg.src = headScreenshotResolver(screenshotChange.after); // head側のURL
+				afterImg.alt = 'After screenshot'; // alt属性
+				afterImg.onerror = () => { afterImg.style.display = 'none'; }; // 読み込みエラー時は非表示
+				afterBox.appendChild(afterImg);
+				compareDiv.appendChild(afterBox);
+				card.appendChild(compareDiv); // カードに追加
 			}
 		}
 	}
