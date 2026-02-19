@@ -484,50 +484,6 @@
   word-break: break-word;                  /* 長い単語を折り返す */
 }
 
-/* ========== 差分サマリー ========== */
-
-#uipath-visualizer-panel .diff-summary {
-  display: flex;
-  gap: 16px;                                /* カード間の間隔 */
-  padding: 16px;
-  background-color: var(--panel-bg);        /* 背景色 */
-  border-bottom: 1px solid var(--panel-border-light); /* 下線 */
-  margin-bottom: 16px;
-}
-
-#uipath-visualizer-panel .summary-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 12px 20px;
-  background-color: var(--panel-bg-secondary); /* セカンダリ背景 */
-  border-radius: 8px;
-  border: 1px solid var(--panel-border);    /* ボーダー */
-}
-
-#uipath-visualizer-panel .summary-label {
-  font-size: 14px;
-  color: var(--panel-text-tertiary);        /* テキスト色 */
-  margin-bottom: 8px;
-}
-
-#uipath-visualizer-panel .count {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-#uipath-visualizer-panel .count.added {
-  color: var(--diff-added-fg);              /* 緑: 追加 */
-}
-
-#uipath-visualizer-panel .count.removed {
-  color: var(--diff-removed-fg);            /* 赤: 削除 */
-}
-
-#uipath-visualizer-panel .count.modified {
-  color: var(--diff-modified-fg);           /* オレンジ: 変更 */
-}
-
 /* ========== 差分アイテム ========== */
 
 #uipath-visualizer-panel .diff-item {

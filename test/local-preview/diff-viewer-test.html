@@ -50,22 +50,6 @@
             </button>
         </section>
 
-        <!-- 変更サマリー -->
-        <section class="diff-summary">
-            <div class="summary-card">
-                <span class="summary-label">追加</span>
-                <span id="added-count" class="count added">0</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-label">削除</span>
-                <span id="removed-count" class="count removed">0</span>
-            </div>
-            <div class="summary-card">
-                <span class="summary-label">変更</span>
-                <span id="modified-count" class="count modified">0</span>
-            </div>
-        </section>
-
         <!-- 差分表示エリア -->
         <main class="diff-container">
             <div id="diff-content" class="diff-content">
@@ -177,17 +161,6 @@
             return await response.text();
         }
 
-        // サマリー情報を更新
-        function updateSummary(added, removed, modified) {
-            const addedCount = document.getElementById('added-count');
-            const removedCount = document.getElementById('removed-count');
-            const modifiedCount = document.getElementById('modified-count');
-
-            if (addedCount) addedCount.textContent = added.toString();
-            if (removedCount) removedCount.textContent = removed.toString();
-            if (modifiedCount) modifiedCount.textContent = modified.toString();
-        }
-
         // フィルタを適用
         function applyFilter() {
             const items = document.querySelectorAll('.diff-item');
@@ -247,9 +220,6 @@
                 const diff = diffCalculator.calculate(beforeData, afterData);
 
                 console.log('差分計算完了:', diff);
-
-                // サマリーを更新
-                updateSummary(diff.added.length, diff.removed.length, diff.modified.length);
 
                 // 差分を表示
                 const diffContent = document.getElementById('diff-content');
