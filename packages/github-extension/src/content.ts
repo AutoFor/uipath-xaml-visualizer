@@ -717,10 +717,7 @@ async function showDiffVisualizer(filePath: string): Promise<void> {
 			// 行番号マッピングを構築
 			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
 
-			// サマリーを表示
-			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
 			contentArea.innerHTML = ''; // クリア
-			contentArea.appendChild(summaryHtml); // サマリーを追加
 
 			// フルワークフローをレンダリング（head版）
 			const seqContainer = document.createElement('div'); // シーケンスコンテナ
@@ -818,10 +815,7 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 
 			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
 
-			// サマリーを表示
-			const summaryHtml = createDiffSummary(diffResult); // サマリーHTML
 			contentArea.innerHTML = ''; // クリア
-			contentArea.appendChild(summaryHtml); // サマリーを追加
 
 			// フルワークフローをレンダリング（head版）
 			const seqContainer = document.createElement('div'); // シーケンスコンテナ
@@ -875,44 +869,6 @@ async function showCommitDiffVisualizer(filePath: string): Promise<void> {
 				<div class="debug-info">${debugInfo.join('\n')}</div>
 			</div>`; // エラーとデバッグ情報を表示
 	}
-}
-
-/**
- * 差分サマリーを作成
- */
-function createDiffSummary(diffResult: any): HTMLElement {
-	const summary = document.createElement('div'); // サマリー要素
-	summary.className = 'diff-summary'; // クラス設定
-
-	// 追加カード
-	const addedCard = document.createElement('div'); // 追加カード
-	addedCard.className = 'summary-card';
-	addedCard.innerHTML = `
-		<span class="summary-label">${t('Added')}</span>
-		<span class="count added">${diffResult.added.length}</span>
-	`;
-
-	// 削除カード
-	const removedCard = document.createElement('div'); // 削除カード
-	removedCard.className = 'summary-card';
-	removedCard.innerHTML = `
-		<span class="summary-label">${t('Removed')}</span>
-		<span class="count removed">${diffResult.removed.length}</span>
-	`;
-
-	// 変更カード
-	const modifiedCard = document.createElement('div'); // 変更カード
-	modifiedCard.className = 'summary-card';
-	modifiedCard.innerHTML = `
-		<span class="summary-label">${t('Modified')}</span>
-		<span class="count modified">${diffResult.modified.length}</span>
-	`;
-
-	summary.appendChild(addedCard);
-	summary.appendChild(removedCard);
-	summary.appendChild(modifiedCard);
-
-	return summary;
 }
 
 // ========== カーソル同期（Visualizer ↔ GitHub） ==========

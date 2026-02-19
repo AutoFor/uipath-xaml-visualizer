@@ -86,27 +86,11 @@ class XamlDiffViewer {
     // 差分を計算
     const diff = this.diffCalculator.calculate(beforeData, afterData);
 
-    // サマリーを更新
-    this.updateSummary(diff.added.length, diff.removed.length, diff.modified.length);
-
     // 差分を表示
     const diffContent = document.getElementById('diff-content');
     if (diffContent) {
       this.diffRenderer.render(diff, diffContent);
     }
-  }
-
-  /**
-   * サマリー情報を更新
-   */
-  private updateSummary(added: number, removed: number, modified: number): void {
-    const addedCount = document.getElementById('added-count');
-    const removedCount = document.getElementById('removed-count');
-    const modifiedCount = document.getElementById('modified-count');
-
-    if (addedCount) addedCount.textContent = added.toString();
-    if (removedCount) removedCount.textContent = removed.toString();
-    if (modifiedCount) modifiedCount.textContent = modified.toString();
   }
 
   /**
