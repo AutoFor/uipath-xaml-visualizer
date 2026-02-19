@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 260">
+  <defs>
+    <filter id="shadow-ds" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+    <style>
+      .font-main { font-family: 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Card background -->
+  <rect x="14" y="10" width="412" height="240" rx="6" ry="6" fill="#fff" stroke="#e0e0e0" stroke-width="1" filter="url(#shadow-ds)"/>
+
+  <!-- Header background -->
+  <rect x="14" y="10" width="412" height="44" rx="6" ry="6" fill="#f0f4ff"/>
+  <rect x="14" y="36" width="412" height="18" fill="#f0f4ff"/>
+  <line x1="14" y1="54" x2="426" y2="54" stroke="#d0d8f0" stroke-width="1"/>
+
+  <!-- Header text -->
+  <text x="30" y="38" class="font-main" font-size="14" font-weight="600" fill="#1a1a2e">Main.xaml</text>
+
+  <!-- Change count badges -->
+  <rect x="270" y="22" width="38" height="20" rx="10" ry="10" fill="#dcfce7"/>
+  <text x="289" y="36" text-anchor="middle" class="font-main" font-size="11" font-weight="600" fill="#15803d">+2</text>
+
+  <rect x="314" y="22" width="32" height="20" rx="10" ry="10" fill="#fef2f2"/>
+  <text x="330" y="36" text-anchor="middle" class="font-main" font-size="11" font-weight="600" fill="#b91c1c">-1</text>
+
+  <rect x="352" y="22" width="36" height="20" rx="10" ry="10" fill="#fefce8"/>
+  <text x="370" y="36" text-anchor="middle" class="font-main" font-size="11" font-weight="600" fill="#a16207">~3</text>
+
+  <!-- Added item -->
+  <rect x="24" y="64" width="392" height="32" rx="4" ry="4" fill="#f0fdf4"/>
+  <rect x="24" y="64" width="4" height="32" rx="2" ry="2" fill="#22c55e"/>
+  <text x="38" y="84" class="font-main" font-size="12" font-weight="600" fill="#15803d">+</text>
+  <text x="54" y="84" class="font-main" font-size="12" fill="#15803d">LogMessage: Log End</text>
+
+  <!-- Deleted item -->
+  <rect x="24" y="102" width="392" height="32" rx="4" ry="4" fill="#fef2f2"/>
+  <rect x="24" y="102" width="4" height="32" rx="2" ry="2" fill="#ef4444"/>
+  <text x="38" y="122" class="font-main" font-size="12" font-weight="600" fill="#b91c1c">-</text>
+  <text x="54" y="122" class="font-main" font-size="12" fill="#b91c1c">Delay: Wait 5 seconds</text>
+
+  <!-- Modified item 1 -->
+  <rect x="24" y="140" width="392" height="32" rx="4" ry="4" fill="#fefce8"/>
+  <rect x="24" y="140" width="4" height="32" rx="2" ry="2" fill="#eab308"/>
+  <text x="38" y="160" class="font-main" font-size="12" font-weight="600" fill="#a16207">~</text>
+  <text x="54" y="160" class="font-main" font-size="12" fill="#a16207">Assign: Set Result</text>
+  <rect x="340" y="148" width="62" height="18" rx="9" ry="9" fill="#fde68a"/>
+  <text x="371" y="161" text-anchor="middle" class="font-main" font-size="10" font-weight="600" fill="#92400e">2 props</text>
+
+  <!-- Modified item 2 -->
+  <rect x="24" y="178" width="392" height="32" rx="4" ry="4" fill="#fefce8"/>
+  <rect x="24" y="178" width="4" height="32" rx="2" ry="2" fill="#eab308"/>
+  <text x="38" y="198" class="font-main" font-size="12" font-weight="600" fill="#a16207">~</text>
+  <text x="54" y="198" class="font-main" font-size="12" fill="#a16207">If: Check Status</text>
+  <rect x="340" y="186" width="62" height="18" rx="9" ry="9" fill="#fde68a"/>
+  <text x="371" y="199" text-anchor="middle" class="font-main" font-size="10" font-weight="600" fill="#92400e">1 prop</text>
+
+  <!-- Modified item 3 -->
+  <rect x="24" y="216" width="392" height="32" rx="4" ry="4" fill="#fefce8"/>
+  <rect x="24" y="216" width="4" height="32" rx="2" ry="2" fill="#eab308"/>
+  <text x="38" y="236" class="font-main" font-size="12" font-weight="600" fill="#a16207">~</text>
+  <text x="54" y="236" class="font-main" font-size="12" fill="#a16207">InvokeWorkflow</text>
+  <rect x="340" y="224" width="62" height="18" rx="9" ry="9" fill="#fde68a"/>
+  <text x="371" y="237" text-anchor="middle" class="font-main" font-size="10" font-weight="600" fill="#92400e">1 prop</text>
+</svg>

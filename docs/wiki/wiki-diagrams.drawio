@@ -1,0 +1,365 @@
+<mxfile host="app.diagrams.net">
+    <diagram id="page-chrome-arch" name="Chrome拡張機能アーキテクチャ">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ca-title" value="Chrome 拡張機能アーキテクチャ" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="10" width="500" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-ext" value="Chrome 拡張機能 (Manifest V3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="60" width="720" height="520" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-content" value="Content Script (content.ts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=6;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="100" width="340" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-detect" value="Page Detection&#xa;detectPageType()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="145" width="140" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-inject" value="Button Injection&#xa;scanAndInjectDiffButtons()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="145" width="145" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-display" value="Visualizer Display&#xa;displayBlobVisualizerPanel()&#xa;showDiffVisualizer()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="205" width="170" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-panel" value="Panel Management&#xa;createPanel()&#xa;openPanel() / closePanel()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="265" y="205" width="120" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-bg" value="Background Script&#xa;(background.ts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="430" y="100" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-storage" value="chrome.storage.sync&#xa;(Language Setting)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="100" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-shared" value="共通ライブラリ (packages/shared)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=6;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="320" width="690" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-parser-grp" value="Parser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="80" y="360" width="190" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-xamlparser" value="XamlParser&#xa;XAML -> Activity Tree" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="395" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-diffcalc" value="DiffCalculator&#xa;Tree Diff Comparison" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="445" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-linemapper" value="LineMapper&#xa;XAML Line -> Activity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="95" y="495" width="160" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-renderer-grp" value="Renderer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="290" y="360" width="200" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-seqr" value="SequenceRenderer&#xa;Activity -> HTML Cards" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="395" width="170" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-diffr" value="DiffRenderer&#xa;Diff Highlights" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="445" width="170" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-treeview" value="TreeViewRenderer&#xa;Sidebar Tree View" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="305" y="495" width="170" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-support-grp" value="Support" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="510" y="360" width="220" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-i18n" value="i18n&#xa;Multi-language (EN/JA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="525" y="395" width="190" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-propconfig" value="PropertyConfig&#xa;Activity Property Classification" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="525" y="445" width="190" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-css" value="CSS Styles&#xa;github-panel / diff / main" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="525" y="495" width="190" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-arrow-content-shared" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.25;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="ca-content" target="ca-shared" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-arrow-content-shared-label" value="parse() / render()" style="edgeLabel;html=1;fontSize=9;fontColor=#82b366;" parent="ca-arrow-content-shared" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ca-arrow-bg-storage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#666;strokeWidth=1;dashed=1;" parent="1" source="ca-bg" target="ca-storage" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-arrow-detect-inject" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;strokeWidth=1;" parent="1" source="ca-detect" target="ca-inject" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ca-arrow-detect-display" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#b85450;strokeWidth=1;" parent="1" source="ca-detect" target="ca-display" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-activity-card" name="アクティビティカード・プロパティ">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ac-title" value="アクティビティカード - プロパティ構造" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="10" width="540" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="60" width="600" height="510" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-header" value="Click" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="60" width="600" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-icon-note" value="[Icon]" style="text;html=1;fontSize=10;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="70" width="40" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-main-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#ddd;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="120" width="560" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-main-label" value="Main Properties (always visible)" style="text;html=1;fontSize=11;fontStyle=1;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="125" width="250" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-main-target" value="Target: &quot;btnSubmit&quot;" style="text;html=1;fontSize=12;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="148" width="250" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-toggle" value="Sub Properties (collapsible)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="205" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-panel" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="245" width="560" height="310" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-grp-target" value="Target" style="text;html=1;fontSize=12;fontStyle=5;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="135" y="255" width="80" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-fsa" value="FullSelectorArgument" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="280" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-fza" value="FuzzySelectorArgument" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="300" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-or" value="ObjectRepository" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="320" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-grp-sep1" value="" style="endArrow=none;html=1;strokeColor=#ddd;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="135" y="345" as="sourcePoint"/>
+                        <mxPoint x="665" y="345" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ac-grp-input" value="Input" style="text;html=1;fontSize=12;fontStyle=5;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="135" y="350" width="80" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-clicktype" value="ClickType" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="375" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-cursor" value="CursorMotionType" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="395" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-mouse" value="MouseButton" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="415" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-grp-sep2" value="" style="endArrow=none;html=1;strokeColor=#ddd;strokeWidth=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="135" y="440" as="sourcePoint"/>
+                        <mxPoint x="665" y="440" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ac-grp-options" value="Options" style="text;html=1;fontSize=12;fontStyle=5;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="135" y="445" width="80" height="22" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-activate" value="ActivateBefore" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="470" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-alter" value="AlterDisabledElement" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="490" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-interaction" value="InteractionMode" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="510" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-sub-keymods" value="KeyModifiers" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="530" width="200" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-annotation1" value="ACTIVITY_CONFIGS で&#xa;グループ定義" style="text;html=1;fontSize=10;align=left;fontColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="260" width="150" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-ann-arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;strokeColor=#9673a6;strokeWidth=1;dashed=1;" parent="1" source="ac-annotation1" target="ac-grp-target" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-annotation2" value="mainProperties に&#xa;登録された項目" style="text;html=1;fontSize=10;align=left;fontColor=#9673a6;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="130" width="150" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="ac-ann-arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=0.5;entryX=1;entryY=0.5;strokeColor=#9673a6;strokeWidth=1;dashed=1;" parent="1" source="ac-annotation2" target="ac-main-target" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-prop-classify" name="プロパティ分類フローチャート">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="pc-title" value="プロパティ表示・非表示の判定フロー" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="10" width="540" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-start" value="プロパティを取得" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="60" width="200" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-prefix" value="非表示プレフィックス&#xa;(sap:, xmlns, mc:, mva:)&#xa;に該当?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="120" width="240" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-hidden1" value="非表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="140" width="100" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-exclude" value="個別除外リスト&#xa;(DisplayName, Body 等)&#xa;に該当?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="220" width="240" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-hidden2" value="非表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="240" width="100" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-defined" value="アクティビティが&#xa;「定義済み」か?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="295" y="320" width="210" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-undefined" value="全プロパティ&#xa;非表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="335" width="110" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-config" value="ACTIVITY_CONFIGS&#xa;に登録あり?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="190" y="415" width="180" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-main" value="mainProperties&#xa;に含まれる?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="510" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-main-display" value="メイン表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="30" y="595" width="100" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-sub-grouped" value="サブパネル&#xa;(グループ分け表示)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="155" y="595" width="130" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-special" value="専用レンダリング&#xa;(Assign, LogMessage)?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="415" width="170" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-special-display" value="専用ロジックで表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="510" width="130" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-check-default" value="DEFAULT_MAIN&#xa;_PROPERTIES&#xa;に含まれる?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="415" width="150" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-default-main" value="メイン表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="580" y="510" width="90" height="35" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-default-sub" value="サブパネル&#xa;(グループなし)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="510" width="100" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;" parent="1" source="pc-start" target="pc-check-prefix" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a2" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-prefix" target="pc-hidden1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a3" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-prefix" target="pc-check-exclude" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a4" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-exclude" target="pc-hidden2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a5" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-exclude" target="pc-check-defined" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a6" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#b85450;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-defined" target="pc-undefined" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a7" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-defined" target="pc-check-config" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="280" y="400"/>
+                            <mxPoint x="280" y="415"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="pc-a8" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-config" target="pc-check-main" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a9" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-main" target="pc-main-display" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a10" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=1;entryX=0.5;entryY=0;strokeColor=#9673a6;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-main" target="pc-sub-grouped" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a11" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-config" target="pc-check-special" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a12" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-special" target="pc-special-display" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a13" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-special" target="pc-check-default" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a14" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-default" target="pc-default-main" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="pc-a15" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=1;entryX=0.5;entryY=0;strokeColor=#9673a6;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="pc-check-default" target="pc-default-sub" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-diff-prop-classify" name="差分プロパティ分類">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="dc-title" value="差分プロパティ分類フロー" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="10" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-start" value="変更されたプロパティを検出" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="60" width="300" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-check-config" value="ACTIVITY_CONFIGS&#xa;に登録済みか?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="130" width="240" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-all-main" value="全変更をメイン表示&#xa;(従来どおり)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="145" width="160" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-check-mainprop" value="mainProperties&#xa;に含まれる?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="250" width="240" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-to-sub1" value="サブに移動" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="265" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-check-object" value="値がオブジェクト型か?&#xa;(Target 内の Selector,&#xa;Reference 等の複合構造)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="370" width="280" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-to-sub2" value="サブに移動&#xa;(展開すると冗長なため)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="390" width="160" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-main-display" value="メイン表示" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="500" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-result-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="180" y="570" width="440" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-result-text" value="Result: Main Changes / Sub Changes" style="text;html=1;fontSize=13;fontStyle=1;align=center;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="580" width="340" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;" parent="1" source="dc-start" target="dc-check-config" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a2" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#82b366;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-config" target="dc-all-main" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a3" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-config" target="dc-check-mainprop" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a4" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#9673a6;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-mainprop" target="dc-to-sub1" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a5" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-mainprop" target="dc-check-object" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a6" value="YES" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#9673a6;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-object" target="dc-to-sub2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-a7" value="NO" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1.5;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="dc-check-object" target="dc-main-display" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dc-note" value="Note: メインプロパティであっても、値がオブジェクト型&#xa;（複合構造）の場合はサブパネルに移動します" style="text;html=1;fontSize=10;align=left;fontColor=#666;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="500" width="280" height="35" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

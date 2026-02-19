@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 260">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15"/>
+    </filter>
+    <style>
+      text { font-family: 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Card Container -->
+  <rect x="20" y="10" width="460" height="240" rx="6" ry="6"
+        fill="#fff" stroke="#666" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Header Bar -->
+  <rect x="20" y="10" width="460" height="36" rx="6" ry="6"
+        fill="#4a86c8" stroke="#4a86c8" stroke-width="1.5"/>
+  <rect x="20" y="32" width="460" height="14"
+        fill="#4a86c8" stroke="none"/>
+  <text x="36" y="34" fill="#fff" font-size="14" font-weight="600">Click: Click Login Button</text>
+
+  <!-- Screenshot Section Label -->
+  <text x="36" y="68" fill="#333" font-size="12" font-weight="600">Informative Screenshot:</text>
+
+  <!-- Warning Box -->
+  <rect x="36" y="80" width="428" height="156" rx="6" ry="6"
+        fill="#fff8e1" stroke="#ffb74d" stroke-width="1.5"/>
+
+  <!-- Warning Icon and Title -->
+  <text x="52" y="106" fill="#e65100" font-size="13" font-weight="600">&#9888; 画像が見つかりません</text>
+
+  <!-- File path -->
+  <text x="52" y="128" fill="#795548" font-size="11">.screenshots/click_login.png</text>
+
+  <!-- Divider inside warning -->
+  <line x1="46" y1="138" x2="454" y2="138" stroke="#ffe0b2" stroke-width="1"/>
+
+  <!-- Causes label -->
+  <text x="52" y="158" fill="#795548" font-size="11" font-weight="600">考えられる原因:</text>
+
+  <!-- Bullet points -->
+  <circle cx="62" cy="178" r="3" fill="#ff9800"/>
+  <text x="74" y="182" fill="#555" font-size="11">.screenshots がコミット対象外</text>
+
+  <circle cx="62" cy="202" r="3" fill="#ff9800"/>
+  <text x="74" y="206" fill="#555" font-size="11">ファイルが削除された</text>
+
+  <circle cx="62" cy="226" r="3" fill="#ff9800"/>
+  <text x="74" y="230" fill="#555" font-size="11">パスが変更された</text>
+</svg>

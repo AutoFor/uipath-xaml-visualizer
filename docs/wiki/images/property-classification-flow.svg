@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 500" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <filter id="fs" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="1" dy="1" stdDeviation="1.5" flood-color="#00000018"/>
+    </filter>
+    <!-- Arrowhead marker -->
+    <marker id="arrowGray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0,0 8,3 0,6" fill="#78909C"/>
+    </marker>
+  </defs>
+
+  <!-- Start node -->
+  <rect x="260" y="8" width="160" height="32" rx="16" ry="16"
+        fill="#455A64" stroke="none" filter="url(#fs)"/>
+  <text x="340" y="29" text-anchor="middle" font-size="12" font-weight="bold" fill="#FFFFFF">プロパティを取得</text>
+
+  <!-- Arrow down from start -->
+  <line x1="340" y1="40" x2="340" y2="56" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+
+  <!-- Decision 1: 非表示プレフィックス -->
+  <polygon points="340,58 440,88 340,118 240,88" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="340" y="85" text-anchor="middle" font-size="9.5" fill="#E65100">非表示プレフィックス</text>
+  <text x="340" y="97" text-anchor="middle" font-size="9" fill="#E65100">(sap:, xmlns等)？</text>
+
+  <!-- Yes → 非表示 (right) -->
+  <line x1="440" y1="88" x2="520" y2="88" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="470" y="82" font-size="9" fill="#78909C">Yes</text>
+  <rect x="528" y="74" width="80" height="28" rx="6" ry="6" fill="#FFCDD2" stroke="#E53935" stroke-width="1" filter="url(#fs)"/>
+  <text x="568" y="93" text-anchor="middle" font-size="10" font-weight="600" fill="#B71C1C">非表示</text>
+
+  <!-- No → down -->
+  <line x1="340" y1="118" x2="340" y2="136" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="348" y="131" font-size="9" fill="#78909C">No</text>
+
+  <!-- Decision 2: 個別除外リスト -->
+  <polygon points="340,138 440,168 340,198 240,168" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="340" y="165" text-anchor="middle" font-size="9.5" fill="#E65100">個別除外リスト</text>
+  <text x="340" y="177" text-anchor="middle" font-size="9" fill="#E65100">(DisplayName, Body等)？</text>
+
+  <!-- Yes → 非表示 (right) -->
+  <line x1="440" y1="168" x2="520" y2="168" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="470" y="162" font-size="9" fill="#78909C">Yes</text>
+  <rect x="528" y="154" width="80" height="28" rx="6" ry="6" fill="#FFCDD2" stroke="#E53935" stroke-width="1" filter="url(#fs)"/>
+  <text x="568" y="173" text-anchor="middle" font-size="10" font-weight="600" fill="#B71C1C">非表示</text>
+
+  <!-- No → down -->
+  <line x1="340" y1="198" x2="340" y2="216" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="348" y="211" font-size="9" fill="#78909C">No</text>
+
+  <!-- Decision 3: 定義済みアクティビティ？ -->
+  <polygon points="340,218 440,248 340,278 240,248" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="340" y="245" text-anchor="middle" font-size="9.5" fill="#E65100">定義済み</text>
+  <text x="340" y="257" text-anchor="middle" font-size="9" fill="#E65100">アクティビティ？</text>
+
+  <!-- No → 全プロパティ非表示 (right) -->
+  <line x1="440" y1="248" x2="520" y2="248" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="470" y="242" font-size="9" fill="#78909C">No</text>
+  <rect x="528" y="234" width="120" height="28" rx="6" ry="6" fill="#FFCDD2" stroke="#E53935" stroke-width="1" filter="url(#fs)"/>
+  <text x="588" y="253" text-anchor="middle" font-size="10" font-weight="600" fill="#B71C1C">全プロパティ非表示</text>
+
+  <!-- Yes → down, split into 3 paths -->
+  <line x1="340" y1="278" x2="340" y2="292" stroke="#78909C" stroke-width="1.2"/>
+  <text x="348" y="289" font-size="9" fill="#78909C">Yes</text>
+
+  <!-- Horizontal line splitting into 3 -->
+  <line x1="110" y1="292" x2="560" y2="292" stroke="#78909C" stroke-width="1"/>
+
+  <!-- Branch lines going down -->
+  <line x1="110" y1="292" x2="110" y2="310" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <line x1="340" y1="292" x2="340" y2="310" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <line x1="560" y1="292" x2="560" y2="310" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+
+  <!-- Branch 1 (left): ACTIVITY_CONFIGS に登録？ -->
+  <polygon points="110,312 190,338 110,364 30,338" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="110" y="334" text-anchor="middle" font-size="8.5" fill="#E65100">ACTIVITY_CONFIGS</text>
+  <text x="110" y="346" text-anchor="middle" font-size="8.5" fill="#E65100">に登録？</text>
+
+  <!-- Branch 1 - Yes path (left): mainProperties に含まれる？ -->
+  <line x1="30" y1="338" x2="10" y2="338" stroke="#78909C" stroke-width="1"/>
+  <line x1="10" y1="338" x2="10" y2="400" stroke="#78909C" stroke-width="1.2"/>
+
+  <!-- Yes label -->
+  <text x="16" y="355" font-size="8" fill="#78909C">Yes</text>
+
+  <!-- mainProperties check -->
+  <line x1="10" y1="400" x2="40" y2="400" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <polygon points="110,380 170,400 110,420 50,400" fill="#E8F5E9" stroke="#43A047" stroke-width="0.8" filter="url(#fs)"/>
+  <text x="110" y="397" text-anchor="middle" font-size="8" fill="#2E7D32">mainProperties</text>
+  <text x="110" y="408" text-anchor="middle" font-size="8" fill="#2E7D32">に含まれる？</text>
+
+  <!-- mainProperties Yes → メイン表示 -->
+  <line x1="110" y1="420" x2="110" y2="440" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="120" y="435" font-size="8" fill="#78909C">Yes</text>
+  <rect x="62" y="448" width="96" height="26" rx="6" ry="6" fill="#C8E6C9" stroke="#43A047" stroke-width="1" filter="url(#fs)"/>
+  <text x="110" y="466" text-anchor="middle" font-size="10" font-weight="600" fill="#1B5E20">メイン表示</text>
+
+  <!-- mainProperties No → サブパネル -->
+  <line x1="170" y1="400" x2="190" y2="400" stroke="#78909C" stroke-width="1"/>
+  <text x="176" y="394" font-size="8" fill="#78909C">No</text>
+  <line x1="190" y1="400" x2="190" y2="440" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <rect x="166" y="448" width="90" height="36" rx="6" ry="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="1" filter="url(#fs)"/>
+  <text x="211" y="463" text-anchor="middle" font-size="9" font-weight="600" fill="#0D47A1">サブパネル</text>
+  <text x="211" y="476" text-anchor="middle" font-size="8" fill="#1565C0">(グループ分け)</text>
+
+  <!-- Branch 1 - No path -->
+  <line x1="110" y1="364" x2="110" y2="372" stroke="#78909C" stroke-width="1"/>
+  <text x="118" y="371" font-size="8" fill="#78909C">No</text>
+  <!-- Connect to mainProperties diamond - already linked via the Yes path for visual clarity -->
+
+  <!-- Branch 2 (center): 専用レンダリング？ -->
+  <polygon points="340,312 430,338 340,364 250,338" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="340" y="334" text-anchor="middle" font-size="8.5" fill="#E65100">専用レンダリング</text>
+  <text x="340" y="346" text-anchor="middle" font-size="8.5" fill="#E65100">(Assign, LogMessage等)？</text>
+
+  <!-- Yes → 専用ロジック -->
+  <line x1="340" y1="364" x2="340" y2="440" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <text x="348" y="380" font-size="8" fill="#78909C">Yes</text>
+  <rect x="292" y="448" width="96" height="26" rx="6" ry="6" fill="#E1BEE7" stroke="#7B1FA2" stroke-width="1" filter="url(#fs)"/>
+  <text x="340" y="466" text-anchor="middle" font-size="10" font-weight="600" fill="#4A148C">専用ロジック</text>
+
+  <!-- Branch 3 (right): その他の定義済み？ -->
+  <polygon points="560,312 650,338 560,364 470,338" fill="#FFF8E1" stroke="#F9A825" stroke-width="1" filter="url(#fs)"/>
+  <text x="560" y="334" text-anchor="middle" font-size="8.5" fill="#E65100">その他の定義済み</text>
+  <text x="560" y="346" text-anchor="middle" font-size="8.5" fill="#E65100">(Nプレフィックス等)？</text>
+
+  <!-- Down to DEFAULT_MAIN_PROPERTIES check -->
+  <line x1="560" y1="364" x2="560" y2="392" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+
+  <polygon points="560,394 640,414 560,434 480,414" fill="#E8F5E9" stroke="#43A047" stroke-width="0.8" filter="url(#fs)"/>
+  <text x="560" y="410" text-anchor="middle" font-size="7.5" fill="#2E7D32">DEFAULT_MAIN</text>
+  <text x="560" y="421" text-anchor="middle" font-size="7.5" fill="#2E7D32">_PROPERTIES?</text>
+
+  <!-- Yes → メイン表示 -->
+  <line x1="480" y1="414" x2="460" y2="414" stroke="#78909C" stroke-width="1"/>
+  <text x="464" y="408" font-size="8" fill="#78909C">Yes</text>
+  <line x1="460" y1="414" x2="460" y2="440" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <rect x="412" y="448" width="96" height="26" rx="6" ry="6" fill="#C8E6C9" stroke="#43A047" stroke-width="1" filter="url(#fs)"/>
+  <text x="460" y="466" text-anchor="middle" font-size="10" font-weight="600" fill="#1B5E20">メイン表示</text>
+
+  <!-- No → サブパネル (グループなし) -->
+  <line x1="640" y1="414" x2="660" y2="414" stroke="#78909C" stroke-width="1"/>
+  <text x="644" y="408" font-size="8" fill="#78909C">No</text>
+  <line x1="660" y1="414" x2="660" y2="440" stroke="#78909C" stroke-width="1.2" marker-end="url(#arrowGray)"/>
+  <rect x="614" y="448" width="92" height="36" rx="6" ry="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="1" filter="url(#fs)"/>
+  <text x="660" y="463" text-anchor="middle" font-size="9" font-weight="600" fill="#0D47A1">サブパネル</text>
+  <text x="660" y="476" text-anchor="middle" font-size="8" fill="#1565C0">(グループなし)</text>
+</svg>

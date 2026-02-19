@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.2"/>
+    </filter>
+    <style>
+      text { font-family: 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Backdrop overlay -->
+  <rect x="0" y="0" width="560" height="280" fill="#000" opacity="0.08" rx="6" ry="6"/>
+
+  <!-- Modal Container -->
+  <rect x="20" y="10" width="520" height="260" rx="6" ry="6"
+        fill="#fff" stroke="#999" stroke-width="1.5" filter="url(#shadow)"/>
+
+  <!-- Modal Header -->
+  <rect x="20" y="10" width="520" height="36" rx="6" ry="6"
+        fill="#4a86c8" stroke="#4a86c8" stroke-width="1.5"/>
+  <rect x="20" y="32" width="520" height="14"
+        fill="#4a86c8" stroke="none"/>
+  <text x="36" y="34" fill="#fff" font-size="13" font-weight="600">Click Login Button - Screenshot</text>
+
+  <!-- Close Button -->
+  <rect x="478" y="16" width="50" height="24" rx="4" ry="4"
+        fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <text x="488" y="33" fill="#fff" font-size="11">閉じる</text>
+
+  <!-- Full Size Image Placeholder -->
+  <rect x="40" y="56" width="480" height="160" rx="4" ry="4"
+        fill="#f0f0f0" stroke="#ddd" stroke-width="1"/>
+  <!-- Grid lines to suggest an image -->
+  <line x1="40" y1="136" x2="520" y2="136" stroke="#e8e8e8" stroke-width="0.5"/>
+  <line x1="280" y1="56" x2="280" y2="216" stroke="#e8e8e8" stroke-width="0.5"/>
+  <text x="220" y="120" fill="#bbb" font-size="13">フルサイズ画像</text>
+
+  <!-- Click position indicator -->
+  <circle cx="340" cy="150" r="10" fill="none" stroke="#f44336" stroke-width="2.5"/>
+  <circle cx="340" cy="150" r="3" fill="#f44336"/>
+  <text x="358" y="155" fill="#f44336" font-size="10" font-weight="600">クリック位置</text>
+
+  <!-- File Info -->
+  <text x="40" y="240" fill="#888" font-size="11">ファイル: .screenshots/click_login_btn_abc123.png</text>
+  <text x="40" y="258" fill="#888" font-size="11">サイズ: 1920 x 1080</text>
+</svg>

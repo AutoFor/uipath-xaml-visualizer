@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 360">
+  <defs>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="1" stdDeviation="2" flood-opacity="0.15"/>
+    </filter>
+    <style>
+      text { font-family: 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Sequence Container -->
+  <rect x="20" y="10" width="360" height="340" rx="6" ry="6"
+        fill="#f0f6ff" stroke="#4a86c8" stroke-width="2" filter="url(#shadow)"/>
+  <!-- Sequence Header -->
+  <rect x="20" y="10" width="360" height="32" rx="6" ry="6"
+        fill="#4a86c8" stroke="#4a86c8" stroke-width="2"/>
+  <rect x="20" y="28" width="360" height="14"
+        fill="#4a86c8" stroke="none"/>
+  <text x="36" y="32" fill="#fff" font-size="14" font-weight="600">Sequence: Main</text>
+
+  <!-- Assign Activity Card -->
+  <rect x="50" y="56" width="300" height="60" rx="6" ry="6"
+        fill="#fff" stroke="#666" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="70" y="80" fill="#333" font-size="13" font-weight="600">Assign</text>
+  <text x="70" y="100" fill="#555" font-size="12">result = "Hello"</text>
+
+  <!-- Down Arrow -->
+  <line x1="200" y1="116" x2="200" y2="146" stroke="#888" stroke-width="2"/>
+  <polygon points="194,142 200,152 206,142" fill="#888"/>
+
+  <!-- If Activity Card -->
+  <rect x="50" y="156" width="300" height="180" rx="6" ry="6"
+        fill="#fff" stroke="#666" stroke-width="1.5" filter="url(#shadow)"/>
+  <!-- If Header area -->
+  <text x="70" y="180" fill="#333" font-size="13" font-weight="600">If</text>
+  <text x="70" y="200" fill="#555" font-size="12">condition: result != ""</text>
+
+  <!-- Divider -->
+  <line x1="60" y1="212" x2="340" y2="212" stroke="#ddd" stroke-width="1"/>
+
+  <!-- Then Box -->
+  <rect x="70" y="224" width="120" height="90" rx="6" ry="6"
+        fill="#e8f5e9" stroke="#81c784" stroke-width="1.5"/>
+  <text x="80" y="246" fill="#2e7d32" font-size="12" font-weight="600">Then</text>
+  <text x="80" y="268" fill="#555" font-size="11">...</text>
+
+  <!-- Else Box -->
+  <rect x="210" y="224" width="120" height="90" rx="6" ry="6"
+        fill="#ffebee" stroke="#e57373" stroke-width="1.5"/>
+  <text x="220" y="246" fill="#c62828" font-size="12" font-weight="600">Else</text>
+  <text x="220" y="268" fill="#555" font-size="11">...</text>
+</svg>

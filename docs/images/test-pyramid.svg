@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 260">
+  <defs>
+    <filter id="shadow-tp" x="-2%" y="-2%" width="104%" height="104%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+    <linearGradient id="gradTop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fca5a5"/>
+      <stop offset="100%" stop-color="#f87171"/>
+    </linearGradient>
+    <linearGradient id="gradMid" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <linearGradient id="gradBot" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#86efac"/>
+      <stop offset="100%" stop-color="#4ade80"/>
+    </linearGradient>
+    <style>
+      .font-main { font-family: 'Segoe UI', Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <!-- Title -->
+  <text x="200" y="24" text-anchor="middle" class="font-main" font-size="15" font-weight="700" fill="#1a1a2e">テストピラミッド</text>
+
+  <!-- Pyramid structure -->
+  <!-- The pyramid spans from y=42 to y=232, x center at 200 -->
+  <!-- Top tier: E2E (y=42 to y=102) -->
+  <polygon points="200,42 245,102 155,102" fill="url(#gradTop)" stroke="#ef4444" stroke-width="1" stroke-linejoin="round" filter="url(#shadow-tp)"/>
+
+  <!-- Middle tier: Integration (y=102 to y=167) -->
+  <polygon points="155,102 245,102 298,167 102,167" fill="url(#gradMid)" stroke="#eab308" stroke-width="1" stroke-linejoin="round" filter="url(#shadow-tp)"/>
+
+  <!-- Bottom tier: Unit (y=167 to y=232) -->
+  <polygon points="102,167 298,167 352,232 48,232" fill="url(#gradBot)" stroke="#22c55e" stroke-width="1" stroke-linejoin="round" filter="url(#shadow-tp)"/>
+
+  <!-- Divider lines for clarity -->
+  <line x1="155" y1="102" x2="245" y2="102" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+  <line x1="102" y1="167" x2="298" y2="167" stroke="#fff" stroke-width="1.5" opacity="0.6"/>
+
+  <!-- Top tier text -->
+  <text x="200" y="80" text-anchor="middle" class="font-main" font-size="13" font-weight="700" fill="#7f1d1d">E2E</text>
+  <text x="200" y="96" text-anchor="middle" class="font-main" font-size="10" fill="#991b1b">10%</text>
+
+  <!-- Middle tier text -->
+  <text x="200" y="134" text-anchor="middle" class="font-main" font-size="13" font-weight="700" fill="#78350f">統合テスト</text>
+  <text x="200" y="152" text-anchor="middle" class="font-main" font-size="10" fill="#92400e">20%</text>
+
+  <!-- Bottom tier text -->
+  <text x="200" y="198" text-anchor="middle" class="font-main" font-size="14" font-weight="700" fill="#14532d">ユニットテスト</text>
+  <text x="200" y="218" text-anchor="middle" class="font-main" font-size="10" fill="#166534">70%</text>
+
+  <!-- Side labels with lines -->
+  <!-- E2E label -->
+  <line x1="248" y1="72" x2="310" y2="72" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="316" y="76" class="font-main" font-size="10" fill="#6b7280">少数の重要シナリオ</text>
+
+  <!-- Integration label -->
+  <line x1="300" y1="135" x2="316" y2="135" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="322" y="139" class="font-main" font-size="10" fill="#6b7280">コンポーネント間連携</text>
+
+  <!-- Unit label -->
+  <line x1="354" y1="200" x2="362" y2="200" stroke="#d1d5db" stroke-width="1" stroke-dasharray="3,2"/>
+  <text x="366" y="196" class="font-main" font-size="10" fill="#6b7280">パーサー / レンダラー</text>
+  <text x="366" y="210" class="font-main" font-size="10" fill="#6b7280">各関数の単体テスト</text>
+</svg>

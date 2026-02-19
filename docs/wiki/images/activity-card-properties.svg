@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 380" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <filter id="cardShadow" x="-2%" y="-1%" width="104%" height="103%">
+      <feDropShadow dx="1" dy="2" stdDeviation="2.5" flood-color="#00000022"/>
+    </filter>
+  </defs>
+
+  <!-- Activity card outer -->
+  <rect x="10" y="10" width="260" height="360" rx="6" ry="6"
+        fill="#FFFFFF" stroke="#B0BEC5" stroke-width="1.2" filter="url(#cardShadow)"/>
+
+  <!-- Card header -->
+  <rect x="10" y="10" width="260" height="36" rx="6" ry="6" fill="#1565C0"/>
+  <rect x="10" y="30" width="260" height="16" fill="#1565C0"/>
+  <text x="46" y="34" font-size="14" font-weight="bold" fill="#FFFFFF">Click</text>
+  <!-- Mouse icon (simple) -->
+  <rect x="22" y="20" width="16" height="18" rx="4" ry="4" fill="none" stroke="#FFFFFF" stroke-width="1.2"/>
+  <line x1="30" y1="20" x2="30" y2="28" stroke="#FFFFFF" stroke-width="1"/>
+
+  <!-- Main property: Target -->
+  <text x="24" y="68" font-size="11" fill="#78909C">Target:</text>
+  <text x="68" y="68" font-size="11" font-weight="600" fill="#263238">"btnSubmit"</text>
+
+  <!-- Annotation arrow for main property -->
+  <line x1="270" y1="66" x2="280" y2="66" stroke="#9E9E9E" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="284" y="62" font-size="9" fill="#9E9E9E">← メインプロパティ</text>
+  <text x="295" y="74" font-size="9" fill="#9E9E9E">（常に表示）</text>
+
+  <!-- Separator -->
+  <line x1="20" y1="82" x2="260" y2="82" stroke="#ECEFF1" stroke-width="1"/>
+
+  <!-- Expandable section header -->
+  <text x="24" y="102" font-size="11" font-weight="bold" fill="#1565C0">▶ プロパティ詳細</text>
+
+  <!-- Annotation arrow for sub-properties -->
+  <line x1="270" y1="100" x2="280" y2="100" stroke="#9E9E9E" stroke-width="0.8" stroke-dasharray="3,2"/>
+  <text x="284" y="96" font-size="9" fill="#9E9E9E">← サブプロパティ</text>
+  <text x="295" y="108" font-size="9" fill="#9E9E9E">（折りたたみ）</text>
+
+  <!-- Properties panel -->
+  <rect x="24" y="114" width="232" height="244" rx="4" ry="4"
+        fill="#FAFAFA" stroke="#E0E0E0" stroke-width="1"/>
+
+  <!-- Group: Target -->
+  <rect x="24" y="114" width="232" height="22" rx="4" ry="4" fill="#E3F2FD"/>
+  <rect x="24" y="126" width="232" height="10" fill="#E3F2FD"/>
+  <text x="34" y="130" font-size="10" font-weight="bold" fill="#1565C0">Target</text>
+  <text x="38" y="152" font-size="10" fill="#37474F">FullSelectorArgument</text>
+  <text x="38" y="170" font-size="10" fill="#37474F">ObjectRepository</text>
+
+  <!-- Separator line -->
+  <line x1="30" y1="182" x2="250" y2="182" stroke="#E0E0E0" stroke-width="0.8"/>
+
+  <!-- Group: Input -->
+  <rect x="24" y="186" width="232" height="20" fill="#FFF3E0"/>
+  <text x="34" y="200" font-size="10" font-weight="bold" fill="#E65100">Input</text>
+  <text x="38" y="222" font-size="10" fill="#37474F">ClickType</text>
+  <text x="38" y="240" font-size="10" fill="#37474F">MouseButton</text>
+
+  <!-- Separator line -->
+  <line x1="30" y1="252" x2="250" y2="252" stroke="#E0E0E0" stroke-width="0.8"/>
+
+  <!-- Group: Options -->
+  <rect x="24" y="256" width="232" height="20" fill="#F3E5F5"/>
+  <text x="34" y="270" font-size="10" font-weight="bold" fill="#7B1FA2">Options</text>
+  <text x="38" y="292" font-size="10" fill="#37474F">InteractionMode</text>
+  <text x="38" y="310" font-size="10" fill="#37474F">ActivateBefore</text>
+</svg>
