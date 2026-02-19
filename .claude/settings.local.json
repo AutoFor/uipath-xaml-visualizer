@@ -85,7 +85,17 @@
       "WebFetch(domain:api.github.com)",
       "Bash(pip3 list:*)",
       "Bash(git merge:*)",
-      "Skill(smart-commit)"
+      "Skill(smart-commit)",
+      "mcp__drawio__open_drawio_xml",
+      "Skill(gh-finish)",
+      "Bash(dpkg -l:*)",
+      "Bash(snap list:*)",
+      "Bash(flatpak list:*)",
+      "Bash(sudo dpkg:*)",
+      "Bash(sudo apt-get:*)",
+      "Bash(dpkg:*)",
+      "Bash(xvfb-run:*)",
+      "Bash(apt list:*)"
     ],
     "deny": [],
     "ask": []
