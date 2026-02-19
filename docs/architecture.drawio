@@ -1,0 +1,499 @@
+<mxfile host="65bd71144e">
+    <diagram id="architecture-overview" name="全体アーキテクチャ">
+        <mxGraphModel dx="1692" dy="757" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="UiPath XAML Visualizer - アーキテクチャ図" style="text;html=1;fontSize=24;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="20" width="800" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-group" value="GitHub (github.com)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=5;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="90" width="360" height="340" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-blob" value="📄 Blob ページ&#xa;(*.xaml ファイル表示)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="140" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-pr" value="🔀 PR Diff ページ&#xa;(/pull/*/files)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="140" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-commit" value="📝 Commit Diff ページ&#xa;(/commit/*)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="220" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-raw" value="raw.githubusercontent.com&#xa;(XAML ファイル取得)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="310" width="160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="github-api" value="api.github.com&#xa;(PR/Commit メタデータ)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="310" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ext-group" value="Chrome 拡張機能 (Manifest V3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=5;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="90" width="720" height="730" as="geometry"/>
+                </mxCell>
+                <mxCell id="content-group" value="Content Script (content.ts)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=5;arcSize=6;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="130" width="680" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="page-detect" value="ページ検出&#xa;detectPageType()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="170" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-resolve" value="SHA 解決&#xa;fetchPrRefs()&#xa;fetchCommitRefs()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="170" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="file-fetch" value="ファイル取得&#xa;fetchRawContent()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="780" y="170" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="btn-inject" value="ボタン注入&#xa;scanAndInjectDiffButtons()&#xa;addVisualizerButton()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="930" y="170" width="190" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="viz-blob" value="Blob 表示&#xa;displayBlobVisualizerPanel()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="240" width="180" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="viz-diff" value="Diff 表示&#xa;showDiffVisualizer()&#xa;showCommitDiffVisualizer()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="240" width="180" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="ui-panel" value="UI パネル管理&#xa;createPanel() / openPanel() / closePanel()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="305" width="200" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="cursor-sync" value="カーソル同期&#xa;setupCursorSync()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="305" width="130" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="search" value="検索機能&#xa;enableSearch()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="850" y="305" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="spa-observer" value="SPA ナビゲーション監視&#xa;MutationObserver (300ms debounce)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="370" width="240" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="render-ctx" value="レンダーコンテキスト管理&#xa;RenderContext / reRenderCurrentPanel()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="740" y="370" width="240" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="shared-group" value="共通ライブラリ (packages/shared)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=5;arcSize=6;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="460" width="680" height="340" as="geometry"/>
+                </mxCell>
+                <mxCell id="parser-group" value="Parser モジュール&#xa;〜 XAMLを読み解く 〜" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="480" y="500" width="200" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="xaml-parser" value="XamlParser&#xa;XAML → Activity ツリー変換&#xa;(@xmldom/xmldom)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="495" y="550" width="170" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="diff-calc" value="DiffCalculator&#xa;2つのツリーの差分計算" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="495" y="610" width="170" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="line-mapper" value="LineMapper&#xa;XAML行 ↔ Activity マッピング" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="495" y="663" width="170" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="renderer-group" value="Renderer モジュール&#xa;〜 見た目をつくる 〜" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="700" y="500" width="210" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="seq-renderer" value="SequenceRenderer&#xa;Activity → HTML カード描画" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="715" y="550" width="180" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="diff-renderer" value="DiffRenderer&#xa;差分ハイライト描画" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="715" y="605" width="180" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="tree-renderer" value="TreeViewRenderer&#xa;ツリービュー (サイドバー)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="715" y="660" width="180" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="support-group" value="サポートモジュール&#xa;〜 言語切替・設定 〜" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e6ffcc;strokeColor=#82b366;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=5;" parent="1" vertex="1">
+                    <mxGeometry x="930" y="500" width="190" height="240" as="geometry"/>
+                </mxCell>
+                <mxCell id="i18n" value="i18n&#xa;多言語対応 (EN/JA)&#xa;chrome.storage.sync" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="945" y="550" width="160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="prop-config" value="PropertyConfig&#xa;アクティビティ別プロパティ設定&#xa;メイン/サブパネル分類" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="945" y="615" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="styles" value="CSS スタイル&#xa;github-panel / diff / main" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="945" y="683" width="160" height="42" as="geometry"/>
+                </mxCell>
+                <mxCell id="chrome-storage" value="chrome.storage.sync&#xa;(言語設定の永続化)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1200" y="300" width="160" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-gh-detect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="github-blob" target="page-detect" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-gh-detect-label" value="DOM 検出" style="edgeLabel;html=1;fontSize=10;fontColor=#6c8ebf;" parent="arrow-gh-detect" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-pr-detect" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="github-pr" target="sha-resolve" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-sha-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0;exitY=1;entryX=1;entryY=0.5;strokeColor=#9673a6;strokeWidth=1;dashed=1;" parent="1" source="sha-resolve" target="github-api" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="695" y="335"/>
+                            <mxPoint x="420" y="335"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-sha-api-label" value="SHA 取得 (フォールバック)" style="edgeLabel;html=1;fontSize=9;fontColor=#9673a6;" parent="arrow-sha-api" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-fetch-raw" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0;exitY=1;entryX=1;entryY=0;strokeColor=#9673a6;strokeWidth=1;dashed=1;" parent="1" source="file-fetch" target="github-raw" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="845" y="290"/>
+                            <mxPoint x="420" y="290"/>
+                            <mxPoint x="420" y="310"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-fetch-raw-label" value="XAML テキスト取得" style="edgeLabel;html=1;fontSize=9;fontColor=#9673a6;" parent="arrow-fetch-raw" vertex="1" connectable="0">
+                    <mxGeometry x="-0.3" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-detect-blob" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#b85450;strokeWidth=1.5;" parent="1" source="page-detect" target="viz-blob" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-detect-blob-label" value="blob-xaml" style="edgeLabel;html=1;fontSize=9;fontColor=#b85450;" parent="arrow-detect-blob" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-sha-diff" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#b85450;strokeWidth=1.5;" parent="1" source="sha-resolve" target="viz-diff" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-sha-diff-label" value="pr-diff / commit-diff" style="edgeLabel;html=1;fontSize=9;fontColor=#b85450;" parent="arrow-sha-diff" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-blob-parser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.5;exitY=1;entryX=0.25;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="viz-blob" target="parser-group" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="570" y="440"/>
+                            <mxPoint x="530" y="440"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-blob-parser-label" value="parse()" style="edgeLabel;html=1;fontSize=10;fontColor=#82b366;" parent="arrow-blob-parser" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-diff-parser" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.25;exitY=1;entryX=0.75;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="viz-diff" target="parser-group" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="725" y="440"/>
+                            <mxPoint x="630" y="440"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-diff-parser-label" value="parse() + calculate()" style="edgeLabel;html=1;fontSize=10;fontColor=#82b366;" parent="arrow-diff-parser" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-diff-renderer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=0.75;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="viz-diff" target="renderer-group" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="815" y="440"/>
+                            <mxPoint x="805" y="440"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-diff-renderer-label" value="render()" style="edgeLabel;html=1;fontSize=10;fontColor=#82b366;" parent="arrow-diff-renderer" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-blob-renderer" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=1;exitY=1;entryX=0.25;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="viz-blob" target="renderer-group" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="660" y="460"/>
+                            <mxPoint x="752" y="460"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-i18n-storage" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;exitX=1;exitY=0;entryX=0;entryY=0.5;strokeColor=#666666;strokeWidth=1;dashed=1;" parent="1" source="i18n" target="chrome-storage" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1170" y="535"/>
+                            <mxPoint x="1170" y="323"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-i18n-storage-label" value="言語設定" style="edgeLabel;html=1;fontSize=9;fontColor=#666;" parent="arrow-i18n-storage" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-parser-diff" style="rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1;" parent="1" source="xaml-parser" target="diff-calc" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-parser-line" style="rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=1;" parent="1" source="diff-calc" target="line-mapper" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="user" value="👤 ユーザー&#xa;(Chrome ブラウザ)" style="shape=actor;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="480" width="100" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="output-panel" value="ビジュアライザーパネル&#xa;(GitHub ページ右側)" style="shape=document;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;size=0.15;" parent="1" vertex="1">
+                    <mxGeometry x="170" y="490" width="200" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="output-detail1" value="• Activity カード (階層表示)&#xa;• ツリービュー (サイドバー)&#xa;• 差分ハイライト表示&#xa;• スクリーンショット比較&#xa;• 行番号バッジ (ソースリンク)" style="text;html=1;fontSize=10;align=left;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="170" y="580" width="200" height="85" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-user-panel" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#666;strokeWidth=1.5;" parent="1" source="user" target="output-panel" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow-user-label" value="閲覧" style="edgeLabel;html=1;fontSize=9;fontColor=#666;" parent="arrow-user-panel" vertex="1" connectable="0">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-renderer-output" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=1;entryY=0.5;strokeColor=#d6b656;strokeWidth=2;" parent="1" source="renderer-group" target="output-panel" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="805" y="810"/>
+                            <mxPoint x="420" y="810"/>
+                            <mxPoint x="420" y="530"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="arrow-renderer-output-label" value="HTML 出力" style="edgeLabel;html=1;fontSize=10;fontColor=#d6b656;" parent="arrow-renderer-output" vertex="1" connectable="0">
+                    <mxGeometry x="0.15" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-box" value="凡例" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;fontStyle=1;verticalAlign=top;spacingTop=3;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="700" width="350" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-github" value="" style="rounded=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="730" width="20" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-github-text" value="GitHub ページ / API" style="text;html=1;fontSize=10;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="726" width="120" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-content" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="755" width="20" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-content-text" value="Content Script (拡張機能)" style="text;html=1;fontSize=10;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="751" width="140" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-shared" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="780" width="20" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-shared-text" value="共通ライブラリ (shared)" style="text;html=1;fontSize=10;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="90" y="776" width="140" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-dashed" value="" style="endArrow=classic;html=1;strokeColor=#999;dashed=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="240" y="738" as="sourcePoint"/>
+                        <mxPoint x="290" y="738" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-dashed-text" value="外部 API 通信" style="text;html=1;fontSize=10;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="295" y="728" width="80" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend-solid" value="" style="endArrow=classic;html=1;strokeColor=#999;strokeWidth=2;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="240" y="762" as="sourcePoint"/>
+                        <mxPoint x="290" y="762" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="legend-solid-text" value="内部データフロー" style="text;html=1;fontSize=10;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="295" y="753" width="90" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="data-flow" name="データフロー">
+        <mxGraphModel dx="1692" dy="757" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="df-title" value="データフロー: XAML 検出から表示まで" style="text;html=1;fontSize=22;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="300" y="20" width="800" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow1-title" value="フロー 1: 単体ファイル表示 (Blob ページ)" style="text;html=1;fontSize=16;fontStyle=1;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="400" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step1" value="① GitHub XAML&#xa;ページにアクセス" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="120" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step2" value="② ページ種別検出&#xa;detectPageType()&#xa;→ &#39;blob-xaml&#39;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="120" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step3" value="③ &quot;Visualize&quot;&#xa;ボタン注入" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="120" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step4" value="④ XAML テキスト取得&#xa;fetchRawContent()&#xa;(raw.githubusercontent.com)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="540" y="120" width="170" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step5" value="⑤ XAML パース&#xa;XamlParser.parse()&#xa;→ ParsedXaml" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="750" y="120" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step6" value="⑥ 行マッピング構築&#xa;buildLineMap()&#xa;→ ActivityLineIndex" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="920" y="120" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step7" value="⑦ HTML レンダリング&#xa;SequenceRenderer.render()&#xa;+ TreeViewRenderer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1100" y="120" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-step8" value="⑧ パネル表示&#xa;+ カーソル同期" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="1290" y="120" width="100" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step1" target="f1-step2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step2" target="f1-step3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step3" target="f1-step4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step4" target="f1-step5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step5" target="f1-step6" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step6" target="f1-step7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f1-a7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f1-step7" target="f1-step8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow2-title" value="フロー 2: PR / コミット差分表示 (Diff ページ)" style="text;html=1;fontSize=16;fontStyle=1;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="210" width="400" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step1" value="① PR/Commit&#xa;ページにアクセス" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="250" width="130" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step2" value="② ページ種別検出&#xa;→ &#39;pr-diff&#39;&#xa;/ &#39;commit-diff&#39;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="210" y="250" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step3" value="③ XAML ファイルに&#xa;&quot;Visualize&quot; ボタン注入&#xa;scanAndInjectDiffButtons()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="390" y="250" width="180" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step4" value="④ SHA 解決&#xa;fetchPrRefs()&#xa;(DOM → API フォールバック)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="610" y="250" width="170" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step5" value="⑤ Before/After&#xa;XAML 取得&#xa;fetchRawContent() ×2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="820" y="250" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step6" value="⑥ 両バージョンをパース&#xa;parse(before) → beforeData&#xa;parse(after) → afterData" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="340" width="180" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step7" value="⑦ 差分計算&#xa;DiffCalculator.calculate()&#xa;→ DiffResult" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="340" width="160" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step8" value="⑧ After バージョン&#xa;レンダリング&#xa;SequenceRenderer.render()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="340" width="160" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step9" value="⑨ 差分ハイライト適用&#xa;applyDiffHighlights()&#xa;+ DiffRenderer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="340" width="160" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-step10" value="⑩ パネル表示&#xa;差分サマリー&#xa;+ ハイライト付きビュー" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="860" y="340" width="140" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step1" target="f2-step2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step2" target="f2-step3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step3" target="f2-step4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step4" target="f2-step5" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step5" target="f2-step6" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="890" y="320"/>
+                            <mxPoint x="130" y="320"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="f2-a6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step6" target="f2-step7" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step7" target="f2-step8" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step8" target="f2-step9" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="f2-a9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#333;" parent="1" source="f2-step9" target="f2-step10" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="types-title" value="主要データ型の変換フロー" style="text;html=1;fontSize=16;fontStyle=1;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="440" width="300" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-xaml" value="XAML テキスト&#xa;(string)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="490" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-parsed" value="ParsedXaml&#xa;{ rootActivity,&#xa;  variables,&#xa;  arguments }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="480" width="140" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-activity" value="Activity&#xa;{ type, displayName,&#xa;  properties, children,&#xa;  idRef }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="480" width="150" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-lineindex" value="ActivityLineIndex&#xa;{ keyToRange,&#xa;  lineToKey }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="590" y="570" width="150" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-diff" value="DiffResult&#xa;{ added[],&#xa;  removed[],&#xa;  modified[] }" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="990" y="480" width="130" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-html" value="HTML 出力&#xa;(Activity カード&#xa;+ 差分ハイライト)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="1250" y="490" width="130" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-a1" value="XamlParser.parse()" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#82b366;labelBackgroundColor=#fff;" parent="1" source="dt-xaml" target="dt-parsed" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-a2" value="rootActivity" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=1.5;strokeColor=#82b366;labelBackgroundColor=#fff;" parent="1" source="dt-parsed" target="dt-activity" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-a3" value="DiffCalculator.calculate(before, after)" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#b85450;labelBackgroundColor=#fff;" parent="1" source="dt-activity" target="dt-diff" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-a4" value="Renderer.render()" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=2;strokeColor=#d6b656;labelBackgroundColor=#fff;" parent="1" source="dt-diff" target="dt-html" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="dt-a5" value="buildLineMap()" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0;entryY=0.5;strokeWidth=1.5;strokeColor=#82b366;dashed=1;labelBackgroundColor=#fff;" parent="1" source="dt-xaml" target="dt-lineindex" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="100" y="598"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="dt-a6" value="SequenceRenderer.render()" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0.5;entryY=1;strokeWidth=2;strokeColor=#d6b656;labelBackgroundColor=#fff;entryDx=0;entryDy=0;" parent="1" source="dt-activity" target="dt-html" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="760" y="515"/>
+                            <mxPoint x="760" y="610"/>
+                            <mxPoint x="1315" y="610"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="sha-title" value="SHA 解決戦略 (フォールバック順)" style="text;html=1;fontSize=16;fontStyle=1;align=left;fontColor=#9673a6;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="660" width="350" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-1" value="1. DOM から抽出&#xa;(最速・API不要)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="700" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-2" value="2. ブランチ名解決&#xa;(プライベートリポ対応)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="700" width="160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-3" value="3. 同一オリジン fetch&#xa;(セッション認証利用)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="460" y="700" width="150" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-4" value="4. GitHub REST API&#xa;(公開リポフォールバック)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="670" y="700" width="160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-a1" value="失敗時" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=1.5;strokeColor=#9673a6;dashed=1;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="sha-1" target="sha-2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-a2" value="失敗時" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=1.5;strokeColor=#9673a6;dashed=1;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="sha-2" target="sha-3" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="sha-a3" value="失敗時" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeWidth=1.5;strokeColor=#9673a6;dashed=1;labelBackgroundColor=#fff;fontSize=10;" parent="1" source="sha-3" target="sha-4" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
