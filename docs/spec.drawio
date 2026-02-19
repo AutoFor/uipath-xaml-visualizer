@@ -1,0 +1,555 @@
+<mxfile host="app.diagrams.net">
+    <diagram id="page-wf-viz" name="ワークフロー可視化">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="wv-title" value="ワークフロー可視化" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="20" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-seq" value="Sequence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="460" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-assign" value="Assign&#xa;Counter = 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="140" width="240" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-if" value="If" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="240" y="220" width="320" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-if-cond" value="Condition: Counter &gt; 10" style="text;html=1;fontSize=11;align=center;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="290" y="260" width="220" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-then-label" value="Then" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="290" width="60" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-else-label" value="Else" style="text;html=1;fontSize=11;fontStyle=1;align=center;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="290" width="60" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-then-act" value="LogMessage&#xa;Level: Info&#xa;Message: &quot;Done&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="320" width="140" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-else-act" value="Assign&#xa;Counter = Counter + 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="320" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="wv-arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=2;" parent="1" source="wv-assign" target="wv-if" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-detail-panel" name="詳細パネル">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="dp-title" value="詳細パネル - Assign プロパティ" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="20" width="500" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;verticalAlign=top;spacingTop=0;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="440" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-header" value="Assign" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-main-label" value="メインプロパティ" style="text;html=1;fontSize=12;fontStyle=1;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="130" width="150" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-to" value="To: Counter" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ddd;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="155" width="360" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-value" value="Value: Counter + 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ddd;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="190" width="360" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-sub-label" value="サブプロパティ (折りたたみ)" style="text;html=1;fontSize=12;fontStyle=1;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="240" width="250" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-sub-panel" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#ccc;fontSize=12;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="270" width="360" height="230" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-group1" value="Common" style="text;html=1;fontSize=11;fontStyle=5;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="235" y="280" width="100" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-prop1" value="DisplayName: &quot;Assign Counter&quot;" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="300" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-prop2" value="ContinueOnError: False" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="320" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-group2" value="Misc" style="text;html=1;fontSize=11;fontStyle=5;align=left;fontColor=#6c8ebf;" parent="1" vertex="1">
+                    <mxGeometry x="235" y="350" width="100" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="dp-prop3" value="Private: False" style="text;html=1;fontSize=11;align=left;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="370" width="300" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-ss-card" name="スクリーンショット（カード内）">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="sc-title" value="スクリーンショット（カード内サムネイル）" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="20" width="540" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="360" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-header" value="Click - btnSubmit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-prop" value="Target: &quot;btnSubmit&quot;" style="text;html=1;fontSize=12;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="130" width="200" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-thumb-border" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f0f0;strokeColor=#ccc;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="170" width="360" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-thumb-icon" value="Screenshot Thumbnail" style="text;html=1;fontSize=14;align=center;verticalAlign=middle;fontColor=#999;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="270" y="230" width="260" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-click-label" value="Click to enlarge" style="text;html=1;fontSize=10;align=center;fontColor=#6c8ebf;fontStyle=4;" parent="1" vertex="1">
+                    <mxGeometry x="320" y="340" width="160" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="sc-thumb-img" value="" style="shape=image;html=1;verticalAlign=middle;verticalLabelPosition=bottom;labelBackgroundColor=#ffffff;imageAspect=0;aspect=fixed;imageWidth=48;imageHeight=48;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="376" y="186" width="48" height="48" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-ss-modal" name="スクリーンショット（モーダル）">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="sm-title" value="スクリーンショット（モーダルダイアログ）" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="20" width="540" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-backdrop" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#333;strokeColor=none;opacity=60;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="720" height="480" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-modal" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#999;shadow=1;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="110" width="600" height="420" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-modal-header" value="Screenshot - Click btnSubmit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="110" width="560" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-close-btn" value="X" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="660" y="110" width="40" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-img-area" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ddd;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="170" width="540" height="320" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-img-placeholder" value="Full-size Screenshot" style="text;html=1;fontSize=16;align=center;verticalAlign=middle;fontColor=#999;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="300" width="300" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="sm-zoom-label" value="Zoom: 100%" style="text;html=1;fontSize=10;align=right;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="540" y="500" width="120" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-ss-error" name="スクリーンショット（エラー）">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="se-title" value="スクリーンショット（エラー状態）" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="20" width="500" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-header" value="Click - btnSubmit" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="80" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-prop" value="Target: &quot;btnSubmit&quot;" style="text;html=1;fontSize=12;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="130" width="200" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-error-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="170" width="360" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-error-icon" value="!" style="ellipse;whiteSpace=wrap;html=1;fillColor=#b85450;strokeColor=#b85450;fontColor=#fff;fontSize=18;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="370" y="185" width="36" height="36" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-error-text" value="Screenshot could not be loaded" style="text;html=1;fontSize=12;align=center;fontColor=#b85450;fontStyle=0;" parent="1" vertex="1">
+                    <mxGeometry x="270" y="230" width="260" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-error-detail" value="The image data in XAML may be corrupted or invalid." style="text;html=1;fontSize=10;align=center;fontColor=#999;" parent="1" vertex="1">
+                    <mxGeometry x="260" y="255" width="280" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="se-retry" value="Retry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="360" y="320" width="80" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-ss-compare" name="スクリーンショット比較">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ssc-title" value="スクリーンショット比較 (Before / After)" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="20" width="540" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-container" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="720" height="440" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-before-label" value="Before" style="text;html=1;fontSize=14;fontStyle=1;align=center;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="95" width="100" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-after-label" value="After" style="text;html=1;fontSize=14;fontStyle=1;align=center;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="540" y="95" width="100" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-before-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;opacity=30;" parent="1" vertex="1">
+                    <mxGeometry x="60" y="130" width="320" height="360" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-before-img" value="Before Screenshot" style="text;html=1;fontSize=14;align=center;verticalAlign=middle;fontColor=#b85450;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="280" width="180" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-after-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=30;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="130" width="320" height="360" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-after-img" value="After Screenshot" style="text;html=1;fontSize=14;align=center;verticalAlign=middle;fontColor=#82b366;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="490" y="280" width="180" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ssc-divider" value="" style="endArrow=none;html=1;strokeColor=#666;strokeWidth=2;dashed=1;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="400" y="130" as="sourcePoint"/>
+                        <mxPoint x="400" y="490" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ssc-arrow" value="" style="endArrow=classic;startArrow=classic;html=1;strokeColor=#666;strokeWidth=2;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="200" y="510" as="sourcePoint"/>
+                        <mxPoint x="600" y="510" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ssc-arrow-label" value="Drag to compare" style="text;html=1;fontSize=10;align=center;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="515" width="120" height="20" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-prop-diff" name="プロパティ差分">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="pd-title" value="プロパティ差分ビュー" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="20" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-card" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="80" width="600" height="460" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-header" value="Assign (Modified)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="80" width="600" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-main-label" value="Main Property Changes" style="text;html=1;fontSize=12;fontStyle=1;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="135" width="200" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-removed" value="- To: OldVariable" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="165" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-added" value="+ To: NewVariable" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="200" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-removed2" value="- Value: Counter + 1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="240" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-added2" value="+ Value: Counter + 10" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="275" width="560" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-sub-label" value="Sub Property Changes" style="text;html=1;fontSize=12;fontStyle=1;align=left;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="325" width="200" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-sub-panel" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f9f9f9;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="355" width="560" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-sub-removed" value="- ContinueOnError: False" style="text;html=1;fontSize=11;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="370" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-sub-added" value="+ ContinueOnError: True" style="text;html=1;fontSize=11;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="395" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-sub-modified" value="~ DelayAfter: 100 -&gt; 200" style="text;html=1;fontSize=11;align=left;fontColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="425" width="300" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-legend-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="370" width="220" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-legend-title" value="Legend" style="text;html=1;fontSize=10;fontStyle=1;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="375" width="60" height="15" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-legend-green" value="+ Added" style="text;html=1;fontSize=10;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="395" width="80" height="15" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-legend-red" value="- Removed" style="text;html=1;fontSize=10;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="412" width="80" height="15" as="geometry"/>
+                </mxCell>
+                <mxCell id="pd-legend-yellow" value="~ Modified" style="text;html=1;fontSize=10;align=left;fontColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="455" y="429" width="80" height="15" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-diff-summary" name="差分サマリー">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ds-title" value="差分サマリービュー" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="20" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-seq" value="Sequence (After)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="80" width="500" height="470" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-added-act" value="LogMessage (Added)&#xa;Level: Info&#xa;Message: &quot;Starting...&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="130" width="340" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-unchanged-act" value="Assign (Unchanged)&#xa;Counter = 0" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="210" width="340" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-modified-act" value="If (Modified)&#xa;Condition changed" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="280" width="340" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-removed-act" value="Delay (Removed)&#xa;Duration: 00:00:05" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=0;dashed=1;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="350" width="340" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-added2" value="InvokeWorkflow (Added)&#xa;File: &quot;Cleanup.xaml&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="230" y="420" width="340" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1;" parent="1" source="ds-added-act" target="ds-unchanged-act" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1;" parent="1" source="ds-unchanged-act" target="ds-modified-act" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1;" parent="1" source="ds-modified-act" target="ds-removed-act" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#666;strokeWidth=1;" parent="1" source="ds-removed-act" target="ds-added2" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-legend" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="130" width="100" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-title" value="Legend" style="text;html=1;fontSize=10;fontStyle=1;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="135" width="80" height="15" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-g" value="" style="rounded=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="155" width="14" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-gt" value="Added" style="text;html=1;fontSize=9;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="710" y="153" width="50" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-r" value="" style="rounded=1;fillColor=#f8cecc;strokeColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="175" width="14" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-rt" value="Removed" style="text;html=1;fontSize=9;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="710" y="173" width="60" height="16" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-y" value="" style="rounded=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="690" y="195" width="14" height="14" as="geometry"/>
+                </mxCell>
+                <mxCell id="ds-leg-yt" value="Modified" style="text;html=1;fontSize=9;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="710" y="193" width="60" height="16" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-change-report" name="変更サマリーレポート">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="cr-title" value="変更サマリーレポート" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="20" width="400" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-panel" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#666;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="80" width="600" height="470" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-panel-header" value="Change Summary - Main.xaml" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="80" width="600" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-sec-added" value="Added Activities (2)" style="text;html=1;fontSize=13;fontStyle=1;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="135" width="200" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-added1" value="LogMessage - &quot;Starting...&quot;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="165" width="540" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-added2" value="InvokeWorkflowFile - &quot;Cleanup.xaml&quot;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="198" width="540" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-sec-removed" value="Removed Activities (1)" style="text;html=1;fontSize=13;fontStyle=1;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="245" width="200" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-removed1" value="Delay - Duration: 00:00:05" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="275" width="540" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-sec-modified" value="Modified Activities (1)" style="text;html=1;fontSize=13;fontStyle=1;align=left;fontColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="320" width="200" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-mod1-header" value="If - Condition changed" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=10;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="350" width="540" height="28" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-mod1-old" value="- Condition: Counter &gt; 10" style="text;html=1;fontSize=10;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="160" y="383" width="300" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-mod1-new" value="+ Condition: Counter &gt; 100" style="text;html=1;fontSize=10;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="160" y="403" width="300" height="18" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-stats" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ccc;" parent="1" vertex="1">
+                    <mxGeometry x="120" y="440" width="560" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="cr-stats-text" value="Total: 4 changes (2 added, 1 removed, 1 modified)" style="text;html=1;fontSize=11;align=center;fontColor=#666;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="448" width="400" height="25" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-azdo" name="Azure DevOps アーキテクチャ">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="az-title" value="Azure DevOps 拡張機能アーキテクチャ" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="150" y="20" width="500" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-azdo" value="Azure DevOps" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="80" width="300" height="260" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-repo" value="Repos&#xa;(XAML files)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="70" y="130" width="110" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-pr" value="Pull Requests&#xa;(Diff view)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#6c8ebf;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="130" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-api" value="Azure DevOps&#xa;REST API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="110" y="210" width="140" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-ext" value="Azure DevOps Extension" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=8;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="80" width="360" height="460" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-cs" value="Content Script&#xa;(Contribution Point)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" parent="1" vertex="1">
+                    <mxGeometry x="430" y="130" width="160" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-sdk" value="Azure DevOps SDK&#xa;(VSS SDK)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="130" width="120" height="50" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-shared" value="共通ライブラリ (shared)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;verticalAlign=top;spacingTop=8;arcSize=6;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="220" width="320" height="300" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-parser" value="Parser&#xa;(XAML -> Activity)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="270" width="130" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-diff" value="DiffCalculator&#xa;(Tree Diff)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="330" width="130" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-renderer" value="Renderer&#xa;(HTML output)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="270" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-diffr" value="DiffRenderer&#xa;(Highlight)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="330" width="120" height="45" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-i18n" value="i18n&#xa;(EN/JA)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="440" y="395" width="130" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-propconf" value="PropertyConfig" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff;strokeColor=#82b366;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="395" width="120" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-arrow-repo-cs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="az-repo" target="az-cs" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-arrow-pr-cs" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;strokeColor=#6c8ebf;strokeWidth=2;" parent="1" source="az-pr" target="az-cs" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="360" y="155"/>
+                            <mxPoint x="360" y="155"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="az-arrow-cs-api" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0;exitY=1;entryX=1;entryY=0.5;strokeColor=#9673a6;strokeWidth=1;dashed=1;" parent="1" source="az-cs" target="az-api" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="380" y="200"/>
+                            <mxPoint x="380" y="235"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="az-arrow-cs-api-label" value="XAML 取得" style="edgeLabel;html=1;fontSize=9;fontColor=#9673a6;" parent="az-arrow-cs-api" vertex="1" connectable="0">
+                    <mxGeometry x="-0.2" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="az-arrow-cs-shared" style="edgeStyle=orthogonalEdgeStyle;rounded=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeColor=#82b366;strokeWidth=2;" parent="1" source="az-cs" target="az-shared" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="az-note" value="Note: Azure DevOps 拡張機能は&#xa;GitHub 拡張機能と共通ライブラリ (shared) を&#xa;再利用してXAML可視化を提供" style="text;html=1;fontSize=10;align=left;fontColor=#666;fontStyle=2;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="370" width="300" height="50" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="page-test-pyramid" name="テストピラミッド">
+        <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="800" pageHeight="600">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="tp-title" value="テストピラミッド" style="text;html=1;fontSize=20;fontStyle=1;align=center;verticalAlign=middle;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="20" width="300" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-e2e" value="E2E Tests&#xa;(Chrome Extension Integration)" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;fontStyle=1;fixedSize=1;size=60;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="80" width="240" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-integration" value="Integration Tests&#xa;(Parser + Renderer)" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1;fixedSize=1;size=50;" parent="1" vertex="1">
+                    <mxGeometry x="220" y="170" width="360" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-unit" value="Unit Tests&#xa;(XAML Parser, DiffCalculator, LineMapper, PropertyConfig)" style="shape=trapezoid;perimeter=trapezoidPerimeter;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;fontStyle=1;fixedSize=1;size=40;" parent="1" vertex="1">
+                    <mxGeometry x="140" y="260" width="520" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-e2e-detail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="80" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-e2e-text" value="- Blob page visualization&#xa;- PR diff visualization&#xa;- Button injection" style="text;html=1;fontSize=10;align=left;fontColor=#b85450;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="85" width="180" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-int-detail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="170" width="200" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-int-text" value="- XAML parse + render&#xa;- Diff calculate + highlight&#xa;- Property classification" style="text;html=1;fontSize=10;align=left;fontColor=#d6b656;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="175" width="180" height="55" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-unit-detail" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;opacity=40;" parent="1" vertex="1">
+                    <mxGeometry x="560" y="260" width="200" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-unit-text" value="- XamlParser.parse()&#xa;- DiffCalculator.calculate()&#xa;- LineMapper.buildLineMap()&#xa;- PropertyConfig rules" style="text;html=1;fontSize=10;align=left;fontColor=#82b366;" parent="1" vertex="1">
+                    <mxGeometry x="570" y="265" width="180" height="65" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-speed-arrow" value="" style="endArrow=classic;html=1;strokeColor=#666;strokeWidth=2;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="100" y="340" as="sourcePoint"/>
+                        <mxPoint x="100" y="80" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tp-speed-label" value="Slower / More Coverage" style="text;html=1;fontSize=10;align=center;fontColor=#666;rotation=-90;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="180" width="140" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-count-arrow" value="" style="endArrow=classic;html=1;strokeColor=#666;strokeWidth=2;" parent="1" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="100" y="80" as="sourcePoint"/>
+                        <mxPoint x="100" y="340" as="targetPoint"/>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="tp-count-label" value="More Tests / Faster" style="text;html=1;fontSize=10;align=center;fontColor=#666;rotation=-90;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="250" width="120" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-framework" value="Test Framework: Jest" style="text;html=1;fontSize=12;fontStyle=1;align=center;fontColor=#333;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="370" width="300" height="25" as="geometry"/>
+                </mxCell>
+                <mxCell id="tp-cmd" value="npm test" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999;fontSize=12;fontFamily=Courier New;" parent="1" vertex="1">
+                    <mxGeometry x="340" y="400" width="120" height="30" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

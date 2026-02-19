@@ -95,7 +95,8 @@
       "Bash(sudo apt-get:*)",
       "Bash(dpkg:*)",
       "Bash(xvfb-run:*)",
-      "Bash(apt list:*)"
+      "Bash(apt list:*)",
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer/issue-215-convert-md-diagrams-to-drawio status -u)"
     ],
     "deny": [],
     "ask": []
