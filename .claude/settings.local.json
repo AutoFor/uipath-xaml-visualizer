@@ -96,7 +96,10 @@
       "Bash(dpkg:*)",
       "Bash(xvfb-run:*)",
       "Bash(apt list:*)",
-      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer/issue-215-convert-md-diagrams-to-drawio status -u)"
+      "Bash(git -C /home/seiya-kawashima/projects/uipath-xaml-visualizer/issue-215-convert-md-diagrams-to-drawio status -u)",
+      "Bash(xargs sed:*)",
+      "Bash(gh workflow:*)",
+      "Bash(gh run:*)"
     ],
     "deny": [],
     "ask": []

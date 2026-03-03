@@ -1,49 +1,51 @@
 import { Activity } from '../parser/xaml-parser';
-import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
-import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
+import { ActivityLineIndex } from '../parser/line-mapper'; // Line number mapping type
+import { buildActivityKey } from '../parser/diff-calculator'; // Activity key generation
 
 /**
- * ツリービューレンダラー
+ * Tree view renderer: renders the Activity tree as a collapsible tree.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#tree-view-renderer
  */
 export class TreeViewRenderer {
-  private lineIndex: ActivityLineIndex | null = null; // 行番号マッピング
-  private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
+  private lineIndex: ActivityLineIndex | null = null; // Line number mapping
+  private activityIndex: number = 0; // Activity index (for key generation)
 
   /**
-   * アクティビティツリーをツリー表示としてレンダリング
+   * Render an Activity tree as a collapsible tree into the given container.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#tree-view-renderer
    */
   render(parsedData: any, container: HTMLElement, lineIndex?: ActivityLineIndex): void {
-    container.innerHTML = '';                   // コンテナをクリア
-    this.lineIndex = lineIndex || null;        // 行番号マッピングを保存
-    this.activityIndex = 0;                    // インデックスをリセット
+    container.innerHTML = '';                   // Clear container
+    this.lineIndex = lineIndex || null;        // Store line number mapping
+    this.activityIndex = 0;                    // Reset index
 
-    // ルートアクティビティからツリーを生成
+    // Build tree starting from the root activity
     const tree = this.createTreeNode(parsedData.rootActivity, 0);
     container.appendChild(tree);
   }
 
   /**
-   * ツリーノードを作成
+   * Create a tree node element for the given activity
    */
   private createTreeNode(activity: Activity, depth: number): HTMLElement {
     const treeItem = document.createElement('div');
     treeItem.className = 'tree-item';
-    treeItem.dataset.id = activity.id;          // データ属性にIDを設定
-    treeItem.style.paddingLeft = `${depth * 20}px`; // インデント
+    treeItem.dataset.id = activity.id;          // Store ID in data attribute
+    treeItem.style.paddingLeft = `${depth * 20}px`; // Indent by depth
 
-    // 展開/折りたたみボタン
+    // Expand/collapse toggle button
     const hasChildren = activity.children.length > 0;
     const toggleBtn = document.createElement('span');
     toggleBtn.className = 'tree-toggle';
-    toggleBtn.textContent = hasChildren ? '▼' : '  '; // 子がある場合は▼
+    toggleBtn.textContent = hasChildren ? '▼' : '  '; // Show ▼ if has children
     toggleBtn.style.cursor = hasChildren ? 'pointer' : 'default';
 
-    // ラベル
+    // Label
     const label = document.createElement('span');
     label.className = 'tree-label';
     label.textContent = `${this.getActivityIcon(activity.type)} ${activity.displayName}`;
 
-    // ノードをクリックしたらメインビューでハイライト
+    // Click label to highlight the corresponding card in the main sequence view
     label.addEventListener('click', () => {
       this.highlightActivity(activity.id);
     });
@@ -51,23 +53,23 @@ export class TreeViewRenderer {
     treeItem.appendChild(toggleBtn);
     treeItem.appendChild(label);
 
-    // 行番号バッジを挿入
+    // Insert line number badge
     if (this.lineIndex) {
-      const activityKey = buildActivityKey(activity, this.activityIndex); // キーを生成
-      this.activityIndex++; // インデックスをインクリメント
-      const lineRange = this.lineIndex.keyToLines.get(activityKey); // 行範囲を取得
+      const activityKey = buildActivityKey(activity, this.activityIndex);
+      this.activityIndex++;
+      const lineRange = this.lineIndex.keyToLines.get(activityKey);
       if (lineRange) {
-        const lineBadge = document.createElement('span'); // バッジ要素
-        lineBadge.className = 'line-range-badge'; // スタイル用クラス
+        const lineBadge = document.createElement('span');
+        lineBadge.className = 'line-range-badge';
         lineBadge.textContent = lineRange.startLine === lineRange.endLine
-          ? `L${lineRange.startLine}`                // 1行の場合
-          : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
-        lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
+          ? `L${lineRange.startLine}`
+          : `L${lineRange.startLine}-L${lineRange.endLine}`;
+        lineBadge.title = `XAML line ${lineRange.startLine}–${lineRange.endLine}`;
         treeItem.appendChild(lineBadge);
       }
     }
 
-    // 子ノードのコンテナ
+    // Children container
     if (hasChildren) {
       const childrenContainer = document.createElement('div');
       childrenContainer.className = 'tree-children';
@@ -79,11 +81,11 @@ export class TreeViewRenderer {
 
       treeItem.appendChild(childrenContainer);
 
-      // 展開/折りたたみのイベント
+      // Expand/collapse event
       toggleBtn.addEventListener('click', () => {
         const isExpanded = !childrenContainer.classList.contains('collapsed');
         childrenContainer.classList.toggle('collapsed', isExpanded);
-        toggleBtn.textContent = isExpanded ? '▶' : '▼'; // アイコン変更
+        toggleBtn.textContent = isExpanded ? '▶' : '▼'; // Toggle icon
       });
     }
 
@@ -91,24 +93,24 @@ export class TreeViewRenderer {
   }
 
   /**
-   * メインビューで該当アクティビティをハイライト
+   * Highlight the corresponding activity card in the main sequence view and scroll to it
    */
   private highlightActivity(activityId: string): void {
-    // 既存のハイライトを削除
+    // Remove existing highlights
     document.querySelectorAll('.activity-card.highlighted').forEach(el => {
       el.classList.remove('highlighted');
     });
 
-    // 該当アクティビティにハイライトを追加
+    // Add highlight to the target activity card
     const targetCard = document.querySelector(`.activity-card[data-id="${activityId}"]`);
     if (targetCard) {
       targetCard.classList.add('highlighted');
-      targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); // スクロール
+      targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); // Smooth scroll
     }
   }
 
   /**
-   * アクティビティタイプに応じたアイコンを取得
+   * Get the icon string for an activity type
    */
   private getActivityIcon(type: string): string {
     const iconMap: Record<string, string> = {
@@ -127,6 +129,6 @@ export class TreeViewRenderer {
       'Delay': '[Wait]'
     };
 
-    return iconMap[type] || '[Act]';            // デフォルトアイコン
+    return iconMap[type] || '[Act]';            // Default icon
   }
 }

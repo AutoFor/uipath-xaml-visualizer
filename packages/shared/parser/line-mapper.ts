@@ -1,77 +1,82 @@
 /**
- * XAML行番号マッパー
- * XAMLテキストを行単位でスキャンし、各アクティビティの開始行・終了行を特定する
+ * XAML Line Mapper
+ * Scans XAML text line by line and identifies the start/end line of each activity.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#line-mapper
  */
 
 
 /**
- * アクティビティの行範囲
+ * Line range of an activity
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#index-structure
  */
 export interface ActivityLineRange {
-  activityKey: string;   // アクティビティの一意キー
-  displayName: string;   // 表示名
-  type: string;          // アクティビティタイプ
-  startLine: number;     // 開始行（1-based）
-  endLine: number;       // 終了行（1-based）
+  activityKey: string;   // Unique key for the activity
+  displayName: string;   // Display name
+  type: string;          // Activity type
+  startLine: number;     // Start line (1-based)
+  endLine: number;       // End line (1-based)
 }
 
 /**
- * 双方向インデックス
+ * Bidirectional line index
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#index-structure
  */
 export interface ActivityLineIndex {
-  keyToLines: Map<string, ActivityLineRange>;  // アクティビティキー → 行範囲
-  lineToKey: Map<number, string>;              // 行番号 → アクティビティキー
+  keyToLines: Map<string, ActivityLineRange>;  // Activity key -> line range
+  lineToKey: Map<number, string>;              // Line number -> activity key
 }
 
 /**
- * XMLタグ情報
+ * Internal XML tag info parsed from a single line
  */
 interface TagInfo {
-  line: number;         // タグが出現する行番号（1-based）
-  tagName: string;      // タグ名（名前空間プレフィックス除去済み）
-  fullTagName: string;  // 完全なタグ名（プレフィックス付き）
-  isClose: boolean;     // 閉じタグかどうか
-  isSelfClose: boolean; // 自己閉じタグかどうか
-  attributes: Map<string, string>; // 属性名→値のマップ
+  line: number;         // Line number where the tag appears (1-based)
+  tagName: string;      // Tag name without namespace prefix
+  fullTagName: string;  // Full tag name including prefix
+  isClose: boolean;     // Whether this is a closing tag
+  isSelfClose: boolean; // Whether this is a self-closing tag
+  attributes: Map<string, string>; // Attribute name -> value map
 }
 
 /**
- * XAML行番号マッパークラス
+ * XAML Line Mapper class
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#line-mapper
  */
 export class XamlLineMapper {
   /**
-   * XAMLテキストから行番号インデックスを構築
+   * Build a line number index from XAML text.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#algorithm
    */
   static buildLineMap(xamlText: string): ActivityLineIndex {
-    const keyToLines = new Map<string, ActivityLineRange>(); // キー→行範囲マップ
-    const lineToKey = new Map<number, string>(); // 行→キーマップ
+    const keyToLines = new Map<string, ActivityLineRange>(); // Key -> line range map
+    const lineToKey = new Map<number, string>(); // Line -> key map
 
     if (!xamlText) {
-      return { keyToLines, lineToKey }; // 空テキストの場合は空マップを返す
+      return { keyToLines, lineToKey }; // Return empty maps for empty text
     }
 
-    const lines = xamlText.split('\n'); // 行に分割
-    const tagStack: { tagName: string; startLine: number; attributes: Map<string, string> }[] = []; // タグスタック
-    const activityCounters = new Map<string, number>(); // アクティビティタイプごとの出現回数
+    const lines = xamlText.split('\n'); // Split into lines
+    const tagStack: { tagName: string; startLine: number; attributes: Map<string, string> }[] = []; // Open tag stack
+    const activityCounters = new Map<string, number>(); // Occurrence count per activity type
 
     for (let i = 0; i < lines.length; i++) {
-      const lineNum = i + 1; // 1-based行番号
-      const line = lines[i]; // 現在の行
+      const lineNum = i + 1; // 1-based line number
+      const line = lines[i]; // Current line
 
-      const tags = XamlLineMapper.extractTags(line, lineNum); // 行内のタグを抽出
+      const tags = XamlLineMapper.extractTags(line, lineNum); // Extract tags from this line
 
       for (const tag of tags) {
         if (tag.isSelfClose) {
-          // 自己閉じタグ: 1行で完結するアクティビティ
+          // Self-closing tag: activity contained in a single line
           XamlLineMapper.registerActivity(
             tag, lineNum, lineNum,
             activityCounters, keyToLines, lineToKey
           );
         } else if (tag.isClose) {
-          // 閉じタグ: スタックから対応する開始タグを検索
+          // Closing tag: find the matching open tag in the stack
           for (let j = tagStack.length - 1; j >= 0; j--) {
             if (tagStack[j].tagName === tag.tagName) {
-              const openTag = tagStack.splice(j, 1)[0]; // スタックから取り出し
+              const openTag = tagStack.splice(j, 1)[0]; // Pop from stack
               XamlLineMapper.registerActivityFromStack(
                 openTag, lineNum,
                 activityCounters, keyToLines, lineToKey
@@ -80,7 +85,7 @@ export class XamlLineMapper {
             }
           }
         } else {
-          // 開始タグ: スタックにプッシュ
+          // Opening tag: push to stack
           tagStack.push({
             tagName: tag.tagName,
             startLine: lineNum,
@@ -90,37 +95,37 @@ export class XamlLineMapper {
       }
     }
 
-    return { keyToLines, lineToKey }; // 構築したインデックスを返す
+    return { keyToLines, lineToKey }; // Return the built index
   }
 
   /**
-   * 行からXMLタグを抽出
+   * Extract XML tags from a single line
    */
   private static extractTags(line: string, lineNum: number): TagInfo[] {
-    const tags: TagInfo[] = []; // 抽出結果
+    const tags: TagInfo[] = [];
 
-    // XMLタグを検出する正規表現（開始タグ、閉じタグ、自己閉じタグ）
+    // Regex to detect XML tags (open, close, self-closing)
     const tagPattern = /<(\/?)([a-zA-Z0-9_:.]+)((?:\s+[^>]*?)?)(\/?)\s*>/g;
     let match: RegExpExecArray | null;
 
     while ((match = tagPattern.exec(line)) !== null) {
-      const isClose = match[1] === '/'; // 閉じタグかどうか
-      const fullTagName = match[2]; // 完全なタグ名
-      const attrStr = match[3]; // 属性文字列
-      const isSelfClose = match[4] === '/'; // 自己閉じタグかどうか
+      const isClose = match[1] === '/'; // Is closing tag
+      const fullTagName = match[2]; // Full tag name
+      const attrStr = match[3]; // Attribute string
+      const isSelfClose = match[4] === '/'; // Is self-closing tag
 
-      // 名前空間プレフィックスを除去したタグ名
+      // Strip namespace prefix from tag name
       const tagName = fullTagName.includes(':')
-        ? fullTagName.split(':').pop()! // コロン以降を取得
+        ? fullTagName.split(':').pop()! // Take the part after the colon
         : fullTagName;
 
-      // 属性を解析
+      // Parse attributes
       const attributes = new Map<string, string>();
       if (attrStr) {
-        const attrPattern = /([a-zA-Z0-9_:.]+)\s*=\s*"([^"]*)"/g; // 属性パターン
+        const attrPattern = /([a-zA-Z0-9_:.]+)\s*=\s*"([^"]*)"/g; // Attribute pattern
         let attrMatch: RegExpExecArray | null;
         while ((attrMatch = attrPattern.exec(attrStr)) !== null) {
-          attributes.set(attrMatch[1], attrMatch[2]); // 属性を記録
+          attributes.set(attrMatch[1], attrMatch[2]);
         }
       }
 
@@ -138,7 +143,7 @@ export class XamlLineMapper {
   }
 
   /**
-   * 自己閉じタグのアクティビティを登録
+   * Register an activity from a self-closing tag
    */
   private static registerActivity(
     tag: TagInfo,
@@ -148,29 +153,29 @@ export class XamlLineMapper {
     keyToLines: Map<string, ActivityLineRange>,
     lineToKey: Map<number, string>
   ): void {
-    const idRef = tag.attributes.get('sap2010:WorkflowViewState.IdRef'); // IdRef属性
-    const displayName = tag.attributes.get('DisplayName') || tag.tagName; // 表示名
-    const type = tag.tagName; // アクティビティタイプ
+    const idRef = tag.attributes.get('sap2010:WorkflowViewState.IdRef'); // IdRef attribute
+    const displayName = tag.attributes.get('DisplayName') || tag.tagName; // Display name
+    const type = tag.tagName; // Activity type
 
-    // インデックスをカウント（buildActivityKeyと同じフォールバックロジック）
-    const counterKey = `${type}_${displayName}`; // カウンターキー
-    const index = counters.get(counterKey) || 0; // 現在のインデックス
-    counters.set(counterKey, index + 1); // インクリメント
+    // Count occurrences (same fallback logic as buildActivityKey)
+    const counterKey = `${type}_${displayName}`;
+    const index = counters.get(counterKey) || 0;
+    counters.set(counterKey, index + 1);
 
-    // アクティビティキーを生成（buildActivityKeyと同じロジック）
+    // Generate activity key (same logic as buildActivityKey)
     const activityKey = idRef || `${type}_${displayName}_${index}`;
 
     const range: ActivityLineRange = { activityKey, displayName, type, startLine, endLine };
-    keyToLines.set(activityKey, range); // キー→行範囲を登録
+    keyToLines.set(activityKey, range); // Register key -> line range
 
-    // 行番号→キーのマッピングを登録
+    // Register line number -> key mapping
     for (let line = startLine; line <= endLine; line++) {
-      lineToKey.set(line, activityKey); // 各行にキーを割り当て
+      lineToKey.set(line, activityKey);
     }
   }
 
   /**
-   * スタックから取り出した開始タグ情報でアクティビティを登録
+   * Register an activity using an open tag popped from the stack
    */
   private static registerActivityFromStack(
     openTag: { tagName: string; startLine: number; attributes: Map<string, string> },
@@ -179,16 +184,16 @@ export class XamlLineMapper {
     keyToLines: Map<string, ActivityLineRange>,
     lineToKey: Map<number, string>
   ): void {
-    const idRef = openTag.attributes.get('sap2010:WorkflowViewState.IdRef'); // IdRef属性
-    const displayName = openTag.attributes.get('DisplayName') || openTag.tagName; // 表示名
-    const type = openTag.tagName; // アクティビティタイプ
+    const idRef = openTag.attributes.get('sap2010:WorkflowViewState.IdRef'); // IdRef attribute
+    const displayName = openTag.attributes.get('DisplayName') || openTag.tagName; // Display name
+    const type = openTag.tagName; // Activity type
 
-    // インデックスをカウント
-    const counterKey = `${type}_${displayName}`; // カウンターキー
-    const index = counters.get(counterKey) || 0; // 現在のインデックス
-    counters.set(counterKey, index + 1); // インクリメント
+    // Count occurrences
+    const counterKey = `${type}_${displayName}`;
+    const index = counters.get(counterKey) || 0;
+    counters.set(counterKey, index + 1);
 
-    // アクティビティキーを生成
+    // Generate activity key
     const activityKey = idRef || `${type}_${displayName}_${index}`;
 
     const range: ActivityLineRange = {
@@ -198,11 +203,11 @@ export class XamlLineMapper {
       startLine: openTag.startLine,
       endLine
     };
-    keyToLines.set(activityKey, range); // キー→行範囲を登録
+    keyToLines.set(activityKey, range); // Register key -> line range
 
-    // 行番号→キーのマッピングを登録
+    // Register line number -> key mapping
     for (let line = openTag.startLine; line <= endLine; line++) {
-      lineToKey.set(line, activityKey); // 各行にキーを割り当て
+      lineToKey.set(line, activityKey);
     }
   }
 }
