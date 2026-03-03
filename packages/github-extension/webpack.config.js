@@ -124,6 +124,7 @@ module.exports = (env, argv) => {
             }
           },
           { from: 'icons', to: 'icons', noErrorOnMissing: true },  // アイコンをコピー（未作成でもOK）
+          { from: '_locales', to: '_locales', noErrorOnMissing: true },  // i18nロケールファイルをコピー
           { from: 'popup.html', to: 'popup.html', noErrorOnMissing: true }  // ポップアップHTMLをコピー（未作成でもOK）
         ]
       })

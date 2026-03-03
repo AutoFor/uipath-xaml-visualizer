@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "UiPath XAML Visualizer for GitHub"
+  },
+  "extensionDescription": {
+    "message": "GitHub上でUiPath XAMLファイルを視覚的に表示するChrome拡張機能"
+  }
+}

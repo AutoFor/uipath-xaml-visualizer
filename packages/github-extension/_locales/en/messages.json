@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "UiPath XAML Visualizer for GitHub"
+  },
+  "extensionDescription": {
+    "message": "Visually displays UiPath XAML workflow files on GitHub"
+  }
+}
