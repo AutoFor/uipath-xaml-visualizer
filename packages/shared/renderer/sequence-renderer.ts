@@ -1,94 +1,97 @@
 import { Activity } from '../parser/xaml-parser';
-import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
-import { buildActivityKey } from '../parser/diff-calculator'; // アクティビティキー生成
-import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
-import { getSubProperties, getActivityPropertyConfig, hasSubPanel, isDefinedActivity } from './property-config'; // プロパティ分類設定
+import { ActivityLineIndex } from '../parser/line-mapper'; // Line number mapping type
+import { buildActivityKey } from '../parser/diff-calculator'; // Activity key generation
+import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n translation functions
+import { getSubProperties, getActivityPropertyConfig, hasSubPanel, isDefinedActivity } from './property-config'; // Property classification config
 
 /**
- * Sequenceワークフローのレンダラー
+ * Renderer for Sequence-style workflows.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#sequence-renderer
  */
-export type ScreenshotPathResolver = (filename: string) => string; // スクリーンショットパス解決関数の型
+export type ScreenshotPathResolver = (filename: string) => string; // Screenshot path resolver function type
 
 export class SequenceRenderer {
-  private lineIndex: ActivityLineIndex | null = null; // 行番号マッピング
-  private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
-  private screenshotPathResolver: ScreenshotPathResolver; // スクリーンショットパスリゾルバー
+  private lineIndex: ActivityLineIndex | null = null; // Line number mapping
+  private activityIndex: number = 0; // Activity index (for key generation)
+  private screenshotPathResolver: ScreenshotPathResolver; // Screenshot path resolver
 
   constructor(screenshotPathResolver?: ScreenshotPathResolver) {
-    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // デフォルトは相対パス
+    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // Default: relative path
   }
 
   /**
-   * アクティビティツリーをHTMLとしてレンダリング
+   * Render an Activity tree as HTML into the given container.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#sequence-renderer
    */
   render(parsedData: any, container: HTMLElement, lineIndex?: ActivityLineIndex): void {
-    container.innerHTML = '';                   // コンテナをクリア
-    this.lineIndex = lineIndex || null;        // 行番号マッピングを保存
-    this.activityIndex = 0;                    // インデックスをリセット
+    container.innerHTML = '';                   // Clear container
+    this.lineIndex = lineIndex || null;        // Store line number mapping
+    this.activityIndex = 0;                    // Reset index
 
-    // ルートアクティビティからレンダリング開始
+    // Start rendering from the root activity
     const rootElement = this.renderActivity(parsedData.rootActivity);
     container.appendChild(rootElement);
   }
 
   /**
-   * アクティビティをHTMLにレンダリング
+   * Render a single Activity as an HTML card element.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#activity-card-structure
    */
   private renderActivity(activity: Activity): HTMLElement {
     const card = document.createElement('div');
     card.className = 'activity-card';
-    card.dataset.id = activity.id;              // データ属性にIDを設定
-    card.dataset.type = activity.type;          // データ属性にタイプを設定
+    card.dataset.id = activity.id;              // Store ID in data attribute
+    card.dataset.type = activity.type;          // Store type in data attribute
 
-    // 未定義アクティビティで、子が全て内部XML要素（定義済み子孫なし）の場合のみ子を非表示
-    // 一つでも定義済み子孫がある子がいれば全子要素を表示（SendMailConnections等のカード自体は残す）
+    // For undefined activities whose entire child subtree is also undefined, suppress children.
+    // If at least one defined descendant exists among the children, show all children.
     const childrenToRender = (
-      !isDefinedActivity(activity.type) && // 自身が未定義
-      activity.children.length > 0 && // 子がある
-      !activity.children.some(child => this.hasDefinedDescendant(child)) // 全子が未定義ツリー
-    ) ? [] : activity.children; // 条件を満たす場合のみ子を非表示、それ以外は全子を表示
+      !isDefinedActivity(activity.type) && // Self is undefined
+      activity.children.length > 0 && // Has children
+      !activity.children.some(child => this.hasDefinedDescendant(child)) // All children are undefined trees
+    ) ? [] : activity.children;
 
-    // ヘッダー
+    // Header
     const header = document.createElement('div');
     header.className = 'activity-header';
 
-    // 折りたたみボタン（表示対象の子要素がある場合のみ表示）
+    // Collapse button (shown only when there are children to render)
     if (childrenToRender.length > 0) {
       const collapseBtn = document.createElement('button');
       collapseBtn.className = 'collapse-btn';
-      collapseBtn.textContent = '▼'; // 展開状態のアイコン
-      collapseBtn.title = '折りたたみ/展開';
+      collapseBtn.textContent = '▼'; // Expanded icon
+      collapseBtn.title = 'Collapse/Expand';
       header.appendChild(collapseBtn);
     }
 
     const title = document.createElement('span');
     title.className = 'activity-title';
-    title.textContent = `${translateActivityType(activity.type)}: ${activity.displayName}`; // アクティビティタイプを翻訳
+    title.textContent = `${translateActivityType(activity.type)}: ${activity.displayName}`;
 
     header.appendChild(title);
 
-    // アクティビティキーを算出してdata属性に設定（カーソル同期用）
-    const activityKey = buildActivityKey(activity, this.activityIndex); // キーを生成
-    this.activityIndex++; // インデックスをインクリメント
-    card.dataset.activityKey = activityKey; // data属性にキーを保存
+    // Compute activity key and set as data attribute (for cursor sync)
+    const activityKey = buildActivityKey(activity, this.activityIndex);
+    this.activityIndex++;
+    card.dataset.activityKey = activityKey;
 
-    // 行番号バッジを挿入
+    // Insert line number badge
     if (this.lineIndex) {
-      const lineRange = this.lineIndex.keyToLines.get(activityKey); // 行範囲を取得
+      const lineRange = this.lineIndex.keyToLines.get(activityKey);
       if (lineRange) {
-        const lineBadge = document.createElement('span'); // バッジ要素
-        lineBadge.className = 'line-range-badge'; // スタイル用クラス
-        lineBadge.dataset.startLine = String(lineRange.startLine); // 開始行をdata属性に保存
-        lineBadge.dataset.endLine = String(lineRange.endLine); // 終了行をdata属性に保存
+        const lineBadge = document.createElement('span');
+        lineBadge.className = 'line-range-badge';
+        lineBadge.dataset.startLine = String(lineRange.startLine);
+        lineBadge.dataset.endLine = String(lineRange.endLine);
         lineBadge.textContent = lineRange.startLine === lineRange.endLine
-          ? `L${lineRange.startLine}`                // 1行の場合
-          : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
-        lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
-        lineBadge.style.cursor = 'pointer'; // クリック可能カーソル
+          ? `L${lineRange.startLine}`
+          : `L${lineRange.startLine}-L${lineRange.endLine}`;
+        lineBadge.title = `XAML line ${lineRange.startLine}–${lineRange.endLine}`;
+        lineBadge.style.cursor = 'pointer';
         lineBadge.addEventListener('click', (e) => {
-          e.stopPropagation(); // カードのクリックイベント（detailPanel表示）を阻止
-          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // カーソル同期イベントを発火
-            bubbles: true, // バブリングでパネルまで伝播
+          e.stopPropagation(); // Prevent card click (detail panel) from firing
+          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // Fire cursor sync event
+            bubbles: true, // Bubble up to the panel
             detail: { activityKey, startLine: lineRange.startLine, endLine: lineRange.endLine }
           }));
         });
@@ -98,57 +101,57 @@ export class SequenceRenderer {
 
     card.appendChild(header);
 
-    // 注釈表示（DisplayNameの直後に表示）
+    // Annotation display (shown immediately after the header)
     if (activity.annotations) {
-      const annotationDiv = this.renderAnnotation(activity.annotations); // 注釈をレンダリング
+      const annotationDiv = this.renderAnnotation(activity.annotations);
       card.appendChild(annotationDiv);
     }
 
-    // プロパティ表示
+    // Property display
     if (Object.keys(activity.properties).length > 0) {
-      const propsDiv = this.renderProperties(activity.properties, activity.type); // アクティビティタイプを渡す
-      if (propsDiv) { // nullチェックを追加
+      const propsDiv = this.renderProperties(activity.properties, activity.type);
+      if (propsDiv) { // null check
         card.appendChild(propsDiv);
       }
     }
 
-    // サブプロパティパネル挿入（メインプロパティの後、スクリーンショットの前）
+    // Sub-property panel (after main properties, before screenshot)
     if (isDefinedActivity(activity.type) && hasSubPanel(activity.type) && Object.keys(activity.properties).length > 0) {
-      const subProps = getSubProperties(activity.properties, activity.type); // サブプロパティを抽出
+      const subProps = getSubProperties(activity.properties, activity.type);
 
-      // NApplicationCard: TargetApp内のSelector・リポジトリ状態をサブプロパティに注入
+      // NApplicationCard: inject Selector and repo status from TargetApp into sub-properties
       if (activity.type === 'NApplicationCard' && activity.properties['TargetApp']) {
-        const targetApp = activity.properties['TargetApp']; // TargetAppオブジェクトを取得
+        const targetApp = activity.properties['TargetApp'];
         if (typeof targetApp === 'object' && targetApp !== null) {
-          if (targetApp.Selector) subProps['Selector'] = targetApp.Selector; // セレクターを注入
-          subProps['ObjectRepository'] = targetApp.Reference ? t('Linked') : t('Not linked'); // リポジトリ状態を注入
+          if (targetApp.Selector) subProps['Selector'] = targetApp.Selector;
+          subProps['ObjectRepository'] = targetApp.Reference ? t('Linked') : t('Not linked');
         }
       }
 
-      // NClick: Target（TargetAnchorable）内のセレクター・リポジトリ状態をサブプロパティに注入
+      // NClick: inject selector and repo status from Target (TargetAnchorable) into sub-properties
       if (activity.type === 'NClick' && activity.properties['Target']) {
-        const target = activity.properties['Target']; // Targetオブジェクトを取得
+        const target = activity.properties['Target'];
         if (typeof target === 'object' && target !== null) {
-          if (target.FullSelectorArgument) subProps['FullSelectorArgument'] = target.FullSelectorArgument; // 厳密セレクター
-          if (target.FuzzySelectorArgument) subProps['FuzzySelectorArgument'] = target.FuzzySelectorArgument; // あいまいセレクター
-          subProps['ObjectRepository'] = target.Reference ? t('Linked') : t('Not linked'); // リポジトリ状態を注入
+          if (target.FullSelectorArgument) subProps['FullSelectorArgument'] = target.FullSelectorArgument;
+          if (target.FuzzySelectorArgument) subProps['FuzzySelectorArgument'] = target.FuzzySelectorArgument;
+          subProps['ObjectRepository'] = target.Reference ? t('Linked') : t('Not linked');
         }
       }
 
       if (Object.keys(subProps).length > 0) {
-        const subPanel = this.renderSubPropertyPanel(subProps, activity.type); // サブパネルを生成
-        card.appendChild(subPanel.toggle); // トグルボタンを追加
-        card.appendChild(subPanel.panel); // パネル本体を追加
+        const subPanel = this.renderSubPropertyPanel(subProps, activity.type);
+        card.appendChild(subPanel.toggle); // Add toggle button
+        card.appendChild(subPanel.panel); // Add panel body
       }
     }
 
-    // InformativeScreenshot表示
+    // InformativeScreenshot display
     if (activity.informativeScreenshot) {
       const screenshotDiv = this.renderScreenshot(activity.informativeScreenshot);
       card.appendChild(screenshotDiv);
     }
 
-    // 子アクティビティを再帰的にレンダリング（フィルタ済み）
+    // Recursively render children (filtered)
     if (childrenToRender.length > 0) {
       const childrenContainer = document.createElement('div');
       childrenContainer.className = 'activity-children';
@@ -160,20 +163,20 @@ export class SequenceRenderer {
 
       card.appendChild(childrenContainer);
 
-      // 折りたたみボタンのクリックイベント
+      // Collapse button click event
       const collapseBtn = header.querySelector('.collapse-btn');
       if (collapseBtn) {
         collapseBtn.addEventListener('click', (e) => {
-          e.stopPropagation(); // カードのクリックイベントを阻止
-          const isCollapsed = card.classList.toggle('collapsed'); // collapsed クラスをトグル
-          collapseBtn.textContent = isCollapsed ? '▶' : '▼'; // アイコンを変更
+          e.stopPropagation(); // Prevent card click event
+          const isCollapsed = card.classList.toggle('collapsed');
+          collapseBtn.textContent = isCollapsed ? '▶' : '▼';
         });
       }
     }
 
-    // クリックイベント: 詳細パネルを開く
+    // Click event: open detail panel
     card.addEventListener('click', (e) => {
-      e.stopPropagation();                      // イベント伝播を停止
+      e.stopPropagation();                      // Stop event propagation
       this.showDetailPanel(activity);
     });
 
@@ -181,35 +184,36 @@ export class SequenceRenderer {
   }
 
   /**
-   * アクティビティのサブツリー内に定義済みアクティビティが存在するか判定
-   * 未定義アクティビティの内部XML要素（BackupSlot等）をフィルタするために使用
+   * Returns true if the given activity or any of its descendants is a defined activity.
+   * Used to determine whether to show children of an undefined activity.
    */
   private hasDefinedDescendant(activity: Activity): boolean {
-    if (isDefinedActivity(activity.type)) return true; // 自身が定義済み
-    return activity.children.some(child => this.hasDefinedDescendant(child)); // 子孫に定義済みがあるか再帰チェック
+    if (isDefinedActivity(activity.type)) return true; // Self is defined
+    return activity.children.some(child => this.hasDefinedDescendant(child)); // Recurse into children
   }
 
   /**
-   * プロパティをレンダリング
+   * Render properties of an activity.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#rendering-by-activity-type
    */
   private renderProperties(properties: Record<string, any>, activityType?: string): HTMLElement | null {
     const propsDiv = document.createElement('div');
     propsDiv.className = 'activity-properties';
 
-    // Assignアクティビティの場合はTo/Valueを統合形式で表示
+    // Assign: show To/Value in unified expression format
     if (activityType === 'Assign' && (properties['To'] || properties['Value'])) {
-      const propItem = document.createElement('div'); // 統合表示用の行
+      const propItem = document.createElement('div');
       propItem.className = 'property-item';
 
-      const propValue = document.createElement('span'); // 代入式テキスト
-      propValue.className = 'assign-expression'; // 白文字・モノスペースフォント
-      propValue.textContent = `${this.formatValue(properties['To'])} = ${this.formatValue(properties['Value'])}`; // [左辺] = [右辺]
+      const propValue = document.createElement('span');
+      propValue.className = 'assign-expression'; // White text, monospace font
+      propValue.textContent = `${this.formatValue(properties['To'])} = ${this.formatValue(properties['Value'])}`;
 
       propItem.appendChild(propValue);
       propsDiv.appendChild(propItem);
 
-      // To/Value以外の主要プロパティも表示
-      const otherImportantProps = ['Condition', 'Selector', 'Message']; // To/Valueを除く主要プロパティ
+      // Also show other important properties besides To/Value
+      const otherImportantProps = ['Condition', 'Selector', 'Message'];
       Object.entries(properties).forEach(([key, value]) => {
         if (otherImportantProps.includes(key)) {
           const otherItem = document.createElement('div');
@@ -217,7 +221,7 @@ export class SequenceRenderer {
 
           const otherKey = document.createElement('span');
           otherKey.className = 'property-key';
-          otherKey.textContent = `${translatePropertyName(key)}:`; // プロパティ名を翻訳
+          otherKey.textContent = `${translatePropertyName(key)}:`;
 
           const otherValue = document.createElement('span');
           otherValue.className = 'property-value';
@@ -232,16 +236,16 @@ export class SequenceRenderer {
       return propsDiv;
     }
 
-    // MultipleAssignアクティビティの場合はAssignOperationsの各式を表示
+    // MultipleAssign: show each expression in AssignOperations
     if (activityType === 'MultipleAssign' && properties['AssignOperations']) {
-      const operations = properties['AssignOperations'] as Array<{ To: string; Value: string }>; // 代入操作リスト
+      const operations = properties['AssignOperations'] as Array<{ To: string; Value: string }>;
       operations.forEach(op => {
-        const propItem = document.createElement('div'); // 各代入式の行
+        const propItem = document.createElement('div');
         propItem.className = 'property-item';
 
-        const propValue = document.createElement('span'); // 代入式テキスト
-        propValue.className = 'assign-expression'; // Assignと同じスタイル
-        propValue.textContent = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // [左辺] = [右辺]
+        const propValue = document.createElement('span');
+        propValue.className = 'assign-expression'; // Same style as Assign
+        propValue.textContent = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`;
 
         propItem.appendChild(propValue);
         propsDiv.appendChild(propItem);
@@ -250,19 +254,19 @@ export class SequenceRenderer {
       return propsDiv;
     }
 
-    // NApplicationCardアクティビティの場合はTargetAppからURLを表示
+    // NApplicationCard: show URL from TargetApp
     if (activityType === 'NApplicationCard' && properties['TargetApp']) {
-      const targetApp = properties['TargetApp']; // TargetAppオブジェクトを取得
+      const targetApp = properties['TargetApp'];
 
       if (typeof targetApp === 'object' && targetApp !== null && targetApp.Url) {
-        const urlItem = document.createElement('div'); // URL表示用の行
+        const urlItem = document.createElement('div');
         urlItem.className = 'property-item';
-        const urlKey = document.createElement('span'); // ラベル
+        const urlKey = document.createElement('span');
         urlKey.className = 'property-key';
-        urlKey.textContent = `${translatePropertyName('Url')}:`; // プロパティ名を翻訳
-        const urlValue = document.createElement('span'); // URL値
+        urlKey.textContent = `${translatePropertyName('Url')}:`;
+        const urlValue = document.createElement('span');
         urlValue.className = 'property-value';
-        urlValue.textContent = targetApp.Url; // URLをそのまま表示
+        urlValue.textContent = targetApp.Url;
         urlItem.appendChild(urlKey);
         urlItem.appendChild(urlValue);
         propsDiv.appendChild(urlItem);
@@ -272,31 +276,30 @@ export class SequenceRenderer {
       return null;
     }
 
-    // NClick/NTypeInto/NGetTextアクティビティの場合はメインプロパティのみ表示
+    // N-prefix activities (except NApplicationCard): show only main properties from config
     if (activityType && activityType.startsWith('N') && activityType !== 'NApplicationCard') {
-      const config = getActivityPropertyConfig(activityType); // アクティビティ別設定を取得
-      let hasVisibleMainProps = false; // メインプロパティがあるかフラグ
+      const config = getActivityPropertyConfig(activityType);
+      let hasVisibleMainProps = false;
 
-      for (const mainKey of config.mainProperties) { // メインプロパティのみループ
+      for (const mainKey of config.mainProperties) {
         if (properties[mainKey] !== undefined) {
-          const value = properties[mainKey]; // プロパティ値を取得
+          const value = properties[mainKey];
 
-          // Targetがオブジェクトの場合はメインには表示しない（サブパネルで表示）
+          // Target as object is shown in the sub-panel, not the main area
           if (mainKey === 'Target' && typeof value === 'object' && value !== null) {
-            continue; // サブプロパティに委譲
+            continue; // Delegate to sub-properties
           }
 
-          // その他のメインプロパティは通常通り表示
-          const propItem = document.createElement('div'); // プロパティ行
+          const propItem = document.createElement('div');
           propItem.className = 'property-item';
 
-          const propKey = document.createElement('span'); // ラベル
+          const propKey = document.createElement('span');
           propKey.className = 'property-key';
-          propKey.textContent = `${translatePropertyName(mainKey)}:`; // プロパティ名を翻訳
+          propKey.textContent = `${translatePropertyName(mainKey)}:`;
 
-          const propValue = document.createElement('span'); // 値
+          const propValue = document.createElement('span');
           propValue.className = 'property-value';
-          propValue.textContent = this.formatValue(value); // フォーマット済み値
+          propValue.textContent = this.formatValue(value);
 
           propItem.appendChild(propKey);
           propItem.appendChild(propValue);
@@ -308,20 +311,20 @@ export class SequenceRenderer {
       return hasVisibleMainProps ? propsDiv : null;
     }
 
-    // LogMessageアクティビティの場合はLevel/Messageを表示
+    // LogMessage: show Level and Message
     if (activityType === 'LogMessage') {
-      let hasVisibleProps = false; // 表示可能なプロパティがあるかフラグ
+      let hasVisibleProps = false;
 
-      // Levelプロパティを表示
+      // Level property
       if (properties['Level']) {
-        const levelItem = document.createElement('div'); // レベル表示用の行
+        const levelItem = document.createElement('div');
         levelItem.className = 'property-item';
 
-        const levelKey = document.createElement('span'); // ラベル
+        const levelKey = document.createElement('span');
         levelKey.className = 'property-key';
-        levelKey.textContent = `${translatePropertyName('Level')}:`; // プロパティ名を翻訳
+        levelKey.textContent = `${translatePropertyName('Level')}:`;
 
-        const levelValue = document.createElement('span'); // レベル値
+        const levelValue = document.createElement('span');
         levelValue.className = 'property-value';
         levelValue.textContent = this.formatValue(properties['Level']);
 
@@ -331,16 +334,16 @@ export class SequenceRenderer {
         hasVisibleProps = true;
       }
 
-      // Messageプロパティを表示
+      // Message property
       if (properties['Message']) {
-        const msgItem = document.createElement('div'); // メッセージ表示用の行
+        const msgItem = document.createElement('div');
         msgItem.className = 'property-item';
 
-        const msgKey = document.createElement('span'); // ラベル
+        const msgKey = document.createElement('span');
         msgKey.className = 'property-key';
-        msgKey.textContent = `${translatePropertyName('Message')}:`; // プロパティ名を翻訳
+        msgKey.textContent = `${translatePropertyName('Message')}:`;
 
-        const msgValue = document.createElement('span'); // メッセージ値
+        const msgValue = document.createElement('span');
         msgValue.className = 'property-value';
         msgValue.textContent = this.formatValue(properties['Message']);
 
@@ -353,22 +356,23 @@ export class SequenceRenderer {
       return hasVisibleProps ? propsDiv : null;
     }
 
-    // 未定義アクティビティはプロパティを非表示
+    // Undefined activities: hide all properties
     return null;
   }
 
   /**
-   * 注釈をレンダリング（メモ風表示）
+   * Render an annotation as a note-style element
    */
   private renderAnnotation(text: string): HTMLElement {
-    const div = document.createElement('div'); // 注釈コンテナ
-    div.className = 'activity-annotation'; // メモ風スタイル用クラス
-    div.textContent = text; // 注釈テキストを設定
+    const div = document.createElement('div');
+    div.className = 'activity-annotation'; // Note-style class
+    div.textContent = text;
     return div;
   }
 
   /**
-   * スクリーンショットをレンダリング
+   * Render an InformativeScreenshot thumbnail
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#screenshot-path-resolution
    */
   private renderScreenshot(filename: string): HTMLElement {
     const screenshotDiv = document.createElement('div');
@@ -376,11 +380,11 @@ export class SequenceRenderer {
 
     const img = document.createElement('img');
     img.className = 'screenshot-thumbnail';
-    img.src = this.resolveScreenshotPath(filename); // スクリーンショットパスを解決
+    img.src = this.resolveScreenshotPath(filename);
     img.alt = filename;
-    img.loading = 'lazy';                       // 遅延読み込み
+    img.loading = 'lazy';                       // Lazy loading
 
-    // 画像読み込みエラー時の処理
+    // Handle image load error
     img.onerror = () => {
       screenshotDiv.innerHTML = `
         <div class="screenshot-error">
@@ -396,14 +400,14 @@ export class SequenceRenderer {
   }
 
   /**
-   * スクリーンショットのパスを解決
+   * Resolve the screenshot file path using the configured resolver
    */
   private resolveScreenshotPath(filename: string): string {
-    return this.screenshotPathResolver(filename); // リゾルバーで解決
+    return this.screenshotPathResolver(filename);
   }
 
   /**
-   * 詳細パネルを表示
+   * Show the detail panel for the given activity
    */
   private showDetailPanel(activity: Activity): void {
     const detailPanel = document.getElementById('detail-panel');
@@ -411,7 +415,7 @@ export class SequenceRenderer {
 
     if (!detailPanel || !detailContent) return;
 
-    // 詳細情報をレンダリング
+    // Render detail information
     detailContent.innerHTML = `
       <div class="detail-section">
         <h4>${translateActivityType(activity.type)}</h4>
@@ -429,11 +433,11 @@ export class SequenceRenderer {
       ` : ''}
     `;
 
-    detailPanel.style.display = 'block';        // パネルを表示
+    detailPanel.style.display = 'block';        // Show panel
   }
 
   /**
-   * すべてのプロパティを詳細表示
+   * Render all properties for the detail panel
    */
   private renderAllProperties(properties: Record<string, any>): string {
     return Object.entries(properties)
@@ -447,148 +451,125 @@ export class SequenceRenderer {
   }
 
   /**
-   * サブプロパティパネルをレンダリング（トグルボタン + パネル本体）
+   * Render a sub-property panel (toggle button + panel body).
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#activity-card-structure
    */
   private renderSubPropertyPanel(
-    subProps: Record<string, any>, // サブプロパティ
-    activityType: string // アクティビティタイプ
-  ): { toggle: HTMLElement; panel: HTMLElement } { // トグルボタンとパネルを返す
-    // トグルボタン
-    const toggle = document.createElement('button'); // トグルボタン要素
-    toggle.className = 'property-sub-panel-toggle'; // CSSクラス
-    toggle.textContent = `${t('Toggle property panel')} ▶`; // ボタンラベル（折りたたみ状態）
+    subProps: Record<string, any>,
+    activityType: string
+  ): { toggle: HTMLElement; panel: HTMLElement } {
+    // Toggle button
+    const toggle = document.createElement('button');
+    toggle.className = 'property-sub-panel-toggle';
+    toggle.textContent = `${t('Toggle property panel')} ▶`; // Collapsed state label
 
-    // パネル本体（初期非表示）
-    const panel = document.createElement('div'); // パネル要素
-    panel.className = 'property-sub-panel'; // CSSクラス
-    panel.style.display = 'none'; // 初期非表示
+    // Panel body (initially hidden)
+    const panel = document.createElement('div');
+    panel.className = 'property-sub-panel';
+    panel.style.display = 'none'; // Initially hidden
 
-    // アクティビティ設定のグループを取得
-    const config = getActivityPropertyConfig(activityType); // 設定を取得
+    // Get groups from activity configuration
+    const config = getActivityPropertyConfig(activityType);
 
     if (config.subGroups.length > 0) {
-      // グループ別に表示
-      const groupedKeys = new Set<string>(); // グループに属するキーの集合
-      for (const group of config.subGroups) { // 各グループをループ
-        const groupProps: Record<string, any> = {}; // グループ内のプロパティ
-        for (const propName of group.properties) { // グループ内の各プロパティ名
-          if (subProps[propName] !== undefined) { // サブプロパティに存在するか
-            groupProps[propName] = subProps[propName]; // グループに追加
-            groupedKeys.add(propName); // 使用済みとしてマーク
+      // Display by group
+      const groupedKeys = new Set<string>(); // Keys already assigned to a group
+      for (const group of config.subGroups) {
+        const groupProps: Record<string, any> = {};
+        for (const propName of group.properties) {
+          if (subProps[propName] !== undefined) {
+            groupProps[propName] = subProps[propName];
+            groupedKeys.add(propName);
           }
         }
-        if (Object.keys(groupProps).length > 0) { // グループに表示対象があれば
-          const groupDiv = this.renderPropertyGroup(group.label(), groupProps); // グループをレンダリング
-          panel.appendChild(groupDiv); // パネルに追加
+        if (Object.keys(groupProps).length > 0) {
+          const groupDiv = this.renderPropertyGroup(group.label(), groupProps);
+          panel.appendChild(groupDiv);
         }
       }
 
-      // グループに属さないプロパティを「共通」グループで表示
-      const ungrouped: Record<string, any> = {}; // 未グループのプロパティ
-      for (const [key, value] of Object.entries(subProps)) { // サブプロパティ全体をループ
-        if (!groupedKeys.has(key)) { // グループに属していない場合
-          ungrouped[key] = value; // 未グループに追加
+      // Show ungrouped properties under a "Common" group
+      const ungrouped: Record<string, any> = {};
+      for (const [key, value] of Object.entries(subProps)) {
+        if (!groupedKeys.has(key)) {
+          ungrouped[key] = value;
         }
       }
-      if (Object.keys(ungrouped).length > 0) { // 未グループのプロパティがあれば
-        const commonDiv = this.renderPropertyGroup(t('Common'), ungrouped); // 共通グループとしてレンダリング
-        panel.appendChild(commonDiv); // パネルに追加
+      if (Object.keys(ungrouped).length > 0) {
+        const commonDiv = this.renderPropertyGroup(t('Common'), ungrouped);
+        panel.appendChild(commonDiv);
       }
     } else {
-      // グループなし: フラットにプロパティを表示
-      for (const [key, value] of Object.entries(subProps)) { // サブプロパティ全体をループ
-        const propItem = document.createElement('div'); // プロパティ行
-        propItem.className = 'property-item'; // CSSクラス
+      // No groups: display properties flat
+      for (const [key, value] of Object.entries(subProps)) {
+        const propItem = document.createElement('div');
+        propItem.className = 'property-item';
 
-        const propKey = document.createElement('span'); // プロパティ名
-        propKey.className = 'property-key'; // CSSクラス
-        propKey.textContent = `${translatePropertyName(key)}:`; // 翻訳済みプロパティ名
+        const propKey = document.createElement('span');
+        propKey.className = 'property-key';
+        propKey.textContent = `${translatePropertyName(key)}:`;
 
-        const propValue = document.createElement('span'); // プロパティ値
-        propValue.className = 'property-value'; // CSSクラス
-        propValue.textContent = this.formatValue(value); // フォーマット済み値
+        const propValue = document.createElement('span');
+        propValue.className = 'property-value';
+        propValue.textContent = this.formatValue(value);
 
-        propItem.appendChild(propKey); // 名前を追加
-        propItem.appendChild(propValue); // 値を追加
-        panel.appendChild(propItem); // パネルに追加
+        propItem.appendChild(propKey);
+        propItem.appendChild(propValue);
+        panel.appendChild(propItem);
       }
     }
 
-    // トグルボタンのクリックイベント
+    // Toggle button click event
     toggle.addEventListener('click', (e) => {
-      e.stopPropagation(); // カードのクリックイベントを阻止
-      const isExpanded = panel.style.display !== 'none'; // 現在の表示状態を取得
-      panel.style.display = isExpanded ? 'none' : 'block'; // 表示/非表示を切り替え
+      e.stopPropagation(); // Prevent card click event
+      const isExpanded = panel.style.display !== 'none';
+      panel.style.display = isExpanded ? 'none' : 'block';
       toggle.textContent = isExpanded
-        ? `${t('Toggle property panel')} ▶` // 折りたたみ状態
-        : `${t('Toggle property panel')} ▼`; // 展開状態
+        ? `${t('Toggle property panel')} ▶` // Collapsed state
+        : `${t('Toggle property panel')} ▼`; // Expanded state
     });
 
-    return { toggle, panel }; // トグルとパネルを返す
+    return { toggle, panel };
   }
 
   /**
-   * プロパティグループをレンダリング（UiPath Studio風のカテゴリ表示）
+   * Render a property group (UiPath Studio-style category display)
    */
-  private renderPropertyGroup(label: string, properties: Record<string, any>): HTMLElement { // グループ名とプロパティを受け取る
-    const groupDiv = document.createElement('div'); // グループコンテナ
-    groupDiv.className = 'property-group'; // CSSクラス
+  private renderPropertyGroup(label: string, properties: Record<string, any>): HTMLElement {
+    const groupDiv = document.createElement('div');
+    groupDiv.className = 'property-group';
 
-    const headerDiv = document.createElement('div'); // グループヘッダー
-    headerDiv.className = 'property-group-header'; // CSSクラス
-    headerDiv.textContent = label; // グループ名
-    groupDiv.appendChild(headerDiv); // ヘッダーを追加
+    const headerDiv = document.createElement('div');
+    headerDiv.className = 'property-group-header';
+    headerDiv.textContent = label;
+    groupDiv.appendChild(headerDiv);
 
-    const bodyDiv = document.createElement('div'); // グループ本体
-    bodyDiv.className = 'property-group-body'; // CSSクラス
+    const bodyDiv = document.createElement('div');
+    bodyDiv.className = 'property-group-body';
 
-    for (const [key, value] of Object.entries(properties)) { // プロパティをループ
-      const propItem = document.createElement('div'); // プロパティ行
-      propItem.className = 'property-item'; // CSSクラス
+    for (const [key, value] of Object.entries(properties)) {
+      const propItem = document.createElement('div');
+      propItem.className = 'property-item';
 
-      const propKey = document.createElement('span'); // プロパティ名
-      propKey.className = 'property-key'; // CSSクラス
-      propKey.textContent = `${translatePropertyName(key)}:`; // 翻訳済みプロパティ名
+      const propKey = document.createElement('span');
+      propKey.className = 'property-key';
+      propKey.textContent = `${translatePropertyName(key)}:`;
 
-      const propValue = document.createElement('span'); // プロパティ値
-      propValue.className = 'property-value'; // CSSクラス
-      propValue.textContent = this.formatValue(value); // フォーマット済み値
+      const propValue = document.createElement('span');
+      propValue.className = 'property-value';
+      propValue.textContent = this.formatValue(value);
 
-      propItem.appendChild(propKey); // 名前を追加
-      propItem.appendChild(propValue); // 値を追加
-      bodyDiv.appendChild(propItem); // グループ本体に追加
+      propItem.appendChild(propKey);
+      propItem.appendChild(propValue);
+      bodyDiv.appendChild(propItem);
     }
 
-    groupDiv.appendChild(bodyDiv); // 本体をグループに追加
-    return groupDiv; // グループ要素を返す
+    groupDiv.appendChild(bodyDiv);
+    return groupDiv;
   }
 
   /**
-   * TargetAppオブジェクトからアプリ名を抽出
-   * FilePathまたはSelectorのtitle属性からアプリ名を取得
-   */
-  private formatTargetApp(targetApp: any): string { // TargetAppプロパティからアプリ名を抽出
-    if (typeof targetApp === 'string') return targetApp; // 文字列ならそのまま返す
-    if (typeof targetApp !== 'object' || targetApp === null) return ''; // オブジェクト以外は空文字
-
-    // FilePathからアプリ名を取得
-    if (targetApp.FilePath) return String(targetApp.FilePath); // ファイルパスがあればそれを返す
-
-    // Selectorのtitle属性からアプリ名を取得
-    if (targetApp.Selector) {
-      const selector = String(targetApp.Selector); // セレクターを文字列化
-      const titleMatch = selector.match(/title='([^']+)'/); // title属性を抽出
-      if (titleMatch) return titleMatch[1]; // 一致すればtitle値を返す
-    }
-
-    // AppDescriptorからアプリ名を取得
-    if (targetApp.AppDescriptor) return String(targetApp.AppDescriptor); // AppDescriptorがあればそれを返す
-
-    return this.formatValue(targetApp); // フォールバック: JSON文字列化
-  }
-
-  /**
-   * 値をフォーマット
+   * Format a property value for display
    */
   private formatValue(value: any): string {
     if (value === null || value === undefined) {
@@ -596,7 +577,7 @@ export class SequenceRenderer {
     }
 
     if (typeof value === 'object') {
-      return JSON.stringify(value, null, 2);    // オブジェクトはJSON文字列化
+      return JSON.stringify(value, null, 2);    // Stringify objects as JSON
     }
 
     return String(value);

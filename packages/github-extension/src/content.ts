@@ -1,86 +1,86 @@
-import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t, categorizeDiffChanges } from '@uipath-xaml-visualizer/shared'; // 共通ライブラリ
-import type { ActivityLineIndex, ScreenshotPathResolver, Language } from '@uipath-xaml-visualizer/shared'; // 型定義
-import '../../shared/styles/github-panel.css'; // パネル用スコープ付きスタイル
+import { XamlParser, DiffCalculator, SequenceRenderer, XamlLineMapper, buildActivityKey, setLanguage, getLanguage, t, categorizeDiffChanges } from '@uipath-xaml-visualizer/shared'; // shared library
+import type { ActivityLineIndex, ScreenshotPathResolver, Language } from '@uipath-xaml-visualizer/shared'; // type definitions
+import '../../shared/styles/github-panel.css'; // scoped styles for the panel
 
 /**
- * GitHub上のXAMLファイルを視覚化するコンテンツスクリプト
- * - blob-xaml: 個別ファイル表示ページ
- * - pr-diff: PR差分ページ
- * - commit-diff: コミット差分ページ・Compareページ
+ * Content script that visualizes XAML files on GitHub
+ * - blob-xaml: individual file view page
+ * - pr-diff: PR diff page
+ * - commit-diff: commit diff page and Compare page
  */
 
-// ========== ビルド情報（webpackのDefinePluginで注入） ==========
+// ========== Build info (injected by webpack DefinePlugin) ==========
 
-declare const __BUILD_DATE__: string;  // ビルド日時
-declare const __VERSION__: string;     // バージョン
-declare const __BRANCH_NAME__: string; // ビルド時のブランチ名
+declare const __BUILD_DATE__: string;  // build timestamp
+declare const __VERSION__: string;     // version
+declare const __BRANCH_NAME__: string; // branch name at build time
 
-// ========== 型定義 ==========
+// ========== Type definitions ==========
 
-type PageType = 'blob-xaml' | 'pr-diff' | 'commit-diff' | 'unknown'; // ページタイプ
+type PageType = 'blob-xaml' | 'pr-diff' | 'commit-diff' | 'unknown'; // page type
 
 interface PrInfo {
-	owner: string;   // リポジトリオーナー
-	repo: string;    // リポジトリ名
-	prNumber: number; // PR番号
+	owner: string;   // repository owner
+	repo: string;    // repository name
+	prNumber: number; // PR number
 }
 
 interface PrRefs {
-	baseSha: string; // ベースブランチのSHA
-	headSha: string; // ヘッドブランチのSHA
+	baseSha: string; // base branch SHA
+	headSha: string; // head branch SHA
 }
 
-// ========== モジュールレベルのキャッシュ ==========
+// ========== Module-level cache ==========
 
-let cachedPrRefs: PrRefs | null = null; // PR refs キャッシュ（同一PR内で1回だけAPI呼び出し）
-let lastUrl: string = ''; // 前回のURL（URL変更検出用）
-let debounceTimer: ReturnType<typeof setTimeout> | null = null; // デバウンスタイマー
-let syncAbortController: AbortController | null = null; // カーソル同期イベントリスナーの管理用
-let searchMatches: HTMLElement[] = []; // 検索一致カードのリスト
-let searchCurrentIndex: number = -1; // 現在フォーカス中の一致インデックス
-let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // 検索デバウンスタイマー
-let originalBodyMarginRight: string = ''; // パネル表示前のbody marginRight
-let originalBodyOverflowX: string = ''; // パネル表示前のbody overflowX
+let cachedPrRefs: PrRefs | null = null; // PR refs cache (API called only once per PR)
+let lastUrl: string = ''; // previous URL (for URL change detection)
+let debounceTimer: ReturnType<typeof setTimeout> | null = null; // debounce timer
+let syncAbortController: AbortController | null = null; // manages cursor sync event listeners
+let searchMatches: HTMLElement[] = []; // list of matched search cards
+let searchCurrentIndex: number = -1; // index of the currently focused match
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null; // search debounce timer
+let originalBodyMarginRight: string = ''; // body marginRight before panel is shown
+let originalBodyOverflowX: string = ''; // body overflowX before panel is shown
 
-// ========== 言語切替用の再レンダリングコンテキスト ==========
+// ========== Re-render context for language switching ==========
 
 type RenderContext =
-	| { type: 'blob'; workflowData: any; lineIndex?: ActivityLineIndex; screenshotResolver?: ScreenshotPathResolver } // 個別ファイル表示
-	| { type: 'diff'; filePath: string } // PR差分表示
-	| { type: 'commit-diff'; filePath: string }; // コミット差分表示
+	| { type: 'blob'; workflowData: any; lineIndex?: ActivityLineIndex; screenshotResolver?: ScreenshotPathResolver } // individual file view
+	| { type: 'diff'; filePath: string } // PR diff view
+	| { type: 'commit-diff'; filePath: string }; // commit diff view
 
-let lastRenderContext: RenderContext | null = null; // 最後のレンダリングコンテキスト
+let lastRenderContext: RenderContext | null = null; // last render context
 
 /**
- * chrome.storage.sync から言語設定を読み込み
+ * Loads the language preference from chrome.storage.sync
  */
 async function loadLanguagePreference(): Promise<void> {
 	try {
-		const result = await chrome.storage.sync.get('language'); // storage から取得
+		const result = await chrome.storage.sync.get('language'); // retrieve from storage
 		if (result.language) {
-			setLanguage(result.language as Language); // 言語を設定
+			setLanguage(result.language as Language); // set language
 		}
 	} catch (e) {
-		console.warn('UiPath Visualizer: 言語設定の読み込みに失敗:', e); // エラーログ
+		console.warn('UiPath Visualizer: Failed to load language preference:', e); // error log
 	}
 }
 
 /**
- * 言語設定を chrome.storage.sync に保存
+ * Saves the language preference to chrome.storage.sync
  */
 async function saveLanguagePreference(lang: Language): Promise<void> {
 	try {
-		await chrome.storage.sync.set({ language: lang }); // storage に保存
+		await chrome.storage.sync.set({ language: lang }); // save to storage
 	} catch (e) {
-		console.warn('UiPath Visualizer: 言語設定の保存に失敗:', e); // エラーログ
+		console.warn('UiPath Visualizer: Failed to save language preference:', e); // error log
 	}
 }
 
 /**
- * 現在のパネルを言語切替後に再レンダリング
+ * Re-renders the current panel after a language switch
  */
 function reRenderCurrentPanel(): void {
-	if (!lastRenderContext) return; // コンテキストがなければ何もしない
+	if (!lastRenderContext) return; // do nothing if no context
 
 	switch (lastRenderContext.type) {
 		case 'blob':
@@ -88,179 +88,180 @@ function reRenderCurrentPanel(): void {
 				lastRenderContext.workflowData,
 				lastRenderContext.lineIndex,
 				lastRenderContext.screenshotResolver
-			); // 個別ファイルを再レンダリング
+			); // re-render individual file view
 			break;
 		case 'diff':
-			showDiffVisualizer(lastRenderContext.filePath); // PR差分を再レンダリング
+			showDiffVisualizer(lastRenderContext.filePath); // re-render PR diff
 			break;
 		case 'commit-diff':
-			showCommitDiffVisualizer(lastRenderContext.filePath); // コミット差分を再レンダリング
+			showCommitDiffVisualizer(lastRenderContext.filePath); // re-render commit diff
 			break;
 	}
 }
 
-// ========== ページタイプ検出 ==========
+// ========== Page type detection ==========
 
 /**
- * 現在のページタイプを検出
+ * Detects the type of the current page
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/GitHub-Extension#page-type-detection
  */
 function detectPageType(): PageType {
-	const url = window.location.href; // 現在のURL
+	const url = window.location.href; // current URL
 
 	if (url.includes('.xaml')) {
-		return 'blob-xaml'; // 個別XAMLファイルページ
+		return 'blob-xaml'; // individual XAML file page
 	}
 
 	if (/\/pull\/\d+\/files/.test(url)) {
-		return 'pr-diff'; // PR差分ページ
+		return 'pr-diff'; // PR diff page
 	}
 
 	if (/\/commit\/[a-f0-9]{7,40}/.test(url)) {
-		return 'commit-diff'; // コミット差分ページ
+		return 'commit-diff'; // commit diff page
 	}
 
 	if (/\/compare\//.test(url)) {
-		return 'commit-diff'; // Compareページ（コミット差分と同じ扱い）
+		return 'commit-diff'; // Compare page (treated same as commit diff)
 	}
 
-	return 'unknown'; // その他のページ
+	return 'unknown'; // any other page
 }
 
-// ========== デバッグ情報収集 ==========
+// ========== Debug info collection ==========
 
 /**
- * デバッグ情報を収集してログ配列として返す
+ * Collects debug information and returns it as an array of log strings
  */
 function collectDebugInfo(): string[] {
-	const info: string[] = []; // デバッグ情報の配列
+	const info: string[] = []; // array of debug info
 
-	// A. script[type="application/json"] タグの個数
-	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON埋め込みスクリプト
-	info.push(`[A] script[type="application/json"] タグ数: ${jsonScripts.length}`);
+	// A. Number of script[type="application/json"] tags
+	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON-embedded scripts
+	info.push(`[A] script[type="application/json"] tag count: ${jsonScripts.length}`);
 
-	// B. 各タグ内に 40文字16進数（SHA候補）が含まれるかチェック
-	const shaPattern = /[a-f0-9]{40}/g; // 40文字の16進数パターン
-	let totalShaCandidates = 0; // SHA候補の合計数
+	// B. Check whether each tag contains a 40-character hex string (SHA candidate)
+	const shaPattern = /[a-f0-9]{40}/g; // 40-character hex pattern
+	let totalShaCandidates = 0; // total SHA candidate count
 	jsonScripts.forEach((script, idx) => {
-		const text = script.textContent || ''; // スクリプト内容
-		const matches = text.match(shaPattern); // SHA候補を検索
+		const text = script.textContent || ''; // script content
+		const matches = text.match(shaPattern); // search for SHA candidates
 		if (matches && matches.length > 0) {
-			totalShaCandidates += matches.length; // 候補数を加算
-			// 最初のSHA候補の前後30文字のコンテキストを記録
-			const firstMatch = matches[0]; // 最初のSHA候補
-			const pos = text.indexOf(firstMatch); // 位置
-			const contextStart = Math.max(0, pos - 30); // コンテキスト開始位置
-			const contextEnd = Math.min(text.length, pos + 40 + 30); // コンテキスト終了位置
-			const context = text.substring(contextStart, contextEnd); // コンテキスト文字列
-			info.push(`  [B] scriptタグ#${idx}: SHA候補 ${matches.length}個, コンテキスト: ...${context.replace(/</g, '&lt;').replace(/>/g, '&gt;')}...`);
+			totalShaCandidates += matches.length; // add to candidate count
+			// record 30 characters of context around the first SHA candidate
+			const firstMatch = matches[0]; // first SHA candidate
+			const pos = text.indexOf(firstMatch); // position
+			const contextStart = Math.max(0, pos - 30); // context start position
+			const contextEnd = Math.min(text.length, pos + 40 + 30); // context end position
+			const context = text.substring(contextStart, contextEnd); // context string
+			info.push(`  [B] scriptTag#${idx}: SHA candidates ${matches.length}, context: ...${context.replace(/</g, '&lt;').replace(/>/g, '&gt;')}...`);
 		}
 	});
-	info.push(`[B] SHA候補合計: ${totalShaCandidates}個`);
+	info.push(`[B] Total SHA candidates: ${totalShaCandidates}`);
 
-	// C. インラインスクリプトで "Oid", "sha", "Sha" を含むものの個数
-	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // インラインスクリプト
-	let oidCount = 0; // Oid含有数
-	let shaKeyCount = 0; // sha含有数
+	// C. Number of inline scripts containing "Oid", "sha", or "Sha"
+	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // inline scripts
+	let oidCount = 0; // count containing Oid
+	let shaKeyCount = 0; // count containing sha
 	inlineScripts.forEach(script => {
-		const text = script.textContent || ''; // スクリプト内容
+		const text = script.textContent || ''; // script content
 		if (text.includes('Oid') || text.includes('sha') || text.includes('Sha')) {
-			oidCount++; // カウント
+			oidCount++; // count
 		}
 		if (text.includes('baseRefOid') || text.includes('headRefOid')) {
-			shaKeyCount++; // SHA関連キー含有数
+			shaKeyCount++; // count of SHA-related key occurrences
 		}
 	});
-	info.push(`[C] インラインスクリプト合計: ${inlineScripts.length}個, Oid/sha/Sha含有: ${oidCount}個, baseRefOid/headRefOid含有: ${shaKeyCount}個`);
+	info.push(`[C] Total inline scripts: ${inlineScripts.length}, containing Oid/sha/Sha: ${oidCount}, containing baseRefOid/headRefOid: ${shaKeyCount}`);
 
-	// D. hidden input (comparison_start_oid, comparison_end_oid) の存在
-	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // 比較開始OID
-	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // 比較終了OID
-	info.push(`[D] hidden input: comparison_start_oid=${startOid ? startOid.value : '(なし)'}, comparison_end_oid=${endOid ? endOid.value : '(なし)'}`);
+	// D. Presence of hidden inputs (comparison_start_oid, comparison_end_oid)
+	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // comparison start OID
+	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // comparison end OID
+	info.push(`[D] hidden input: comparison_start_oid=${startOid ? startOid.value : '(none)'}, comparison_end_oid=${endOid ? endOid.value : '(none)'}`);
 
-	// E. blob リンク (a[href*="/blob/"]) の個数と最初の href
-	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blobリンク
-	const firstBlobHref = blobLinks.length > 0 ? (blobLinks[0] as HTMLAnchorElement).href : '(なし)'; // 最初のhref
-	info.push(`[E] blob リンク数: ${blobLinks.length}個, 最初: ${firstBlobHref}`);
+	// E. Number of blob links (a[href*="/blob/"]) and first href
+	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blob links
+	const firstBlobHref = blobLinks.length > 0 ? (blobLinks[0] as HTMLAnchorElement).href : '(none)'; // first href
+	info.push(`[E] blob link count: ${blobLinks.length}, first: ${firstBlobHref}`);
 
-	// blobリンクからSHA候補を抽出してみる
+	// extract SHA candidate from blob link
 	if (blobLinks.length > 0) {
-		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
-		const blobShaMatches = firstBlobHref.match(blobShaPattern); // SHA候補を検索
-		info.push(`  [E] blob リンクからSHA抽出: ${blobShaMatches ? blobShaMatches[1] : '(パターン不一致)'}`);
+		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // SHA pattern in blob link
+		const blobShaMatches = firstBlobHref.match(blobShaPattern); // search for SHA candidates
+		info.push(`  [E] SHA extracted from blob link: ${blobShaMatches ? blobShaMatches[1] : '(pattern not matched)'}`);
 	}
 
-	// F. .commit-ref, [data-branch-name] 等のブランチ情報要素
-	const commitRefs = document.querySelectorAll('.commit-ref'); // コミット参照要素
-	const branchNames = document.querySelectorAll('[data-branch-name]'); // ブランチ名要素
-	info.push(`[F] .commit-ref: ${commitRefs.length}個, [data-branch-name]: ${branchNames.length}個`);
+	// F. Branch info elements: .commit-ref, [data-branch-name], etc.
+	const commitRefs = document.querySelectorAll('.commit-ref'); // commit ref elements
+	const branchNames = document.querySelectorAll('[data-branch-name]'); // branch name elements
+	info.push(`[F] .commit-ref: ${commitRefs.length}, [data-branch-name]: ${branchNames.length}`);
 	commitRefs.forEach((el, idx) => {
-		info.push(`  [F] .commit-ref#${idx}: "${el.textContent?.trim()}"`); // 内容を記録
+		info.push(`  [F] .commit-ref#${idx}: "${el.textContent?.trim()}"`); // record content
 	});
 
-	// G. ページURL情報
+	// G. Page URL info
 	info.push(`[G] URL: ${window.location.href}`);
 	info.push(`[G] pathname: ${window.location.pathname}`);
 
 	return info;
 }
 
-// ========== PR情報の取得 ==========
+// ========== PR info retrieval ==========
 
 /**
- * URLからPR情報を抽出
+ * Extracts PR info from the URL
  */
 function parsePrUrl(): PrInfo | null {
-	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/); // URL解析
+	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)\/pull\/(\d+)/); // parse URL
 	if (!match) return null;
 
 	return {
-		owner: match[1],   // オーナー名
-		repo: match[2],    // リポジトリ名
-		prNumber: parseInt(match[3], 10) // PR番号
+		owner: match[1],   // owner name
+		repo: match[2],    // repository name
+		prNumber: parseInt(match[3], 10) // PR number
 	};
 }
 
 /**
- * URLからリポジトリ情報を汎用的に抽出（PR以外のページでも使用可能）
+ * Generically extracts repository info from the URL (usable on non-PR pages too)
  */
 function parseRepoInfo(): { owner: string; repo: string } | null {
-	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)/); // URLからowner/repoを抽出
+	const match = window.location.pathname.match(/^\/([^/]+)\/([^/]+)/); // extract owner/repo from URL
 	if (!match) return null;
-	return { owner: match[1], repo: match[2] }; // リポジトリ情報を返す
+	return { owner: match[1], repo: match[2] }; // return repository info
 }
 
 /**
- * GitHubのraw URLでスクリーンショットパスを解決するリゾルバーを生成
+ * Creates a resolver that resolves screenshot paths to GitHub raw URLs
  */
 function createScreenshotResolver(owner: string, repo: string, sha: string): ScreenshotPathResolver {
 	return (filename: string) => `https://github.com/${owner}/${repo}/raw/${sha}/.screenshots/${filename}`; // GitHub raw URL
 }
 
 /**
- * テキストからbase/head SHAのペアを抽出（複数パターン対応）
+ * Extracts base/head SHA pairs from text (supports multiple patterns)
  */
 function extractShasFromText(text: string): PrRefs | null {
-	// パターン1: baseRefOid / headRefOid（GitHub React埋め込みデータ）
+	// Pattern 1: baseRefOid / headRefOid (GitHub React embedded data)
 	let base = text.match(/"baseRefOid"\s*:\s*"([a-f0-9]{40})"/);
 	let head = text.match(/"headRefOid"\s*:\s*"([a-f0-9]{40})"/);
 	if (base && head) return { baseSha: base[1], headSha: head[1] };
 
-	// パターン2: baseSha / headSha
+	// Pattern 2: baseSha / headSha
 	base = text.match(/"baseSha"\s*:\s*"([a-f0-9]{40})"/);
 	head = text.match(/"headSha"\s*:\s*"([a-f0-9]{40})"/);
 	if (base && head) return { baseSha: base[1], headSha: head[1] };
 
-	// パターン3: "base":{"sha":"..."} / "head":{"sha":"..."}（REST API形式）
+	// Pattern 3: "base":{"sha":"..."} / "head":{"sha":"..."} (REST API format)
 	base = text.match(/"base"\s*:\s*\{[^}]*"sha"\s*:\s*"([a-f0-9]{40})"/);
 	head = text.match(/"head"\s*:\s*\{[^}]*"sha"\s*:\s*"([a-f0-9]{40})"/);
 	if (base && head) return { baseSha: base[1], headSha: head[1] };
 
-	// パターン4: comparison_start_oid / comparison_end_oid（GitHub diff hidden input）
+	// Pattern 4: comparison_start_oid / comparison_end_oid (GitHub diff hidden input)
 	base = text.match(/"comparison_start_oid"\s*:\s*"([a-f0-9]{40})"/);
 	head = text.match(/"comparison_end_oid"\s*:\s*"([a-f0-9]{40})"/);
 	if (base && head) return { baseSha: base[1], headSha: head[1] };
 
-	// パターン5: oid フィールド（GitHub GraphQL形式）
+	// Pattern 5: oid fields (GitHub GraphQL format)
 	base = text.match(/"baseOid"\s*:\s*"([a-f0-9]{40})"/);
 	head = text.match(/"headOid"\s*:\s*"([a-f0-9]{40})"/);
 	if (base && head) return { baseSha: base[1], headSha: head[1] };
@@ -269,319 +270,319 @@ function extractShasFromText(text: string): PrRefs | null {
 }
 
 /**
- * 現在のページのDOMからbase/head SHAを抽出
+ * Extracts base/head SHAs from the current page DOM
  */
 function extractShasFromDom(): PrRefs | null {
-	// 方法A: <script type="application/json"> タグ（GitHub React埋め込みデータ）
-	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON埋め込みスクリプト
-	console.log(`UiPath Visualizer: DOM抽出: JSON scriptタグ ${jsonScripts.length}個検出`);
-	let shaCount = 0; // SHA候補カウンタ
+	// Method A: <script type="application/json"> tags (GitHub React embedded data)
+	const jsonScripts = Array.from(document.querySelectorAll('script[type="application/json"]')); // JSON-embedded scripts
+	console.log(`UiPath Visualizer: DOM extraction: JSON script tags detected: ${jsonScripts.length}`);
+	let shaCount = 0; // SHA candidate counter
 	for (let i = 0; i < jsonScripts.length; i++) {
 		const text = jsonScripts[i].textContent || '';
 		const refs = extractShasFromText(text);
 		if (refs) {
-			console.log('UiPath Visualizer: JSON scriptタグからSHA取得成功');
+			console.log('UiPath Visualizer: SHA successfully retrieved from JSON script tag');
 			return refs;
 		}
-		// SHA候補があるか確認（デバッグ用）
-		const shaMatches = text.match(/[a-f0-9]{40}/g); // 40文字16進数を検索
-		if (shaMatches) shaCount += shaMatches.length; // 候補をカウント
+		// check for SHA candidates (for debugging)
+		const shaMatches = text.match(/[a-f0-9]{40}/g); // search for 40-character hex strings
+		if (shaMatches) shaCount += shaMatches.length; // count candidates
 	}
-	console.log(`UiPath Visualizer: DOM抽出: JSON scriptタグ ${jsonScripts.length}個検出, SHA候補 ${shaCount}個`);
+	console.log(`UiPath Visualizer: DOM extraction: JSON script tags detected: ${jsonScripts.length}, SHA candidates: ${shaCount}`);
 
-	// 方法B: インラインスクリプト（src属性なし、type属性なし）
-	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // インラインスクリプト
+	// Method B: inline scripts (no src attribute, no type attribute)
+	const inlineScripts = Array.from(document.querySelectorAll('script:not([src]):not([type])')); // inline scripts
 	for (let i = 0; i < inlineScripts.length; i++) {
 		const text = inlineScripts[i].textContent || '';
 		if (text.length > 100 && (text.includes('Oid') || text.includes('sha') || text.includes('Sha'))) {
 			const refs = extractShasFromText(text);
 			if (refs) {
-				console.log('UiPath Visualizer: インラインscriptタグからSHA取得成功');
+				console.log('UiPath Visualizer: SHA successfully retrieved from inline script tag');
 				return refs;
 			}
 		}
 	}
 
-	// 方法C: hidden input要素
-	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // 比較開始OID
-	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // 比較終了OID
+	// Method C: hidden input elements
+	const startOid = document.querySelector('input[name="comparison_start_oid"]') as HTMLInputElement; // comparison start OID
+	const endOid = document.querySelector('input[name="comparison_end_oid"]') as HTMLInputElement; // comparison end OID
 	if (startOid?.value && endOid?.value) {
-		console.log('UiPath Visualizer: hidden inputからSHA取得成功');
+		console.log('UiPath Visualizer: SHA successfully retrieved from hidden input');
 		return { baseSha: startOid.value, headSha: endOid.value };
 	}
 
-	// 方法D: blob リンクから head SHA を抽出
-	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blobリンク
+	// Method D: extract head SHA from blob links
+	const blobLinks = Array.from(document.querySelectorAll('a[href*="/blob/"]')); // blob links
 	if (blobLinks.length > 0) {
-		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
+		const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // SHA pattern in blob link
 		for (const link of blobLinks) {
-			const href = (link as HTMLAnchorElement).href; // リンクURL
-			const match = href.match(blobShaPattern); // SHA候補を検索
+			const href = (link as HTMLAnchorElement).href; // link URL
+			const match = href.match(blobShaPattern); // search for SHA candidates
 			if (match) {
-				console.log(`UiPath Visualizer: blobリンクからhead SHA候補取得: ${match[1]}`);
-				// blobリンクからはheadSHAのみ取得可能 → baseSHAは別途必要なので単独では使えない
-				// ただし、後でbaseSHA取得と組み合わせるために記録しておく
+				console.log(`UiPath Visualizer: head SHA candidate retrieved from blob link: ${match[1]}`);
+				// only head SHA can be obtained from blob link - base SHA is still needed separately
+				// record it here for later combination with base SHA retrieval
 				break;
 			}
 		}
 	}
 
-	// 方法E: ページ全体のHTMLからSHAペアを検索（最終手段）
-	const fullHtml = document.documentElement.innerHTML; // ページ全体のHTML
-	// まずキーワードの存在を確認してから正規表現を適用（パフォーマンス対策）
+	// Method E: search for SHA pairs in the full page HTML (last resort)
+	const fullHtml = document.documentElement.innerHTML; // full page HTML
+	// check for keywords first before applying regex (performance optimization)
 	if (fullHtml.indexOf('baseRefOid') !== -1 || fullHtml.indexOf('headRefOid') !== -1 ||
 		fullHtml.indexOf('baseSha') !== -1 || fullHtml.indexOf('headSha') !== -1 ||
 		fullHtml.indexOf('baseOid') !== -1 || fullHtml.indexOf('headOid') !== -1 ||
 		fullHtml.indexOf('comparison_start_oid') !== -1) {
-		console.log('UiPath Visualizer: ページ全体HTMLからSHAキーワード検出、正規表現で検索中...');
-		const refs = extractShasFromText(fullHtml); // ページ全体から抽出
+		console.log('UiPath Visualizer: SHA keyword detected in full page HTML, searching with regex...');
+		const refs = extractShasFromText(fullHtml); // extract from full page
 		if (refs) {
-			console.log('UiPath Visualizer: ページ全体HTMLからSHA取得成功');
+			console.log('UiPath Visualizer: SHA successfully retrieved from full page HTML');
 			return refs;
 		}
-		console.log('UiPath Visualizer: ページ全体HTMLにSHAキーワードあるがペア抽出失敗');
+		console.log('UiPath Visualizer: SHA keyword found in full page HTML but pair extraction failed');
 	}
 
 	return null;
 }
 
 /**
- * blobリンクからhead SHAを抽出（PR filesページ用）
+ * Extracts head SHA from blob links (for PR files page)
  */
 function extractBlobHeadSha(): string | null {
-	const blobLinks = document.querySelectorAll('a[href*="/blob/"]'); // blobリンク
-	const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // blobリンク内のSHAパターン
+	const blobLinks = document.querySelectorAll('a[href*="/blob/"]'); // blob links
+	const blobShaPattern = /\/blob\/([a-f0-9]{40})\//; // SHA pattern in blob link
 	for (const link of Array.from(blobLinks)) {
-		const href = (link as HTMLAnchorElement).href; // リンクURL
-		const match = href.match(blobShaPattern); // SHA候補を検索
-		if (match) return match[1]; // 最初に見つかったSHAを返す
+		const href = (link as HTMLAnchorElement).href; // link URL
+		const match = href.match(blobShaPattern); // search for SHA candidates
+		if (match) return match[1]; // return the first SHA found
 	}
 	return null;
 }
 
 /**
- * ブランチ名からコミットSHAを解決（GitHub同一オリジンfetch）
- * 複数の方法を試行して最新コミットSHAを取得する
+ * Resolves a branch name to a commit SHA (via GitHub same-origin fetch)
+ * Tries multiple methods to retrieve the latest commit SHA
  */
 async function resolveBranchSha(owner: string, repo: string, branch: string): Promise<string | null> {
-	// ブランチ名が既にSHA（40文字16進数）ならそのまま返す
+	// if branch name is already a SHA (40-character hex), return as-is
 	if (/^[a-f0-9]{40}$/.test(branch)) return branch;
-	const commitShaPattern = /\/commit\/([a-f0-9]{40})/; // コミットSHAパターン
+	const commitShaPattern = /\/commit\/([a-f0-9]{40})/; // commit SHA pattern
 
-	// 方法1: /commit/<branch> ページ（GitHubがSHA付きURLにリダイレクト or HTML内にSHA）
+	// Method 1: /commit/<branch> page (GitHub redirects to SHA URL or SHA is in HTML)
 	try {
-		const commitUrl = `https://github.com/${owner}/${repo}/commit/${encodeURIComponent(branch)}`; // 単一コミットページ
-		console.log(`UiPath Visualizer: ブランチSHA解決: ${branch} → ${commitUrl}`);
-		const response = await fetch(commitUrl, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		const commitUrl = `https://github.com/${owner}/${repo}/commit/${encodeURIComponent(branch)}`; // single commit page
+		console.log(`UiPath Visualizer: Resolving branch SHA: ${branch} -> ${commitUrl}`);
+		const response = await fetch(commitUrl, { credentials: 'same-origin' }); // send same-origin cookies
 		if (response.ok) {
-			// リダイレクト後のURLからSHA抽出（GitHubは /commit/<branch> → /commit/<sha> にリダイレクト）
-			const urlMatch = response.url.match(commitShaPattern); // リダイレクトURL
+			// extract SHA from redirected URL (GitHub redirects /commit/<branch> to /commit/<sha>)
+			const urlMatch = response.url.match(commitShaPattern); // redirect URL
 			if (urlMatch) {
-				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (URL): ${urlMatch[1]}`);
+				console.log(`UiPath Visualizer: Branch ${branch} -> SHA (URL): ${urlMatch[1]}`);
 				return urlMatch[1];
 			}
-			// HTMLからcanonical URL・og:url・commitリンクを検索
-			const html = await response.text(); // HTMLテキスト
+			// search HTML for canonical URL, og:url, or commit links
+			const html = await response.text(); // HTML text
 			const canonicalMatch = html.match(/<link[^>]*rel="canonical"[^>]*href="[^"]*\/commit\/([a-f0-9]{40})"/) // canonical URL
 				|| html.match(/<meta[^>]*property="og:url"[^>]*content="[^"]*\/commit\/([a-f0-9]{40})"/); // OG URL
 			if (canonicalMatch) {
-				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (canonical): ${canonicalMatch[1]}`);
+				console.log(`UiPath Visualizer: Branch ${branch} -> SHA (canonical): ${canonicalMatch[1]}`);
 				return canonicalMatch[1];
 			}
-			const shaMatch = html.match(commitShaPattern); // commitリンクからSHA抽出
+			const shaMatch = html.match(commitShaPattern); // extract SHA from commit links
 			if (shaMatch) {
-				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (HTML): ${shaMatch[1]}`);
+				console.log(`UiPath Visualizer: Branch ${branch} -> SHA (HTML): ${shaMatch[1]}`);
 				return shaMatch[1];
 			}
 		}
 	} catch (e) {
-		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗 (/commit):`, e);
+		console.warn(`UiPath Visualizer: Failed to resolve SHA for branch ${branch} (/commit):`, e);
 	}
 
-	// 方法2: /commits/<branch> ページ（コミット一覧からSHA抽出、フォールバック）
+	// Method 2: /commits/<branch> page (extract SHA from commit list, fallback)
 	try {
-		const url = `https://github.com/${owner}/${repo}/commits/${encodeURIComponent(branch)}`; // コミット一覧ページ
-		console.log(`UiPath Visualizer: ブランチSHA解決 (fallback): ${branch} → ${url}`);
-		const response = await fetch(url, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		const url = `https://github.com/${owner}/${repo}/commits/${encodeURIComponent(branch)}`; // commit list page
+		console.log(`UiPath Visualizer: Resolving branch SHA (fallback): ${branch} -> ${url}`);
+		const response = await fetch(url, { credentials: 'same-origin' }); // send same-origin cookies
 		if (response.ok) {
-			const html = await response.text(); // HTMLテキスト
-			const shaMatch = html.match(commitShaPattern); // コミットリンクからSHA抽出
+			const html = await response.text(); // HTML text
+			const shaMatch = html.match(commitShaPattern); // extract SHA from commit links
 			if (shaMatch) {
-				console.log(`UiPath Visualizer: ブランチ ${branch} → SHA (commits): ${shaMatch[1]}`);
+				console.log(`UiPath Visualizer: Branch ${branch} -> SHA (commits): ${shaMatch[1]}`);
 				return shaMatch[1];
 			}
 		}
 	} catch (e) {
-		console.warn(`UiPath Visualizer: ブランチ ${branch} のSHA解決失敗 (/commits):`, e);
+		console.warn(`UiPath Visualizer: Failed to resolve SHA for branch ${branch} (/commits):`, e);
 	}
 	return null;
 }
 
 /**
- * PRのbase/head SHAを取得（DOM抽出 → ブランチ解決 → 同一オリジンfetch → API フォールバック）
+ * Retrieves base/head SHAs for a PR (DOM extraction -> branch resolution -> same-origin fetch -> API fallback)
  */
 async function fetchPrRefs(pr: PrInfo): Promise<PrRefs> {
-	// キャッシュがあればそれを返す
+	// return cached value if available
 	if (cachedPrRefs) {
 		return cachedPrRefs;
 	}
 
-	// 方法1: 現在のページのDOMから直接SHA抽出（最速・最も信頼性が高い）
+	// Method 1: extract SHA directly from the current page DOM (fastest and most reliable)
 	const domRefs = extractShasFromDom();
 	if (domRefs) {
 		cachedPrRefs = domRefs;
 		return cachedPrRefs;
 	}
-	console.log('UiPath Visualizer: DOMからSHA取得できず、ブランチ解決にフォールバック');
+	console.log('UiPath Visualizer: Could not retrieve SHA from DOM, falling back to branch resolution');
 
-	// 方法2: .commit-ref のブランチ名からSHAを解決（プライベートリポジトリ対応）
-	const commitRefs = document.querySelectorAll('.commit-ref'); // コミット参照要素
+	// Method 2: resolve SHAs from branch names in .commit-ref (supports private repositories)
+	const commitRefs = document.querySelectorAll('.commit-ref'); // commit ref elements
 	if (commitRefs.length >= 2) {
-		const baseBranch = commitRefs[0].textContent?.trim(); // baseブランチ名
-		const headBranch = commitRefs[1].textContent?.trim(); // headブランチ名
+		const baseBranch = commitRefs[0].textContent?.trim(); // base branch name
+		const headBranch = commitRefs[1].textContent?.trim(); // head branch name
 		if (baseBranch && headBranch) {
-			console.log(`UiPath Visualizer: .commit-ref からブランチ名取得: base=${baseBranch}, head=${headBranch}`);
+			console.log(`UiPath Visualizer: Branch names retrieved from .commit-ref: base=${baseBranch}, head=${headBranch}`);
 
-			// blobリンクからhead SHAを取得できれば、baseのみ解決で往復を1回に削減
-			const blobHeadSha = extractBlobHeadSha(); // blobリンクからhead SHA取得
+			// if head SHA can be obtained from blob links, only base needs resolving (saves one round trip)
+			const blobHeadSha = extractBlobHeadSha(); // get head SHA from blob links
 			if (blobHeadSha) {
-				console.log(`UiPath Visualizer: blobリンクからhead SHA取得: ${blobHeadSha}`);
-				const baseSha = await resolveBranchSha(pr.owner, pr.repo, baseBranch); // baseのみ解決
+				console.log(`UiPath Visualizer: head SHA retrieved from blob link: ${blobHeadSha}`);
+				const baseSha = await resolveBranchSha(pr.owner, pr.repo, baseBranch); // resolve base only
 				if (baseSha) {
-					console.log('UiPath Visualizer: blob SHA + ブランチ解決でSHA取得成功');
+					console.log('UiPath Visualizer: SHA successfully retrieved via blob SHA + branch resolution');
 					cachedPrRefs = { baseSha, headSha: blobHeadSha };
 					return cachedPrRefs;
 				}
-				// base SHA解決失敗時はブランチ名を直接使用（GitHub raw URLはブランチ名も受け付ける）
-				console.log(`UiPath Visualizer: base SHA解決失敗、ブランチ名を直接使用: ${baseBranch}`);
+				// if base SHA resolution fails, use branch name directly (GitHub raw URL also accepts branch names)
+				console.log(`UiPath Visualizer: base SHA resolution failed, using branch name directly: ${baseBranch}`);
 				cachedPrRefs = { baseSha: baseBranch, headSha: blobHeadSha };
 				return cachedPrRefs;
 			}
 
-			// フォールバック: 両方のブランチをSHAに解決
-			const [baseSha, headSha] = await Promise.all([ // 並列で解決
+			// fallback: resolve both branches to SHAs
+			const [baseSha, headSha] = await Promise.all([ // resolve in parallel
 				resolveBranchSha(pr.owner, pr.repo, baseBranch),
 				resolveBranchSha(pr.owner, pr.repo, headBranch)
 			]);
 			if (baseSha && headSha) {
-				console.log('UiPath Visualizer: ブランチ名からSHA解決成功');
+				console.log('UiPath Visualizer: SHA successfully resolved from branch names');
 				cachedPrRefs = { baseSha, headSha };
 				return cachedPrRefs;
 			}
-			// 部分的にSHA解決できた場合、残りはブランチ名を直接使用
-			console.log(`UiPath Visualizer: SHA解決一部失敗、ブランチ名を直接使用: base=${baseSha || baseBranch}, head=${headSha || headBranch}`);
+			// if SHA resolution partially succeeded, use branch name directly for the rest
+			console.log(`UiPath Visualizer: Partial SHA resolution failure, using branch names directly: base=${baseSha || baseBranch}, head=${headSha || headBranch}`);
 			cachedPrRefs = { baseSha: baseSha || baseBranch, headSha: headSha || headBranch };
 			return cachedPrRefs;
 		}
 	}
-	console.log('UiPath Visualizer: ブランチ解決できず、fetch にフォールバック');
+	console.log('UiPath Visualizer: Branch resolution failed, falling back to fetch');
 
-	// 方法3: PRページをHTMLとして取得してSHA抽出（同一オリジン → Cookie送信）
-	const prPageUrl = `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.prNumber}`; // PRページURL
+	// Method 3: fetch the PR page as HTML and extract SHA (same-origin -> sends cookies)
+	const prPageUrl = `https://github.com/${pr.owner}/${pr.repo}/pull/${pr.prNumber}`; // PR page URL
 
-	// 3a: credentials: 'same-origin' で試行
+	// 3a: try with credentials: 'same-origin'
 	try {
-		console.log(`UiPath Visualizer: HTML fetch (same-origin) 開始: ${prPageUrl}`);
-		const response = await fetch(prPageUrl, { credentials: 'same-origin' }); // 同一オリジンCookie送信
+		console.log(`UiPath Visualizer: Starting HTML fetch (same-origin): ${prPageUrl}`);
+		const response = await fetch(prPageUrl, { credentials: 'same-origin' }); // send same-origin cookies
 		console.log(`UiPath Visualizer: HTML fetch: status=${response.status}`);
 		if (response.ok) {
-			const html = await response.text(); // HTMLテキスト
-			console.log(`UiPath Visualizer: HTML fetch: length=${html.length}, SHA候補あり=${html.indexOf('baseRefOid') !== -1 || html.indexOf('baseSha') !== -1}`);
+			const html = await response.text(); // HTML text
+			console.log(`UiPath Visualizer: HTML fetch: length=${html.length}, SHA keyword present=${html.indexOf('baseRefOid') !== -1 || html.indexOf('baseSha') !== -1}`);
 			const refs = extractShasFromText(html);
 			if (refs) {
-				console.log('UiPath Visualizer: fetch HTML (same-origin) からSHA取得成功');
+				console.log('UiPath Visualizer: SHA successfully retrieved from fetched HTML (same-origin)');
 				cachedPrRefs = refs;
 				return cachedPrRefs;
 			}
-			console.warn('UiPath Visualizer: HTMLにSHAパターンが見つかりません (HTML length:', html.length, ')');
+			console.warn('UiPath Visualizer: SHA pattern not found in HTML (HTML length:', html.length, ')');
 		} else {
-			console.warn('UiPath Visualizer: PRページ取得失敗 (same-origin):', response.status);
+			console.warn('UiPath Visualizer: Failed to fetch PR page (same-origin):', response.status);
 		}
 	} catch (e) {
-		console.warn('UiPath Visualizer: PRページfetchエラー (same-origin):', e);
+		console.warn('UiPath Visualizer: PR page fetch error (same-origin):', e);
 	}
 
-	// 3b: credentials: 'include' で再試行（Chrome拡張でのCookie送信挙動の違いに対応）
+	// 3b: retry with credentials: 'include' (handles differences in cookie sending behavior in Chrome extensions)
 	try {
-		console.log(`UiPath Visualizer: HTML fetch (include) 開始: ${prPageUrl}`);
-		const response = await fetch(prPageUrl, { credentials: 'include' }); // Cookie含むリクエスト
+		console.log(`UiPath Visualizer: Starting HTML fetch (include): ${prPageUrl}`);
+		const response = await fetch(prPageUrl, { credentials: 'include' }); // request with cookies
 		console.log(`UiPath Visualizer: HTML fetch (include): status=${response.status}`);
 		if (response.ok) {
-			const html = await response.text(); // HTMLテキスト
+			const html = await response.text(); // HTML text
 			console.log(`UiPath Visualizer: HTML fetch (include): length=${html.length}`);
 			const refs = extractShasFromText(html);
 			if (refs) {
-				console.log('UiPath Visualizer: fetch HTML (include) からSHA取得成功');
+				console.log('UiPath Visualizer: SHA successfully retrieved from fetched HTML (include)');
 				cachedPrRefs = refs;
 				return cachedPrRefs;
 			}
 		}
 	} catch (e) {
-		console.warn('UiPath Visualizer: PRページfetchエラー (include):', e);
+		console.warn('UiPath Visualizer: PR page fetch error (include):', e);
 	}
 
-	// 方法4: GitHub REST API（パブリックリポジトリ用フォールバック）
+	// Method 4: GitHub REST API (fallback for public repositories)
 	try {
 		const apiUrl = `https://api.github.com/repos/${pr.owner}/${pr.repo}/pulls/${pr.prNumber}`; // API URL
-		console.log(`UiPath Visualizer: API fetch 開始: ${apiUrl}`);
+		console.log(`UiPath Visualizer: Starting API fetch: ${apiUrl}`);
 		const apiResponse = await fetch(apiUrl, {
 			headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
 		});
 		console.log(`UiPath Visualizer: API fetch: status=${apiResponse.status}`);
 		if (apiResponse.ok) {
-			const data = await apiResponse.json(); // レスポンスをパース
+			const data = await apiResponse.json(); // parse response
 			cachedPrRefs = { baseSha: data.base.sha, headSha: data.head.sha };
-			console.log('UiPath Visualizer: GitHub APIからSHA取得成功');
+			console.log('UiPath Visualizer: SHA successfully retrieved from GitHub API');
 			return cachedPrRefs;
 		}
 	} catch (e) {
-		console.warn('UiPath Visualizer: GitHub APIフォールバック失敗:', e);
+		console.warn('UiPath Visualizer: GitHub API fallback failed:', e);
 	}
 
-	throw new Error('PR の base/head SHA を取得できません。コンソールログを確認してください。'); // エラー
+	throw new Error('Could not retrieve base/head SHA for PR. Please check the console log.'); // error
 }
 
 /**
- * コミットページ用のbase/head SHA取得（DOM抽出 → API フォールバック）
+ * Retrieves base/head SHAs for the commit page (DOM extraction -> API fallback)
  */
 async function fetchCommitRefs(owner: string, repo: string): Promise<PrRefs> {
-	// 方法1: DOMからSHA抽出（hidden input等）
-	const domRefs = extractShasFromDom(); // DOMから直接抽出
+	// Method 1: extract SHAs from DOM (hidden inputs, etc.)
+	const domRefs = extractShasFromDom(); // extract directly from DOM
 	if (domRefs) {
-		console.log('UiPath Visualizer: コミットページ - DOMからSHA取得成功');
+		console.log('UiPath Visualizer: Commit page - SHA successfully retrieved from DOM');
 		return domRefs;
 	}
 
-	// 方法2: URLからコミットSHAを取得してGitHub APIで親コミットを取得
-	const commitMatch = window.location.pathname.match(/\/commit\/([a-f0-9]{7,40})/); // URLからSHA抽出
+	// Method 2: get commit SHA from URL and retrieve parent commit via GitHub API
+	const commitMatch = window.location.pathname.match(/\/commit\/([a-f0-9]{7,40})/); // extract SHA from URL
 	if (commitMatch) {
-		const headSha = commitMatch[1]; // コミットSHA
+		const headSha = commitMatch[1]; // commit SHA
 		try {
 			const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${headSha}`; // Commits API
-			console.log(`UiPath Visualizer: コミットAPI fetch: ${apiUrl}`);
+			console.log(`UiPath Visualizer: Commit API fetch: ${apiUrl}`);
 			const response = await fetch(apiUrl, {
 				headers: { 'Accept': 'application/vnd.github.v3+json' } // GitHub API v3
 			});
 			if (response.ok) {
-				const data = await response.json(); // レスポンスをパース
+				const data = await response.json(); // parse response
 				if (data.parents && data.parents.length > 0) {
-					const baseSha = data.parents[0].sha; // 親コミットSHA
-					console.log(`UiPath Visualizer: コミットAPI - base=${baseSha}, head=${data.sha}`);
-					return { baseSha, headSha: data.sha }; // フルSHAを使用
+					const baseSha = data.parents[0].sha; // parent commit SHA
+					console.log(`UiPath Visualizer: Commit API - base=${baseSha}, head=${data.sha}`);
+					return { baseSha, headSha: data.sha }; // use full SHA
 				}
 			}
 		} catch (e) {
-			console.warn('UiPath Visualizer: コミットAPI失敗:', e);
+			console.warn('UiPath Visualizer: Commit API failed:', e);
 		}
 	}
 
-	// 方法3: Compareページの場合、URLからブランチ/SHA情報を使用
-	const compareMatch = window.location.pathname.match(/\/compare\/([^.]+)\.{2,3}(.+)/); // compare URLパターン
+	// Method 3: for Compare page, use branch/SHA info from URL
+	const compareMatch = window.location.pathname.match(/\/compare\/([^.]+)\.{2,3}(.+)/); // compare URL pattern
 	if (compareMatch) {
-		const baseRef = compareMatch[1]; // ベース参照
-		const headRef = compareMatch[2]; // ヘッド参照
-		console.log(`UiPath Visualizer: Compareページ - base=${baseRef}, head=${headRef}`);
-		// refがSHAでない場合（ブランチ名の場合）APIで解決
+		const baseRef = compareMatch[1]; // base ref
+		const headRef = compareMatch[2]; // head ref
+		console.log(`UiPath Visualizer: Compare page - base=${baseRef}, head=${headRef}`);
+		// if refs are not SHAs (i.e. branch names), resolve via API
 		try {
 			const [baseResponse, headResponse] = await Promise.all([
 				fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${baseRef}`, {
@@ -590,374 +591,375 @@ async function fetchCommitRefs(owner: string, repo: string): Promise<PrRefs> {
 				fetch(`https://api.github.com/repos/${owner}/${repo}/commits/${headRef}`, {
 					headers: { 'Accept': 'application/vnd.github.v3+json' }
 				})
-			]); // 両方のrefを解決
+			]); // resolve both refs
 			if (baseResponse.ok && headResponse.ok) {
-				const baseData = await baseResponse.json(); // ベースコミット
-				const headData = await headResponse.json(); // ヘッドコミット
+				const baseData = await baseResponse.json(); // base commit
+				const headData = await headResponse.json(); // head commit
 				console.log(`UiPath Visualizer: Compare API - base=${baseData.sha}, head=${headData.sha}`);
 				return { baseSha: baseData.sha, headSha: headData.sha };
 			}
 		} catch (e) {
-			console.warn('UiPath Visualizer: Compare API失敗:', e);
+			console.warn('UiPath Visualizer: Compare API failed:', e);
 		}
 	}
 
-	throw new Error('コミットの base/head SHA を取得できません。コンソールログを確認してください。'); // エラー
+	throw new Error('Could not retrieve base/head SHA for commit. Please check the console log.'); // error
 }
 
 /**
- * ファイル内容を取得（同一オリジン経由でプライベートリポジトリにも対応）
+ * Fetches file content (supports private repositories via same-origin)
  */
 async function fetchRawContent(owner: string, repo: string, sha: string, filePath: string): Promise<string> {
-	// 方法1: github.com の同一オリジンから取得（セッションCookieが送信される → プライベートリポジトリ対応）
-	const sameOriginUrl = `https://github.com/${owner}/${repo}/raw/${sha}/${filePath}`; // 同一オリジンURL
-	const response = await fetch(sameOriginUrl, { credentials: 'same-origin' }); // Cookie付きリクエスト
+	// Method 1: fetch from github.com same-origin (session cookies are sent -> supports private repositories)
+	const sameOriginUrl = `https://github.com/${owner}/${repo}/raw/${sha}/${filePath}`; // same-origin URL
+	const response = await fetch(sameOriginUrl, { credentials: 'same-origin' }); // request with cookies
 
 	if (response.status === 404) {
-		return ''; // ファイルが存在しない場合は空文字（新規追加/削除ファイル対応）
+		return ''; // file does not exist (handles newly added/deleted files)
 	}
 
 	if (response.ok) {
-		return await response.text(); // テキストとして返す
+		return await response.text(); // return as text
 	}
 
-	// 方法2: raw.githubusercontent.com にフォールバック（パブリックリポジトリ用）
+	// Method 2: fallback to raw.githubusercontent.com (for public repositories)
 	const rawUrl = `https://raw.githubusercontent.com/${owner}/${repo}/${sha}/${filePath}`; // Raw URL
-	const fallbackResponse = await fetch(rawUrl); // HTTP リクエスト
+	const fallbackResponse = await fetch(rawUrl); // HTTP request
 
 	if (fallbackResponse.status === 404) {
-		return ''; // ファイルが存在しない場合は空文字
+		return ''; // file does not exist
 	}
 
 	if (!fallbackResponse.ok) {
-		throw new Error(`Raw content 取得エラー: ${fallbackResponse.status}`); // エラー
+		throw new Error(`Raw content fetch error: ${fallbackResponse.status}`); // error
 	}
 
-	return await fallbackResponse.text(); // テキストとして返す
+	return await fallbackResponse.text(); // return as text
 }
 
-// ========== 差分ページのDOM操作 ==========
+// ========== DOM operations for diff pages ==========
 
 /**
- * 差分ページをスキャンしてXAMLファイルにボタンを注入（PR・コミット・Compare共通）
+ * Scans the diff page and injects buttons for XAML files (shared by PR, commit, and Compare pages)
  */
 function scanAndInjectDiffButtons(onClick?: (filePath: string) => void): void {
-	// GitHub差分ページで各ファイルのdivを取得
-	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // ファイルコンテナ
+	// get each file's div on GitHub diff pages
+	const fileContainers = document.querySelectorAll('div.file[data-tagsearch-path]'); // file containers
 
 	fileContainers.forEach(container => {
-		const filePath = container.getAttribute('data-tagsearch-path'); // ファイルパス
-		if (!filePath || !filePath.endsWith('.xaml')) return; // XAMLファイルのみ処理
+		const filePath = container.getAttribute('data-tagsearch-path'); // file path
+		if (!filePath || !filePath.endsWith('.xaml')) return; // process XAML files only
 
-		// 既にボタンが追加済みかチェック
-		if (container.querySelector('.uipath-visualizer-btn')) return; // 重複防止
+		// check if button has already been added
+		if (container.querySelector('.uipath-visualizer-btn')) return; // prevent duplicates
 
-		// ツールバーを探す（ファイルヘッダーのアクションエリア）
-		const toolbar = container.querySelector('.file-actions, .js-file-header-dropdown'); // ツールバー
+		// find the toolbar (action area in the file header)
+		const toolbar = container.querySelector('.file-actions, .js-file-header-dropdown'); // toolbar
 
-		if (!toolbar) return; // ツールバーが見つからない場合はスキップ
+		if (!toolbar) return; // skip if toolbar not found
 
-		// 「View as Workflow」ボタンを作成
-		const button = document.createElement('button'); // ボタン要素
-		button.textContent = 'View as Workflow'; // ボタンテキスト
-		button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHubスタイル + 識別クラス
-		button.style.marginLeft = '8px'; // 左マージン
+		// create the "View as Workflow" button
+		const button = document.createElement('button'); // button element
+		button.textContent = 'View as Workflow'; // button text
+		button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHub style + identifier class
+		button.style.marginLeft = '8px'; // left margin
 		button.addEventListener('click', (e) => {
-			e.preventDefault(); // デフォルト動作を防止
-			e.stopPropagation(); // イベント伝播を停止
-			(onClick || showDiffVisualizer)(filePath); // コールバックまたはデフォルトのPR用ビジュアライザーを呼び出し
+			e.preventDefault(); // prevent default behavior
+			e.stopPropagation(); // stop event propagation
+			(onClick || showDiffVisualizer)(filePath); // call callback or default PR visualizer
 		});
 
-		toolbar.appendChild(button); // ツールバーにボタンを追加
+		toolbar.appendChild(button); // add button to toolbar
 	});
 }
 
-// ========== 差分ビジュアライゼーション ==========
+// ========== Diff visualization ==========
 
 /**
- * 差分ビジュアライザーを表示
+ * Displays the diff visualizer
  */
 async function showDiffVisualizer(filePath: string): Promise<void> {
-	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
-	lastRenderContext = { type: 'diff', filePath }; // 再レンダリング用コンテキストを保存
+	removeExistingPanel(); // remove existing panel and overlay
+	lastRenderContext = { type: 'diff', filePath }; // save context for re-rendering
 
-	// ローディングパネルを表示
-	const panel = createPanel(); // パネル作成
-	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
-	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
-	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
-	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
-	document.body.appendChild(panel); // ページに追加
-	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
+	// show loading panel
+	const panel = createPanel(); // create panel
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // content area
+	contentArea.innerHTML = '<div class="status-message">Loading...</div>'; // show loading
+	originalBodyMarginRight = document.body.style.marginRight; // save current marginRight
+	originalBodyOverflowX = document.body.style.overflowX; // save current overflowX
+	document.body.appendChild(panel); // add to page
+	applyBodyShrink(panel.offsetWidth); // shrink page content
 
 	try {
-		const pr = parsePrUrl(); // PR情報を取得
-		if (!pr) throw new Error('PR情報を取得できません');
+		const pr = parsePrUrl(); // get PR info
+		if (!pr) throw new Error('Could not retrieve PR info');
 
-		const refs = await fetchPrRefs(pr); // base/head SHAを取得
-		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // スクリーンショットリゾルバー
-		const baseScreenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.baseSha); // 変更前スクリーンショットリゾルバー
+		const refs = await fetchPrRefs(pr); // get base/head SHAs
+		const screenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.headSha); // screenshot resolver
+		const baseScreenshotResolver = createScreenshotResolver(pr.owner, pr.repo, refs.baseSha); // screenshot resolver for before state
 
-		// before/afterのXAMLを並列で取得
+		// fetch before/after XAML in parallel
 		const [beforeXaml, afterXaml] = await Promise.all([
-			fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath), // ベース版
-			fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath)  // ヘッド版
+			fetchRawContent(pr.owner, pr.repo, refs.baseSha, filePath), // base version
+			fetchRawContent(pr.owner, pr.repo, refs.headSha, filePath)  // head version
 		]);
 
-		const parser = new XamlParser(); // パーサーを初期化
+		const parser = new XamlParser(); // initialize parser
 
 		if (beforeXaml && afterXaml) {
-			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
-			const beforeData = parser.parse(beforeXaml); // ベース版をパース
-			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
+			// modified file: show full workflow + diff highlights
+			const beforeData = parser.parse(beforeXaml); // parse base version
+			const afterData = parser.parse(afterXaml);   // parse head version
 
-			const diffCalc = new DiffCalculator(); // 差分計算
-			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
+			const diffCalc = new DiffCalculator(); // diff calculator
+			const diffResult = diffCalc.calculate(beforeData, afterData); // calculate diff
 
-			// 行番号マッピングを構築
-			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
+			// build line number mapping
+			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // line map for head side
 
-			contentArea.innerHTML = ''; // クリア
+			contentArea.innerHTML = ''; // clear
 
-			// フルワークフローをレンダリング（head版）
-			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
-			contentArea.appendChild(seqContainer); // コンテンツに追加
+			// render full workflow (head version)
+			const seqContainer = document.createElement('div'); // sequence container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(afterData, seqContainer, headLineIndex); // render all activities
+			contentArea.appendChild(seqContainer); // add to content
 
-			// 差分ハイライトをオーバーレイ適用
-			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // 変更・追加・削除をハイライト（スクリーンショット比較付き）
+			// overlay diff highlights
+			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // highlight modified/added/removed (with screenshot comparison)
 
-			// カーソル同期をセットアップ（Diff view）
+			// set up cursor sync (diff view)
 			setupCursorSync(panel, headLineIndex, 'diff', filePath);
 
 		} else if (afterXaml) {
-			// 新規ファイル: after のみ表示
-			const afterData = parser.parse(afterXaml); // パース
-			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
-			contentArea.appendChild(seqContainer); // 追加
+			// new file: show after only
+			const afterData = parser.parse(afterXaml); // parse
+			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // build line map
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // label
+			const seqContainer = document.createElement('div'); // container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(afterData, seqContainer, afterLineIndex); // render with line numbers
+			contentArea.appendChild(seqContainer); // add
 
-			// カーソル同期をセットアップ（新規ファイル → Blob view扱い）
+			// set up cursor sync (new file -> treated as blob view)
 			setupCursorSync(panel, afterLineIndex, 'blob');
 
 		} else if (beforeXaml) {
-			// 削除ファイル: before のみ表示
-			const beforeData = parser.parse(beforeXaml); // パース
-			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
-			contentArea.appendChild(seqContainer); // 追加
+			// deleted file: show before only
+			const beforeData = parser.parse(beforeXaml); // parse
+			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // build line map
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // label
+			const seqContainer = document.createElement('div'); // container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // render with line numbers
+			contentArea.appendChild(seqContainer); // add
 
 		} else {
-			contentArea.innerHTML = '<div class="status-message">XAMLコンテンツが見つかりません</div>'; // エラー表示
+			contentArea.innerHTML = '<div class="status-message">XAML content not found</div>'; // error display
 		}
 
 	} catch (error) {
-		console.error('差分ビジュアライザーエラー:', error); // エラーログ
+		console.error('Diff visualizer error:', error); // error log
 
-		// デバッグ情報を収集してパネルに表示
-		const debugInfo = collectDebugInfo(); // デバッグ情報収集
+		// collect debug info and display in panel
+		const debugInfo = collectDebugInfo(); // collect debug info
 		contentArea.innerHTML = `
 			<div class="error-message">
 				<div class="error-title">
-					エラー: ${(error as Error).message}
+					Error: ${(error as Error).message}
 				</div>
 				<div class="debug-info">${debugInfo.join('\n')}</div>
-			</div>`; // エラーとデバッグ情報を表示
+			</div>`; // display error and debug info
 	}
 }
 
 /**
- * コミット差分ビジュアライザーを表示（コメント機能なし）
+ * Displays the commit diff visualizer (no comment feature)
  */
 async function showCommitDiffVisualizer(filePath: string): Promise<void> {
-	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
-	lastRenderContext = { type: 'commit-diff', filePath }; // 再レンダリング用コンテキストを保存
+	removeExistingPanel(); // remove existing panel and overlay
+	lastRenderContext = { type: 'commit-diff', filePath }; // save context for re-rendering
 
-	// ローディングパネルを表示
-	const panel = createPanel(); // パネル作成
-	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
-	contentArea.innerHTML = '<div class="status-message">読み込み中...</div>'; // ローディング表示
-	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
-	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
-	document.body.appendChild(panel); // ページに追加
-	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
+	// show loading panel
+	const panel = createPanel(); // create panel
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // content area
+	contentArea.innerHTML = '<div class="status-message">Loading...</div>'; // show loading
+	originalBodyMarginRight = document.body.style.marginRight; // save current marginRight
+	originalBodyOverflowX = document.body.style.overflowX; // save current overflowX
+	document.body.appendChild(panel); // add to page
+	applyBodyShrink(panel.offsetWidth); // shrink page content
 
 	try {
-		const repoInfo = parseRepoInfo(); // リポジトリ情報を取得
-		if (!repoInfo) throw new Error('リポジトリ情報を取得できません');
+		const repoInfo = parseRepoInfo(); // get repository info
+		if (!repoInfo) throw new Error('Could not retrieve repository info');
 
-		const refs = await fetchCommitRefs(repoInfo.owner, repoInfo.repo); // base/head SHAを取得
-		const screenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.headSha); // スクリーンショットリゾルバー
-		const baseScreenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.baseSha); // 変更前スクリーンショットリゾルバー
+		const refs = await fetchCommitRefs(repoInfo.owner, repoInfo.repo); // get base/head SHAs
+		const screenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.headSha); // screenshot resolver
+		const baseScreenshotResolver = createScreenshotResolver(repoInfo.owner, repoInfo.repo, refs.baseSha); // screenshot resolver for before state
 
-		// before/afterのXAMLを並列で取得
+		// fetch before/after XAML in parallel
 		const [beforeXaml, afterXaml] = await Promise.all([
-			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.baseSha, filePath), // ベース版
-			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.headSha, filePath)  // ヘッド版
+			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.baseSha, filePath), // base version
+			fetchRawContent(repoInfo.owner, repoInfo.repo, refs.headSha, filePath)  // head version
 		]);
 
-		const parser = new XamlParser(); // パーサーを初期化
+		const parser = new XamlParser(); // initialize parser
 
 		if (beforeXaml && afterXaml) {
-			// 変更ファイル: フルワークフロー表示 + 差分ハイライト
-			const beforeData = parser.parse(beforeXaml); // ベース版をパース
-			const afterData = parser.parse(afterXaml);   // ヘッド版をパース
+			// modified file: show full workflow + diff highlights
+			const beforeData = parser.parse(beforeXaml); // parse base version
+			const afterData = parser.parse(afterXaml);   // parse head version
 
-			const diffCalc = new DiffCalculator(); // 差分計算
-			const diffResult = diffCalc.calculate(beforeData, afterData); // 差分を計算
+			const diffCalc = new DiffCalculator(); // diff calculator
+			const diffResult = diffCalc.calculate(beforeData, afterData); // calculate diff
 
-			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // head側の行マップ
+			const headLineIndex = XamlLineMapper.buildLineMap(afterXaml); // line map for head side
 
-			contentArea.innerHTML = ''; // クリア
+			contentArea.innerHTML = ''; // clear
 
-			// フルワークフローをレンダリング（head版）
-			const seqContainer = document.createElement('div'); // シーケンスコンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, headLineIndex); // 全アクティビティをレンダリング
-			contentArea.appendChild(seqContainer); // コンテンツに追加
+			// render full workflow (head version)
+			const seqContainer = document.createElement('div'); // sequence container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(afterData, seqContainer, headLineIndex); // render all activities
+			contentArea.appendChild(seqContainer); // add to content
 
-			// 差分ハイライトをオーバーレイ適用
-			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // 変更・追加・削除をハイライト（スクリーンショット比較付き）
+			// overlay diff highlights
+			applyDiffHighlights(seqContainer, diffResult, baseScreenshotResolver, screenshotResolver); // highlight modified/added/removed (with screenshot comparison)
 
-			// カーソル同期をセットアップ（Diff view）
+			// set up cursor sync (diff view)
 			setupCursorSync(panel, headLineIndex, 'diff', filePath);
 
 		} else if (afterXaml) {
-			// 新規ファイル: after のみ表示
-			const afterData = parser.parse(afterXaml); // パース
-			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // 行マップ構築
-			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(afterData, seqContainer, afterLineIndex); // 行番号付きでレンダリング
-			contentArea.appendChild(seqContainer); // 追加
+			// new file: show after only
+			const afterData = parser.parse(afterXaml); // parse
+			const afterLineIndex = XamlLineMapper.buildLineMap(afterXaml); // build line map
+			contentArea.innerHTML = `<div class="status-new-file">${t('New File')}</div>`; // label
+			const seqContainer = document.createElement('div'); // container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(afterData, seqContainer, afterLineIndex); // render with line numbers
+			contentArea.appendChild(seqContainer); // add
 
-			// カーソル同期をセットアップ（新規ファイル → Blob view扱い）
+			// set up cursor sync (new file -> treated as blob view)
 			setupCursorSync(panel, afterLineIndex, 'blob');
 
 		} else if (beforeXaml) {
-			// 削除ファイル: before のみ表示
-			const beforeData = parser.parse(beforeXaml); // パース
-			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // 行マップ構築
-			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // ラベル
-			const seqContainer = document.createElement('div'); // コンテナ
-			const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // 行番号付きでレンダリング
-			contentArea.appendChild(seqContainer); // 追加
+			// deleted file: show before only
+			const beforeData = parser.parse(beforeXaml); // parse
+			const beforeLineIndex = XamlLineMapper.buildLineMap(beforeXaml); // build line map
+			contentArea.innerHTML = `<div class="status-deleted-file">${t('Deleted File')}</div>`; // label
+			const seqContainer = document.createElement('div'); // container
+			const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+			seqRenderer.render(beforeData, seqContainer, beforeLineIndex); // render with line numbers
+			contentArea.appendChild(seqContainer); // add
 
 		} else {
-			contentArea.innerHTML = '<div class="status-message">XAMLコンテンツが見つかりません</div>'; // エラー表示
+			contentArea.innerHTML = '<div class="status-message">XAML content not found</div>'; // error display
 		}
 
 	} catch (error) {
-		console.error('コミット差分ビジュアライザーエラー:', error); // エラーログ
+		console.error('Commit diff visualizer error:', error); // error log
 
-		// デバッグ情報を収集してパネルに表示
-		const debugInfo = collectDebugInfo(); // デバッグ情報収集
+		// collect debug info and display in panel
+		const debugInfo = collectDebugInfo(); // collect debug info
 		contentArea.innerHTML = `
 			<div class="error-message">
 				<div class="error-title">
-					エラー: ${(error as Error).message}
+					Error: ${(error as Error).message}
 				</div>
 				<div class="debug-info">${debugInfo.join('\n')}</div>
-			</div>`; // エラーとデバッグ情報を表示
+			</div>`; // display error and debug info
 	}
 }
 
-// ========== カーソル同期（Visualizer ↔ GitHub） ==========
+// ========== Cursor sync (Visualizer <-> GitHub) ==========
 
 /**
- * GitHub側のハイライトスタイルをページに注入
+ * Injects highlight styles for GitHub-side into the page
  */
 function injectSyncHighlightStyles(): void {
-	if (document.getElementById('xaml-sync-styles')) return; // 既に注入済みならスキップ
-	const style = document.createElement('style'); // スタイル要素
-	style.id = 'xaml-sync-styles'; // 重複防止用ID
+	if (document.getElementById('xaml-sync-styles')) return; // skip if already injected
+	const style = document.createElement('style'); // style element
+	style.id = 'xaml-sync-styles'; // ID to prevent duplicates
 	style.textContent = `
 		.xaml-sync-highlight {
 			background-color: rgba(255, 165, 0, 0.25) !important;
 			transition: background-color 0.5s ease-out;
 		}
-	`; // GitHub側コード行のハイライトスタイル
-	document.head.appendChild(style); // ページに注入
+	`; // highlight style for GitHub-side code lines
+	document.head.appendChild(style); // inject into page
 }
 
 /**
- * GitHub側の同期ハイライトを全除去
+ * Removes all GitHub-side sync highlights
  */
 function clearGithubHighlights(): void {
 	document.querySelectorAll('.xaml-sync-highlight').forEach(el => {
-		el.classList.remove('xaml-sync-highlight'); // ハイライトクラスを除去
+		el.classList.remove('xaml-sync-highlight'); // remove highlight class
 	});
 }
 
 /**
- * Visualizer内カードのハイライトを全除去
+ * Removes all highlights from Visualizer cards
  */
 function clearVisualizerHighlights(panel: HTMLElement): void {
 	panel.querySelectorAll('.activity-card.sync-highlighted').forEach(el => {
-		el.classList.remove('sync-highlighted'); // ハイライトクラスを除去
+		el.classList.remove('sync-highlighted'); // remove highlight class
 	});
 }
 
 /**
- * Visualizer内のカードをハイライト＋スクロール（3秒後自動消去）
+ * Highlights and scrolls to a Visualizer card (auto-clears after 3 seconds)
  */
 function highlightVisualizerCard(panel: HTMLElement, activityKey: string): void {
-	clearVisualizerHighlights(panel); // 前のハイライトを消去
-	const card = panel.querySelector(`.activity-card[data-activity-key="${activityKey}"]`) as HTMLElement; // 対象カードを検索
-	if (!card) return; // 見つからなければ何もしない
-	card.classList.add('sync-highlighted'); // ハイライトクラスを追加
-	card.scrollIntoView({ behavior: 'smooth', block: 'center' }); // カードにスクロール
-	setTimeout(() => card.classList.remove('sync-highlighted'), 3000); // 3秒後にハイライト除去
+	clearVisualizerHighlights(panel); // clear previous highlights
+	const card = panel.querySelector(`.activity-card[data-activity-key="${activityKey}"]`) as HTMLElement; // find target card
+	if (!card) return; // do nothing if not found
+	card.classList.add('sync-highlighted'); // add highlight class
+	card.scrollIntoView({ behavior: 'smooth', block: 'center' }); // scroll to card
+	setTimeout(() => card.classList.remove('sync-highlighted'), 3000); // remove highlight after 3 seconds
 }
 
 /**
- * GitHub側の行をハイライト＋スクロール（2秒後自動消去）
+ * Highlights and scrolls to GitHub-side lines (auto-clears after 2 seconds)
  */
 function highlightGithubLines(startLine: number, endLine: number, filePath?: string): void {
-	clearGithubHighlights(); // 前のハイライトを消去
+	clearGithubHighlights(); // clear previous highlights
 
 	if (filePath) {
-		// Diff view: ファイルコンテナ内のtd.blob-numから該当行を検索
-		const fileContainer = document.querySelector(`div.file[data-tagsearch-path="${filePath}"]`); // ファイルコンテナ
+		// diff view: find matching lines from td.blob-num inside the file container
+		const fileContainer = document.querySelector(`div.file[data-tagsearch-path="${filePath}"]`); // file container
 		if (!fileContainer) return;
 		for (let line = startLine; line <= endLine; line++) {
-			// diff viewの行番号セルを検索（data-line-number属性で特定）
-			const lineNumCells = fileContainer.querySelectorAll(`td.blob-num[data-line-number="${line}"]`); // 行番号セル
+			// find line number cells in diff view (identified by data-line-number attribute)
+			const lineNumCells = fileContainer.querySelectorAll(`td.blob-num[data-line-number="${line}"]`); // line number cells
 			lineNumCells.forEach(cell => {
-				const row = cell.closest('tr'); // 行要素を取得
-				if (row) row.classList.add('xaml-sync-highlight'); // 行をハイライト
+				const row = cell.closest('tr'); // get row element
+				if (row) row.classList.add('xaml-sync-highlight'); // highlight the row
 			});
 		}
-		// 最初のハイライト行にスクロール
+		// scroll to first highlighted line
 		const firstHighlighted = fileContainer.querySelector('.xaml-sync-highlight') as HTMLElement;
 		if (firstHighlighted) firstHighlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	} else {
-		// Blob view: document.getElementById('LC${lineNum}') で行要素を取得
+		// blob view: get line element via document.getElementById('LC${lineNum}')
 		for (let line = startLine; line <= endLine; line++) {
-			const lineEl = document.getElementById(`LC${line}`); // コード行要素
-			if (lineEl) lineEl.classList.add('xaml-sync-highlight'); // ハイライト
+			const lineEl = document.getElementById(`LC${line}`); // code line element
+			if (lineEl) lineEl.classList.add('xaml-sync-highlight'); // highlight
 		}
-		// 中央の行にスクロール
-		const midLine = Math.floor((startLine + endLine) / 2); // 中央行番号
-		const scrollTarget = document.getElementById(`LC${midLine}`); // スクロール先
+		// scroll to the middle line
+		const midLine = Math.floor((startLine + endLine) / 2); // middle line number
+		const scrollTarget = document.getElementById(`LC${midLine}`); // scroll target
 		if (scrollTarget) scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
 	}
 
-	// 2秒後にハイライト自動消去
+	// auto-clear highlights after 2 seconds
 	setTimeout(clearGithubHighlights, 2000);
 }
 
 /**
- * カーソル同期をセットアップ（双方向: Visualizer ↔ GitHub）
+ * Sets up cursor sync (bidirectional: Visualizer <-> GitHub)
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/GitHub-Extension#cursor-synchronization
  */
 function setupCursorSync(
 	panel: HTMLElement,
@@ -965,747 +967,749 @@ function setupCursorSync(
 	viewMode: 'blob' | 'diff',
 	filePath?: string
 ): void {
-	// 前のリスナーを全解除
+	// remove all previous listeners
 	if (syncAbortController) syncAbortController.abort();
-	syncAbortController = new AbortController(); // 新規AbortController
-	const signal = syncAbortController.signal; // シグナル
+	syncAbortController = new AbortController(); // new AbortController
+	const signal = syncAbortController.signal; // signal
 
-	// === Direction 1: Visualizer → GitHub（行番号バッジクリック） ===
+	// === Direction 1: Visualizer -> GitHub (line number badge click) ===
 	panel.addEventListener('visualizer-line-click', ((e: CustomEvent) => {
-		const { startLine, endLine } = e.detail; // クリックされた行範囲
-		highlightGithubLines(startLine, endLine, viewMode === 'diff' ? filePath : undefined); // GitHub側をハイライト
-	}) as EventListener, { signal }); // AbortControllerで管理
+		const { startLine, endLine } = e.detail; // clicked line range
+		highlightGithubLines(startLine, endLine, viewMode === 'diff' ? filePath : undefined); // highlight GitHub side
+	}) as EventListener, { signal }); // managed by AbortController
 
-	// === Direction 2: GitHub → Visualizer（行番号クリック） ===
+	// === Direction 2: GitHub -> Visualizer (line number click) ===
 	if (viewMode === 'blob') {
-		// Blob view: コードテーブルの行番号セルのクリックを監視（イベント委譲）
-		const codeTable = document.querySelector('table.highlight') // コードテーブルを検索
-			|| document.querySelector('.blob-code-content table') // フォールバック
-			|| document.querySelector('.js-file-line-container'); // さらにフォールバック
+		// blob view: listen for clicks on line number cells in the code table (event delegation)
+		const codeTable = document.querySelector('table.highlight') // find code table
+			|| document.querySelector('.blob-code-content table') // fallback
+			|| document.querySelector('.js-file-line-container'); // further fallback
 		if (codeTable) {
 			codeTable.addEventListener('click', (e: Event) => {
-				const target = e.target as HTMLElement; // クリック対象
-				const lineCell = target.closest('td[id]') as HTMLElement; // 行番号セルを検索
+				const target = e.target as HTMLElement; // click target
+				const lineCell = target.closest('td[id]') as HTMLElement; // find line number cell
 				if (!lineCell) return;
-				const match = lineCell.id.match(/^L(\d+)$/); // id="L123" パターンにマッチ
+				const match = lineCell.id.match(/^L(\d+)$/); // match id="L123" pattern
 				if (!match) return;
-				const lineNum = parseInt(match[1], 10); // 行番号を取得
-				const activityKey = lineIndex.lineToKey.get(lineNum); // 行番号からアクティビティキーを検索
-				if (!activityKey) return; // マッピングなければ無視
-				highlightVisualizerCard(panel, activityKey); // Visualizer側カードをハイライト
-			}, { signal }); // AbortControllerで管理
+				const lineNum = parseInt(match[1], 10); // get line number
+				const activityKey = lineIndex.lineToKey.get(lineNum); // look up activity key from line number
+				if (!activityKey) return; // ignore if no mapping
+				highlightVisualizerCard(panel, activityKey); // highlight Visualizer-side card
+			}, { signal }); // managed by AbortController
 		}
 	} else {
-		// Diff view: ファイルコンテナ内の行番号セルのクリックを監視
+		// diff view: listen for clicks on line number cells inside the file container
 		const fileContainer = filePath
 			? document.querySelector(`div.file[data-tagsearch-path="${filePath}"]`)
-			: null; // ファイルコンテナ
+			: null; // file container
 		if (fileContainer) {
 			fileContainer.addEventListener('click', (e: Event) => {
-				const target = e.target as HTMLElement; // クリック対象
-				const blobNumCell = target.closest('td.blob-num[data-line-number]') as HTMLElement; // 行番号セルを検索
+				const target = e.target as HTMLElement; // click target
+				const blobNumCell = target.closest('td.blob-num[data-line-number]') as HTMLElement; // find line number cell
 				if (!blobNumCell) return;
-				const lineNum = parseInt(blobNumCell.getAttribute('data-line-number') || '0', 10); // 行番号を取得
+				const lineNum = parseInt(blobNumCell.getAttribute('data-line-number') || '0', 10); // get line number
 				if (!lineNum) return;
-				const activityKey = lineIndex.lineToKey.get(lineNum); // 行番号からアクティビティキーを検索
-				if (!activityKey) return; // マッピングなければ無視
-				highlightVisualizerCard(panel, activityKey); // Visualizer側カードをハイライト
-			}, { signal }); // AbortControllerで管理
+				const activityKey = lineIndex.lineToKey.get(lineNum); // look up activity key from line number
+				if (!activityKey) return; // ignore if no mapping
+				highlightVisualizerCard(panel, activityKey); // highlight Visualizer-side card
+			}, { signal }); // managed by AbortController
 		}
 	}
 }
 
-// ========== 検索機能 ==========
+// ========== Search feature ==========
 
 /**
- * テキストノード内の一致部分を <mark> で囲んでハイライト
+ * Wraps matching parts of text nodes in <mark> elements to highlight them
  */
 function highlightTextInElement(el: HTMLElement, query: string): void {
-	const lowerQuery = query.toLowerCase(); // 小文字化したクエリ
-	const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); // テキストノードを走査
-	const textNodes: Text[] = []; // テキストノードリスト
+	const lowerQuery = query.toLowerCase(); // lowercased query
+	const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); // traverse text nodes
+	const textNodes: Text[] = []; // list of text nodes
 	while (walker.nextNode()) {
-		textNodes.push(walker.currentNode as Text); // テキストノードを収集
+		textNodes.push(walker.currentNode as Text); // collect text nodes
 	}
 	for (const node of textNodes) {
-		const text = node.textContent || ''; // テキスト内容
-		const lowerText = text.toLowerCase(); // 小文字化
-		const idx = lowerText.indexOf(lowerQuery); // 一致位置
-		if (idx === -1) continue; // 一致なしならスキップ
+		const text = node.textContent || ''; // text content
+		const lowerText = text.toLowerCase(); // lowercased
+		const idx = lowerText.indexOf(lowerQuery); // match position
+		if (idx === -1) continue; // skip if no match
 
-		const before = text.substring(0, idx); // 一致前のテキスト
-		const match = text.substring(idx, idx + query.length); // 一致テキスト
-		const after = text.substring(idx + query.length); // 一致後のテキスト
+		const before = text.substring(0, idx); // text before match
+		const match = text.substring(idx, idx + query.length); // matched text
+		const after = text.substring(idx + query.length); // text after match
 
-		const mark = document.createElement('mark'); // <mark> 要素
-		mark.className = 'search-highlight'; // ハイライトクラス
-		mark.textContent = match; // 一致テキストを設定
+		const mark = document.createElement('mark'); // <mark> element
+		mark.className = 'search-highlight'; // highlight class
+		mark.textContent = match; // set matched text
 
-		const parent = node.parentNode; // 親ノード
+		const parent = node.parentNode; // parent node
 		if (!parent) continue;
-		if (before) parent.insertBefore(document.createTextNode(before), node); // 一致前テキスト
-		parent.insertBefore(mark, node); // <mark> 要素を挿入
-		if (after) parent.insertBefore(document.createTextNode(after), node); // 一致後テキスト
-		parent.removeChild(node); // 元のテキストノードを削除
+		if (before) parent.insertBefore(document.createTextNode(before), node); // text before match
+		parent.insertBefore(mark, node); // insert <mark> element
+		if (after) parent.insertBefore(document.createTextNode(after), node); // text after match
+		parent.removeChild(node); // remove original text node
 	}
 }
 
 /**
- * 検索ハイライト（<mark>）をテキストノードに戻して結合
+ * Reverts search highlights (<mark>) back to text nodes and merges them
  */
 function clearSearchHighlights(): void {
-	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	const panel = document.getElementById('uipath-visualizer-panel'); // get panel
 	if (!panel) return;
 
-	// <mark> 要素をテキストノードに戻す
+	// revert <mark> elements back to text nodes
 	panel.querySelectorAll('mark.search-highlight, mark.search-highlight-current').forEach(mark => {
-		const parent = mark.parentNode; // 親ノード
+		const parent = mark.parentNode; // parent node
 		if (!parent) return;
-		const textNode = document.createTextNode(mark.textContent || ''); // テキストノードに変換
-		parent.replaceChild(textNode, mark); // 置換
-		parent.normalize(); // 隣接テキストノードを結合
+		const textNode = document.createTextNode(mark.textContent || ''); // convert to text node
+		parent.replaceChild(textNode, mark); // replace
+		parent.normalize(); // merge adjacent text nodes
 	});
 
-	// 検索関連クラスを全除去
+	// remove all search-related classes
 	panel.querySelectorAll('.activity-card.search-match, .activity-card.search-current, .activity-card.search-dimmed').forEach(el => {
-		el.classList.remove('search-match', 'search-current', 'search-dimmed'); // クラス除去
+		el.classList.remove('search-match', 'search-current', 'search-dimmed'); // remove classes
 	});
 }
 
 /**
- * 検索状態を完全にクリア
+ * Completely clears the search state
  */
 function clearSearch(input: HTMLInputElement, countSpan: HTMLElement, prevBtn: HTMLButtonElement, nextBtn: HTMLButtonElement): void {
-	clearSearchHighlights(); // ハイライトを除去
-	searchMatches = []; // 一致リストをクリア
-	searchCurrentIndex = -1; // インデックスをリセット
-	input.value = ''; // 入力をクリア
-	countSpan.textContent = ''; // カウント表示をクリア
-	prevBtn.disabled = true; // ナビボタンを無効化
-	nextBtn.disabled = true; // ナビボタンを無効化
+	clearSearchHighlights(); // remove highlights
+	searchMatches = []; // clear match list
+	searchCurrentIndex = -1; // reset index
+	input.value = ''; // clear input
+	countSpan.textContent = ''; // clear count display
+	prevBtn.disabled = true; // disable nav buttons
+	nextBtn.disabled = true; // disable nav buttons
 }
 
 /**
- * 現在の一致にフォーカスを更新（スクロール + カウント表示）
+ * Updates focus to the current match (scroll + count display)
  */
 function updateSearchFocus(countSpan: HTMLElement): void {
-	// 前の search-current を解除
-	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	// clear previous search-current
+	const panel = document.getElementById('uipath-visualizer-panel'); // get panel
 	if (panel) {
 		panel.querySelectorAll('.activity-card.search-current').forEach(el => {
-			el.classList.remove('search-current'); // 前のフォーカスを解除
+			el.classList.remove('search-current'); // clear previous focus
 		});
 		panel.querySelectorAll('mark.search-highlight-current').forEach(mark => {
-			mark.className = 'search-highlight'; // テキストハイライトも通常に戻す
+			mark.className = 'search-highlight'; // revert text highlight to normal
 		});
 	}
 
 	if (searchMatches.length === 0 || searchCurrentIndex < 0) {
-		countSpan.textContent = ''; // カウント表示をクリア
+		countSpan.textContent = ''; // clear count display
 		return;
 	}
 
-	const current = searchMatches[searchCurrentIndex]; // 現在の一致カード
-	current.classList.add('search-current'); // フォーカスクラスを追加
-	current.scrollIntoView({ behavior: 'smooth', block: 'center' }); // スクロール
+	const current = searchMatches[searchCurrentIndex]; // current matched card
+	current.classList.add('search-current'); // add focus class
+	current.scrollIntoView({ behavior: 'smooth', block: 'center' }); // scroll
 
-	// 現在カード内の <mark> を強調
-	const mark = current.querySelector('.activity-title mark.search-highlight'); // タイトル内のmark
-	if (mark) mark.className = 'search-highlight-current'; // 強調クラスに変更
+	// emphasize <mark> inside the current card
+	const mark = current.querySelector('.activity-title mark.search-highlight'); // mark inside title
+	if (mark) mark.className = 'search-highlight-current'; // change to emphasis class
 
-	countSpan.textContent = `${searchCurrentIndex + 1}/${searchMatches.length} 件`; // カウント表示を更新
+	countSpan.textContent = `${searchCurrentIndex + 1}/${searchMatches.length}`; // update count display
 }
 
 /**
- * 一致リスト内を前/次に移動（循環）
+ * Navigates to the previous/next match in the list (circular)
  */
 function navigateSearch(direction: 'prev' | 'next', countSpan: HTMLElement): void {
-	if (searchMatches.length === 0) return; // 一致なしなら何もしない
+	if (searchMatches.length === 0) return; // do nothing if no matches
 	if (direction === 'next') {
-		searchCurrentIndex = (searchCurrentIndex + 1) % searchMatches.length; // 次へ（循環）
+		searchCurrentIndex = (searchCurrentIndex + 1) % searchMatches.length; // next (circular)
 	} else {
-		searchCurrentIndex = (searchCurrentIndex - 1 + searchMatches.length) % searchMatches.length; // 前へ（循環）
+		searchCurrentIndex = (searchCurrentIndex - 1 + searchMatches.length) % searchMatches.length; // previous (circular)
 	}
-	updateSearchFocus(countSpan); // フォーカスを更新
+	updateSearchFocus(countSpan); // update focus
 }
 
 /**
- * 検索を実行（パネル内の全 .activity-card を走査）
+ * Executes a search (scans all .activity-card elements in the panel)
  */
 function performSearch(query: string, countSpan: HTMLElement, prevBtn: HTMLButtonElement, nextBtn: HTMLButtonElement): void {
-	clearSearchHighlights(); // 前の検索結果をクリア
-	searchMatches = []; // 一致リストをリセット
-	searchCurrentIndex = -1; // インデックスをリセット
+	clearSearchHighlights(); // clear previous search results
+	searchMatches = []; // reset match list
+	searchCurrentIndex = -1; // reset index
 
 	if (!query.trim()) {
-		countSpan.textContent = ''; // カウント表示をクリア
-		prevBtn.disabled = true; // ナビボタンを無効化
-		nextBtn.disabled = true; // ナビボタンを無効化
+		countSpan.textContent = ''; // clear count display
+		prevBtn.disabled = true; // disable nav buttons
+		nextBtn.disabled = true; // disable nav buttons
 		return;
 	}
 
-	const panel = document.getElementById('uipath-visualizer-panel'); // パネル取得
+	const panel = document.getElementById('uipath-visualizer-panel'); // get panel
 	if (!panel) return;
 
-	const lowerQuery = query.toLowerCase(); // 小文字化したクエリ
-	const allCards = Array.from(panel.querySelectorAll('.activity-card')) as HTMLElement[]; // 全カード
+	const lowerQuery = query.toLowerCase(); // lowercased query
+	const allCards = Array.from(panel.querySelectorAll('.activity-card')) as HTMLElement[]; // all cards
 
-	// 各カードの一致/非一致を判定
-	const matchedCards = new Set<HTMLElement>(); // 一致カードセット
+	// determine match/no-match for each card
+	const matchedCards = new Set<HTMLElement>(); // set of matched cards
 	for (const card of allCards) {
-		const titleEl = card.querySelector(':scope > .activity-header > .activity-title') as HTMLElement; // タイトル要素（直接の子のみ）
+		const titleEl = card.querySelector(':scope > .activity-header > .activity-title') as HTMLElement; // title element (direct children only)
 		if (!titleEl) continue;
-		const titleText = titleEl.textContent || ''; // タイトルテキスト
+		const titleText = titleEl.textContent || ''; // title text
 		if (titleText.toLowerCase().includes(lowerQuery)) {
-			matchedCards.add(card); // 一致カードに追加
+			matchedCards.add(card); // add to matched cards
 		}
 	}
 
-	// 一致カードの祖先カードもディム解除対象に追加
-	const undimmedCards = new Set<HTMLElement>(matchedCards); // ディム解除カードセット
+	// also un-dim ancestor cards of matched cards
+	const undimmedCards = new Set<HTMLElement>(matchedCards); // set of un-dimmed cards
 	for (const card of matchedCards) {
-		let parent = card.parentElement; // 親要素を取得
+		let parent = card.parentElement; // get parent element
 		while (parent) {
-			const ancestorCard = parent.closest('.activity-card') as HTMLElement; // 祖先カードを検索
+			const ancestorCard = parent.closest('.activity-card') as HTMLElement; // find ancestor card
 			if (ancestorCard && ancestorCard !== card) {
-				undimmedCards.add(ancestorCard); // 祖先カードをディム解除
-				parent = ancestorCard.parentElement; // さらに上の祖先を検索
+				undimmedCards.add(ancestorCard); // un-dim ancestor card
+				parent = ancestorCard.parentElement; // search further up
 			} else {
-				break; // パネル外に出たら終了
+				break; // stop when outside the panel
 			}
 		}
 	}
 
-	// クラスを付与
+	// apply classes
 	for (const card of allCards) {
 		if (matchedCards.has(card)) {
-			card.classList.add('search-match'); // 一致カード
-			searchMatches.push(card); // 一致リストに追加
-			// タイトル内のテキストをハイライト
+			card.classList.add('search-match'); // matched card
+			searchMatches.push(card); // add to match list
+			// highlight text inside title
 			const titleEl = card.querySelector(':scope > .activity-header > .activity-title') as HTMLElement;
-			if (titleEl) highlightTextInElement(titleEl, query); // テキストハイライト
+			if (titleEl) highlightTextInElement(titleEl, query); // highlight text
 		} else if (!undimmedCards.has(card)) {
-			card.classList.add('search-dimmed'); // 非一致かつ祖先でもないカード
+			card.classList.add('search-dimmed'); // card that neither matches nor is an ancestor
 		}
 	}
 
-	// ナビボタンの有効/無効
-	const hasMatches = searchMatches.length > 0; // 一致があるか
-	prevBtn.disabled = !hasMatches; // 前ボタン
-	nextBtn.disabled = !hasMatches; // 次ボタン
+	// enable/disable nav buttons
+	const hasMatches = searchMatches.length > 0; // whether there are matches
+	prevBtn.disabled = !hasMatches; // previous button
+	nextBtn.disabled = !hasMatches; // next button
 
 	if (hasMatches) {
-		searchCurrentIndex = 0; // 最初の一致にフォーカス
-		updateSearchFocus(countSpan); // フォーカスを更新
+		searchCurrentIndex = 0; // focus on first match
+		updateSearchFocus(countSpan); // update focus
 	} else {
-		countSpan.textContent = '0 件'; // 一致なし表示
+		countSpan.textContent = '0'; // no matches display
 	}
 }
 
 /**
- * 検索バーを作成
+ * Creates the search bar
  */
 function createSearchBar(): HTMLElement {
-	const bar = document.createElement('div'); // 検索バーコンテナ
-	bar.className = 'panel-search-bar'; // CSSクラス
+	const bar = document.createElement('div'); // search bar container
+	bar.className = 'panel-search-bar'; // CSS class
 
-	const input = document.createElement('input'); // 検索入力フィールド
-	input.type = 'text'; // テキスト入力
-	input.className = 'panel-search-input'; // CSSクラス
-	input.placeholder = 'DisplayName で検索...'; // プレースホルダー
+	const input = document.createElement('input'); // search input field
+	input.type = 'text'; // text input
+	input.className = 'panel-search-input'; // CSS class
+	input.placeholder = 'Search by DisplayName...'; // placeholder
 
-	const countSpan = document.createElement('span'); // 一致件数表示
-	countSpan.className = 'panel-search-count'; // CSSクラス
+	const countSpan = document.createElement('span'); // match count display
+	countSpan.className = 'panel-search-count'; // CSS class
 
-	const prevBtn = document.createElement('button'); // 前ボタン
-	prevBtn.className = 'panel-search-nav-btn'; // CSSクラス
+	const prevBtn = document.createElement('button'); // previous button
+	prevBtn.className = 'panel-search-nav-btn'; // CSS class
 	prevBtn.textContent = '\u25B2'; // ▲
-	prevBtn.title = '前の一致 (Shift+Enter)'; // ツールチップ
-	prevBtn.disabled = true; // 初期状態は無効
+	prevBtn.title = 'Previous match (Shift+Enter)'; // tooltip
+	prevBtn.disabled = true; // initially disabled
 
-	const nextBtn = document.createElement('button'); // 次ボタン
-	nextBtn.className = 'panel-search-nav-btn'; // CSSクラス
+	const nextBtn = document.createElement('button'); // next button
+	nextBtn.className = 'panel-search-nav-btn'; // CSS class
 	nextBtn.textContent = '\u25BC'; // ▼
-	nextBtn.title = '次の一致 (Enter)'; // ツールチップ
-	nextBtn.disabled = true; // 初期状態は無効
+	nextBtn.title = 'Next match (Enter)'; // tooltip
+	nextBtn.disabled = true; // initially disabled
 
-	// 入力イベント: 250ms デバウンスで検索実行
+	// input event: execute search with 250ms debounce
 	input.addEventListener('input', () => {
-		if (searchDebounceTimer) clearTimeout(searchDebounceTimer); // 前のタイマーをクリア
+		if (searchDebounceTimer) clearTimeout(searchDebounceTimer); // clear previous timer
 		searchDebounceTimer = setTimeout(() => {
-			performSearch(input.value, countSpan, prevBtn, nextBtn); // 検索実行
-		}, 250); // 250msデバウンス
+			performSearch(input.value, countSpan, prevBtn, nextBtn); // execute search
+		}, 250); // 250ms debounce
 	});
 
-	// キーボードイベント: Enter/Shift+Enter で前/次ナビゲーション、Escape でクリア
+	// keyboard event: Enter/Shift+Enter for prev/next navigation, Escape to clear
 	input.addEventListener('keydown', (e: KeyboardEvent) => {
 		if (e.key === 'Enter') {
-			e.preventDefault(); // デフォルト動作を防止
+			e.preventDefault(); // prevent default behavior
 			if (e.shiftKey) {
-				navigateSearch('prev', countSpan); // Shift+Enter: 前へ
+				navigateSearch('prev', countSpan); // Shift+Enter: previous
 			} else {
-				navigateSearch('next', countSpan); // Enter: 次へ
+				navigateSearch('next', countSpan); // Enter: next
 			}
 		} else if (e.key === 'Escape') {
-			clearSearch(input, countSpan, prevBtn, nextBtn); // Escape: クリア
-			input.blur(); // フォーカスを外す
+			clearSearch(input, countSpan, prevBtn, nextBtn); // Escape: clear
+			input.blur(); // remove focus
 		}
 	});
 
-	// ナビボタンクリック
-	prevBtn.addEventListener('click', () => navigateSearch('prev', countSpan)); // 前へ
-	nextBtn.addEventListener('click', () => navigateSearch('next', countSpan)); // 次へ
+	// nav button clicks
+	prevBtn.addEventListener('click', () => navigateSearch('prev', countSpan)); // previous
+	nextBtn.addEventListener('click', () => navigateSearch('next', countSpan)); // next
 
-	bar.appendChild(input); // 入力フィールド追加
-	bar.appendChild(countSpan); // カウント表示追加
-	bar.appendChild(prevBtn); // 前ボタン追加
-	bar.appendChild(nextBtn); // 次ボタン追加
+	bar.appendChild(input); // add input field
+	bar.appendChild(countSpan); // add count display
+	bar.appendChild(prevBtn); // add previous button
+	bar.appendChild(nextBtn); // add next button
 
 	return bar;
 }
 
-// ========== パネルUI ==========
+// ========== Panel UI ==========
 
 /**
- * パネルを閉じてページレイアウトを復元（閉じるロジックの集約）
+ * Closes the panel and restores the page layout (centralized close logic)
  */
 function closePanel(): void {
-	clearGithubHighlights(); // GitHub側ハイライトをクリア
-	syncAbortController?.abort(); // カーソル同期リスナーを全解除
-	syncAbortController = null; // 参照をクリア
-	searchMatches = []; // 検索一致リストをクリア
-	searchCurrentIndex = -1; // 検索インデックスをリセット
-	lastRenderContext = null; // 再レンダリングコンテキストをクリア
-	document.getElementById('uipath-visualizer-panel')?.remove(); // パネル削除
-	document.body.style.marginRight = originalBodyMarginRight; // body marginを復元
-	document.body.style.overflowX = originalBodyOverflowX; // body overflowXを復元
+	clearGithubHighlights(); // clear GitHub-side highlights
+	syncAbortController?.abort(); // remove all cursor sync listeners
+	syncAbortController = null; // clear reference
+	searchMatches = []; // clear search match list
+	searchCurrentIndex = -1; // reset search index
+	lastRenderContext = null; // clear re-render context
+	document.getElementById('uipath-visualizer-panel')?.remove(); // remove panel
+	document.body.style.marginRight = originalBodyMarginRight; // restore body margin
+	document.body.style.overflowX = originalBodyOverflowX; // restore body overflowX
 }
 
 /**
- * 既存のパネルとオーバーレイを削除
+ * Removes the existing panel and overlay
  */
 function removeExistingPanel(): void {
-	closePanel(); // closePanel に委譲
+	closePanel(); // delegate to closePanel
 }
 
 /**
- * ページコンテンツを左に縮めてサイドバー分の余白を確保
+ * Shrinks the page content to the left to make room for the sidebar
  */
 function applyBodyShrink(panelWidth: number): void {
-	document.body.style.marginRight = panelWidth + 'px'; // サイドバー幅分のマージン
-	document.body.style.overflowX = 'hidden'; // 水平スクロール抑止
+	document.body.style.marginRight = panelWidth + 'px'; // margin equal to sidebar width
+	document.body.style.overflowX = 'hidden'; // suppress horizontal scrolling
 }
 
 /**
- * 左端リサイズハンドルでパネル幅変更
+ * Enables panel width resizing via the left-edge resize handle
  */
 function setupResize(panel: HTMLElement): void {
-	const handle = document.createElement('div'); // リサイズハンドル
-	handle.className = 'resize-handle'; // CSSクラス
-	panel.appendChild(handle); // パネルに追加
+	const handle = document.createElement('div'); // resize handle
+	handle.className = 'resize-handle'; // CSS class
+	panel.appendChild(handle); // add to panel
 
-	let isResizing = false; // リサイズ中フラグ
-	let startX = 0; // リサイズ開始X座標
-	let startWidth = 0; // リサイズ開始時の幅
+	let isResizing = false; // resizing flag
+	let startX = 0; // X coordinate at resize start
+	let startWidth = 0; // panel width at resize start
 
 	handle.addEventListener('mousedown', (e: MouseEvent) => {
-		isResizing = true; // リサイズ開始
-		startX = e.clientX; // マウスX座標
-		startWidth = panel.offsetWidth; // 現在の幅
-		panel.classList.add('is-resizing'); // リサイズ中クラス追加
-		handle.classList.add('is-active'); // ハンドルアクティブ状態
-		e.preventDefault(); // デフォルト動作防止
-		e.stopPropagation(); // イベント伝播停止
+		isResizing = true; // start resizing
+		startX = e.clientX; // mouse X coordinate
+		startWidth = panel.offsetWidth; // current width
+		panel.classList.add('is-resizing'); // add resizing class
+		handle.classList.add('is-active'); // handle active state
+		e.preventDefault(); // prevent default behavior
+		e.stopPropagation(); // stop event propagation
 	});
 
 	document.addEventListener('mousemove', (e: MouseEvent) => {
-		if (!isResizing) return; // リサイズ中でなければスキップ
-		const dx = startX - e.clientX; // 左ドラッグ = 幅拡大（符号反転）
-		const newWidth = Math.max(320, Math.min(window.innerWidth * 0.7, startWidth + dx)); // 最小320px、最大70vw
-		panel.style.width = newWidth + 'px'; // 幅を更新
-		applyBodyShrink(newWidth); // ページ縮小も同時更新
+		if (!isResizing) return; // skip if not resizing
+		const dx = startX - e.clientX; // drag left = expand width (sign inverted)
+		const newWidth = Math.max(320, Math.min(window.innerWidth * 0.7, startWidth + dx)); // min 320px, max 70vw
+		panel.style.width = newWidth + 'px'; // update width
+		applyBodyShrink(newWidth); // also update page shrink
 	});
 
 	document.addEventListener('mouseup', () => {
-		if (!isResizing) return; // リサイズ中でなければスキップ
-		isResizing = false; // リサイズ終了
-		panel.classList.remove('is-resizing'); // リサイズ中クラス除去
-		handle.classList.remove('is-active'); // ハンドルアクティブ解除
+		if (!isResizing) return; // skip if not resizing
+		isResizing = false; // end resizing
+		panel.classList.remove('is-resizing'); // remove resizing class
+		handle.classList.remove('is-active'); // deactivate handle
 	});
 }
 
 /**
- * ビジュアライザーパネルを作成
+ * Creates the visualizer panel
  */
 function createPanel(): HTMLElement {
-	const panel = document.createElement('div'); // パネル要素
-	panel.id = 'uipath-visualizer-panel'; // ID設定（レイアウト・色はCSSで定義）
+	const panel = document.createElement('div'); // panel element
+	panel.id = 'uipath-visualizer-panel'; // set ID (layout and colors defined in CSS)
 
-	// ヘッダー部分
-	const header = document.createElement('div'); // ヘッダー
-	header.className = 'panel-header'; // CSSクラスでスタイル適用
+	// header section
+	const header = document.createElement('div'); // header
+	header.className = 'panel-header'; // apply styles via CSS class
 
-	const titleArea = document.createElement('div'); // タイトルエリア
+	const titleArea = document.createElement('div'); // title area
 
-	const title = document.createElement('span'); // タイトル
-	title.textContent = 'UiPath Workflow Visualizer'; // タイトルテキスト
-	title.className = 'panel-title'; // CSSクラスでスタイル適用
+	const title = document.createElement('span'); // title
+	title.textContent = 'UiPath Workflow Visualizer'; // title text
+	title.className = 'panel-title'; // apply styles via CSS class
 
-	const buildInfo = document.createElement('div'); // ビルド情報
-	const buildDate = new Date(__BUILD_DATE__); // ビルド日時をDateに変換
-	const formattedDate = buildDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // 日本時間でフォーマット
-	buildInfo.textContent = `v${__VERSION__} | ${__BRANCH_NAME__} | Build: ${formattedDate}`; // バージョン、ブランチ名、ビルド日時
-	buildInfo.className = 'panel-build-info'; // CSSクラスでスタイル適用
+	const buildInfo = document.createElement('div'); // build info
+	const buildDate = new Date(__BUILD_DATE__); // convert build timestamp to Date
+	const formattedDate = buildDate.toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }); // format in Japan time
+	buildInfo.textContent = `v${__VERSION__} | ${__BRANCH_NAME__} | Build: ${formattedDate}`; // version, branch name, build timestamp
+	buildInfo.className = 'panel-build-info'; // apply styles via CSS class
 
 	titleArea.appendChild(title);
 	titleArea.appendChild(buildInfo);
 
-	const closeButton = document.createElement('button'); // 閉じるボタン
-	closeButton.textContent = '✕'; // テキスト
-	closeButton.className = 'btn btn-sm'; // ボタンスタイル
-	closeButton.addEventListener('click', () => closePanel()); // パネルを閉じる
+	const closeButton = document.createElement('button'); // close button
+	closeButton.textContent = '✕'; // text
+	closeButton.className = 'btn btn-sm'; // button style
+	closeButton.addEventListener('click', () => closePanel()); // close panel
 
 	/**
-	 * パネル関連のCSSルールを抽出し、CSS変数を実値に解決して返す
+	 * Extracts panel-related CSS rules and resolves CSS variables to their computed values
 	 */
 	function extractPanelCss(): string {
-		const rules: string[] = []; // 収集したCSSルール
-		const panel = document.getElementById('uipath-visualizer-panel'); // CSS変数解決用のパネル要素
-		const computedStyle = panel ? getComputedStyle(panel) : null; // パネルの計算済みスタイル
+		const rules: string[] = []; // collected CSS rules
+		const panel = document.getElementById('uipath-visualizer-panel'); // panel element for CSS variable resolution
+		const computedStyle = panel ? getComputedStyle(panel) : null; // computed style of the panel
 
-		for (const sheet of Array.from(document.styleSheets)) { // 全スタイルシートを走査
+		for (const sheet of Array.from(document.styleSheets)) { // iterate over all stylesheets
 			let cssRules: CSSRuleList;
 			try {
-				cssRules = sheet.cssRules; // ルール一覧を取得
+				cssRules = sheet.cssRules; // get rule list
 			} catch {
-				continue; // クロスオリジンのスタイルシートはスキップ
+				continue; // skip cross-origin stylesheets
 			}
-			for (const rule of Array.from(cssRules)) { // 各ルールを走査
-				if (rule.cssText.includes('uipath-visualizer-panel')) { // パネル関連のルールのみ収集
-					let text = rule.cssText; // ルールテキスト
-					if (computedStyle) { // CSS変数を実値に解決
+			for (const rule of Array.from(cssRules)) { // iterate over each rule
+				if (rule.cssText.includes('uipath-visualizer-panel')) { // collect only panel-related rules
+					let text = rule.cssText; // rule text
+					if (computedStyle) { // resolve CSS variables to computed values
 						text = text.replace(/var\(--([^)]+)\)/g, (_match, varName) => {
-							return computedStyle.getPropertyValue(`--${varName}`).trim() || _match; // 変数値を取得、なければ元のまま
+							return computedStyle.getPropertyValue(`--${varName}`).trim() || _match; // get variable value, or keep original if not found
 						});
 					}
-					rules.push(text); // 解決済みルールを追加
+					rules.push(text); // add resolved rule
 				}
 			}
 		}
-		return rules.join('\n'); // 改行区切りで結合
+		return rules.join('\n'); // join with newlines
 	}
 
-	// Copy HTMLボタン（デバッグ用）
-	const copyHtmlButton = document.createElement('button'); // コピーボタン
-	copyHtmlButton.textContent = 'Copy HTML'; // ボタンテキスト
-	copyHtmlButton.className = 'btn btn-sm panel-copy-btn'; // スタイル適用
-	copyHtmlButton.addEventListener('click', () => { // クリックイベント
-		const originalText = copyHtmlButton.textContent; // 元のテキストを保存
-		const css = extractPanelCss(); // パネル関連CSSを抽出
-		const fullHtml = `<style>\n${css}\n</style>\n<div id="uipath-visualizer-panel"><div class="panel-content">\n${content.innerHTML}\n</div></div>`; // CSSとパネル構造を含む完全なHTML
-		navigator.clipboard.writeText(fullHtml) // CSS付きHTMLをクリップボードにコピー
+	// Copy HTML button (for debugging)
+	const copyHtmlButton = document.createElement('button'); // copy button
+	copyHtmlButton.textContent = 'Copy HTML'; // button text
+	copyHtmlButton.className = 'btn btn-sm panel-copy-btn'; // apply style
+	copyHtmlButton.addEventListener('click', () => { // click event
+		const originalText = copyHtmlButton.textContent; // save original text
+		const css = extractPanelCss(); // extract panel-related CSS
+		const fullHtml = `<style>\n${css}\n</style>\n<div id="uipath-visualizer-panel"><div class="panel-content">\n${content.innerHTML}\n</div></div>`; // complete HTML including CSS and panel structure
+		navigator.clipboard.writeText(fullHtml) // copy HTML with CSS to clipboard
 			.then(() => {
-				copyHtmlButton.textContent = 'Copied!'; // 成功表示
-				copyHtmlButton.classList.add('panel-copy-btn-success'); // 成功スタイル
+				copyHtmlButton.textContent = 'Copied!'; // success display
+				copyHtmlButton.classList.add('panel-copy-btn-success'); // success style
 			})
 			.catch(() => {
-				copyHtmlButton.textContent = 'Failed'; // 失敗表示
-				copyHtmlButton.classList.add('panel-copy-btn-error'); // 失敗スタイル
+				copyHtmlButton.textContent = 'Failed'; // failure display
+				copyHtmlButton.classList.add('panel-copy-btn-error'); // failure style
 			})
 			.finally(() => {
-				setTimeout(() => { // 1.5秒後に元に戻す
-					copyHtmlButton.textContent = originalText; // テキスト復元
-					copyHtmlButton.classList.remove('panel-copy-btn-success', 'panel-copy-btn-error'); // スタイル復元
+				setTimeout(() => { // restore after 1.5 seconds
+					copyHtmlButton.textContent = originalText; // restore text
+					copyHtmlButton.classList.remove('panel-copy-btn-success', 'panel-copy-btn-error'); // restore style
 				}, 1500);
 			});
 	});
 
-	// 言語切替ボタン
-	const langToggleButton = document.createElement('button'); // 言語切替ボタン
-	langToggleButton.className = 'btn btn-sm panel-lang-toggle'; // スタイル適用
-	langToggleButton.textContent = getLanguage() === 'en' ? '日本語' : 'English'; // 現在と逆の言語を表示
-	langToggleButton.title = getLanguage() === 'en' ? '日本語に切り替え' : 'Switch to English'; // ツールチップ
-	langToggleButton.addEventListener('click', async () => { // クリックイベント
-		const newLang: Language = getLanguage() === 'en' ? 'ja' : 'en'; // 言語を切替
-		setLanguage(newLang); // 言語を設定
-		await saveLanguagePreference(newLang); // 永続化
-		reRenderCurrentPanel(); // パネルを再レンダリング
+	// language toggle button
+	const langToggleButton = document.createElement('button'); // language toggle button
+	langToggleButton.className = 'btn btn-sm panel-lang-toggle'; // apply style
+	langToggleButton.textContent = getLanguage() === 'en' ? '日本語' : 'English'; // show the opposite language
+	langToggleButton.title = getLanguage() === 'en' ? '日本語に切り替え' : 'Switch to English'; // tooltip
+	langToggleButton.addEventListener('click', async () => { // click event
+		const newLang: Language = getLanguage() === 'en' ? 'ja' : 'en'; // toggle language
+		setLanguage(newLang); // set language
+		await saveLanguagePreference(newLang); // persist
+		reRenderCurrentPanel(); // re-render panel
 	});
 
-	// ヘッダーボタングループ
-	const headerButtons = document.createElement('div'); // ボタンコンテナ
-	headerButtons.className = 'panel-header-buttons'; // スタイル適用
-	headerButtons.appendChild(langToggleButton); // 言語切替ボタン追加
-	headerButtons.appendChild(copyHtmlButton); // コピーボタン追加
-	headerButtons.appendChild(closeButton); // 閉じるボタン追加
+	// header button group
+	const headerButtons = document.createElement('div'); // button container
+	headerButtons.className = 'panel-header-buttons'; // apply style
+	headerButtons.appendChild(langToggleButton); // add language toggle button
+	headerButtons.appendChild(copyHtmlButton); // add copy button
+	headerButtons.appendChild(closeButton); // add close button
 
 	header.appendChild(titleArea);
 	header.appendChild(headerButtons);
 
-	// コンテンツ部分
-	const content = document.createElement('div'); // コンテンツ
-	content.className = 'panel-content'; // CSSクラスでスタイル適用
+	// content section
+	const content = document.createElement('div'); // content
+	content.className = 'panel-content'; // apply styles via CSS class
 
 	panel.appendChild(header);
-	const searchBar = createSearchBar(); // 検索バーを作成
-	panel.appendChild(searchBar); // 検索バーを追加
+	const searchBar = createSearchBar(); // create search bar
+	panel.appendChild(searchBar); // add search bar
 	panel.appendChild(content);
 
-	setupResize(panel); // リサイズを有効化
+	setupResize(panel); // enable resizing
 
 	return panel;
 }
 
-// ========== 既存機能: 個別XAMLファイルページ ==========
+// ========== Existing feature: individual XAML file page ==========
 
 /**
- * 個別XAMLファイルページにビジュアライザーボタンを追加
+ * Adds a visualizer button to the individual XAML file page
  */
 function addVisualizerButton(): void {
-	const toolbar = document.querySelector('.file-actions'); // ツールバー要素
+	const toolbar = document.querySelector('.file-actions'); // toolbar element
 
 	if (!toolbar) {
-		console.log('ツールバーが見つかりません'); // ログ出力
+		console.log('Toolbar not found'); // log output
 		return;
 	}
 
-	// 重複防止
+	// prevent duplicates
 	if (toolbar.querySelector('.uipath-visualizer-btn')) return;
 
-	const button = document.createElement('button'); // ボタン要素
-	button.textContent = 'View as Workflow'; // ボタンテキスト
-	button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHubのボタンスタイル + 識別クラス
-	button.style.marginLeft = '8px'; // 左マージン
-	button.addEventListener('click', showBlobVisualizer); // クリックイベント
+	const button = document.createElement('button'); // button element
+	button.textContent = 'View as Workflow'; // button text
+	button.className = 'btn btn-sm uipath-visualizer-btn'; // GitHub button style + identifier class
+	button.style.marginLeft = '8px'; // left margin
+	button.addEventListener('click', showBlobVisualizer); // click event
 
-	toolbar.appendChild(button); // ツールバーにボタンを追加
+	toolbar.appendChild(button); // add button to toolbar
 }
 
 /**
- * 個別ファイルのビジュアライザーを表示
+ * Displays the individual file visualizer
  */
 async function showBlobVisualizer(): Promise<void> {
 	try {
-		const xamlContent = await fetchXamlContent(); // XAML内容を取得
-		const parser = new XamlParser(); // パーサー初期化
-		const workflowData = parser.parse(xamlContent); // XAML解析
-		const lineIndex = XamlLineMapper.buildLineMap(xamlContent); // 行マップ構築
+		const xamlContent = await fetchXamlContent(); // fetch XAML content
+		const parser = new XamlParser(); // initialize parser
+		const workflowData = parser.parse(xamlContent); // parse XAML
+		const lineIndex = XamlLineMapper.buildLineMap(xamlContent); // build line map
 
-		// blob URLからスクリーンショットリゾルバーを作成
-		const repoInfo = parseRepoInfo(); // リポジトリ情報
-		const blobMatch = window.location.pathname.match(/^\/[^/]+\/[^/]+\/blob\/([^/]+)/); // blob URLからrefを抽出
-		const ref = blobMatch?.[1] || 'HEAD'; // ref（SHA またはブランチ名）
+		// create screenshot resolver from blob URL
+		const repoInfo = parseRepoInfo(); // repository info
+		const blobMatch = window.location.pathname.match(/^\/[^/]+\/[^/]+\/blob\/([^/]+)/); // extract ref from blob URL
+		const ref = blobMatch?.[1] || 'HEAD'; // ref (SHA or branch name)
 		const screenshotResolver = repoInfo
-			? createScreenshotResolver(repoInfo.owner, repoInfo.repo, ref) // リゾルバー生成
+			? createScreenshotResolver(repoInfo.owner, repoInfo.repo, ref) // generate resolver
 			: undefined;
 
-		displayBlobVisualizerPanel(workflowData, lineIndex, screenshotResolver); // パネル表示（行番号付き）
+		displayBlobVisualizerPanel(workflowData, lineIndex, screenshotResolver); // show panel (with line numbers)
 	} catch (error) {
-		console.error('ビジュアライザー表示エラー:', error); // エラーログ
-		alert('XAMLファイルの解析に失敗しました'); // アラート表示
+		console.error('Visualizer display error:', error); // error log
+		alert('Failed to parse XAML file'); // show alert
 	}
 }
 
 /**
- * XAMLファイルの内容を取得（Rawボタン経由）
+ * Fetches XAML file content (via the Raw button)
  */
 async function fetchXamlContent(): Promise<string> {
-	const rawButton = document.querySelector('a[data-testid="raw-button"]') as HTMLAnchorElement; // Raw ボタン
+	const rawButton = document.querySelector('a[data-testid="raw-button"]') as HTMLAnchorElement; // Raw button
 
 	if (!rawButton) {
-		throw new Error('Rawボタンが見つかりません'); // エラー
+		throw new Error('Raw button not found'); // error
 	}
 
 	const rawUrl = rawButton.href; // Raw URL
-	const response = await fetch(rawUrl); // HTTP リクエスト
+	const response = await fetch(rawUrl); // HTTP request
 	if (!response.ok) {
-		throw new Error(`HTTP error! status: ${response.status}`); // エラー
+		throw new Error(`HTTP error! status: ${response.status}`); // error
 	}
 
-	return await response.text(); // テキストとして返す
+	return await response.text(); // return as text
 }
 
 /**
- * 個別ファイル用ビジュアライザーパネルを表示
+ * Displays the visualizer panel for an individual file
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/GitHub-Extension#visualizer-panel-injection
  */
 function displayBlobVisualizerPanel(workflowData: any, lineIndex?: ActivityLineIndex, screenshotResolver?: ScreenshotPathResolver): void {
-	removeExistingPanel(); // 既存パネル＋オーバーレイを削除
-	lastRenderContext = { type: 'blob', workflowData, lineIndex, screenshotResolver }; // 再レンダリング用コンテキストを保存
+	removeExistingPanel(); // remove existing panel and overlay
+	lastRenderContext = { type: 'blob', workflowData, lineIndex, screenshotResolver }; // save context for re-rendering
 
-	const panel = createPanel(); // パネル作成
-	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // コンテンツエリア
+	const panel = createPanel(); // create panel
+	const contentArea = panel.querySelector('.panel-content') as HTMLElement; // content area
 
-	// SequenceRendererでレンダリング
-	const seqRenderer = new SequenceRenderer(screenshotResolver); // スクリーンショットリゾルバー付き
-	seqRenderer.render(workflowData, contentArea, lineIndex); // 行番号付きでレンダリング
+	// render with SequenceRenderer
+	const seqRenderer = new SequenceRenderer(screenshotResolver); // with screenshot resolver
+	seqRenderer.render(workflowData, contentArea, lineIndex); // render with line numbers
 
-	originalBodyMarginRight = document.body.style.marginRight; // 現在のmarginRightを保存
-	originalBodyOverflowX = document.body.style.overflowX; // 現在のoverflowXを保存
-	document.body.appendChild(panel); // ページに追加
-	applyBodyShrink(panel.offsetWidth); // ページコンテンツを縮小
+	originalBodyMarginRight = document.body.style.marginRight; // save current marginRight
+	originalBodyOverflowX = document.body.style.overflowX; // save current overflowX
+	document.body.appendChild(panel); // add to page
+	applyBodyShrink(panel.offsetWidth); // shrink page content
 
-	// カーソル同期をセットアップ（Blob view）
+	// set up cursor sync (blob view)
 	if (lineIndex) {
-		setupCursorSync(panel, lineIndex, 'blob'); // 双方向同期を有効化
+		setupCursorSync(panel, lineIndex, 'blob'); // enable bidirectional sync
 	}
 }
 
 /**
- * フルワークフロー上に差分ハイライトを適用（data-activity-keyで照合）
+ * Applies diff highlights on top of the full workflow (matched by data-activity-key)
  */
 /**
- * 2つの文字列の共通部分と差分部分を計算
+ * Calculates common and differing parts between two strings
  */
 /**
- * セレクター文字列を属性名・属性値の単位でトークン化
- * 例: `<webctrl aaname='ショッピング' tag='SPAN' />`
- * → [`<webctrl `, `aaname`, `='ショッピング' `, `tag`, `='SPAN' `, `/>`]
+ * Tokenizes a selector string into attribute name and value units
+ * Example: `<webctrl aaname='Shopping' tag='SPAN' />`
+ * -> [`<webctrl `, `aaname`, `='Shopping' `, `tag`, `='SPAN' `, `/>`]
  */
-function tokenizeSelector(s: string): string[] { // セレクター文字列をトークン分割
-	const tokens: string[] = []; // 結果配列
-	let i = 0; // 現在位置
+function tokenizeSelector(s: string): string[] { // split selector string into tokens
+	const tokens: string[] = []; // result array
+	let i = 0; // current position
 
-	// 先頭の <タグ名 を取得
-	const tagMatch = s.match(/^<[\w]+\s*/); // <webctrl 等にマッチ
-	if (tagMatch) { // タグ名がある場合
-		tokens.push(tagMatch[0]); // タグ名トークンを追加
-		i = tagMatch[0].length; // タグ名の後に進む
+	// get leading <tagName
+	const tagMatch = s.match(/^<[\w]+\s*/); // matches <webctrl etc.
+	if (tagMatch) { // if tag name found
+		tokens.push(tagMatch[0]); // add tag name token
+		i = tagMatch[0].length; // advance past tag name
 	}
 
-	while (i < s.length) { // 残り文字列を処理
-		// 閉じタグ /> をチェック
+	while (i < s.length) { // process remaining string
+		// check for closing tag />
 		if (s[i] === '/' && i + 1 < s.length && s[i + 1] === '>') { // />
-			tokens.push('/>'); // 閉じタグトークン
+			tokens.push('/>'); // closing tag token
 			i += 2;
 			continue;
 		}
-		if (s[i] === '>') { // > のみ
-			tokens.push('>'); // 閉じタグトークン
+		if (s[i] === '>') { // > only
+			tokens.push('>'); // closing tag token
 			i++;
 			continue;
 		}
 
-		// 空白はスキップ（属性値トークンの末尾に含めるため）
-		if (/\s/.test(s[i])) { // 空白文字
+		// skip whitespace (included in tail of attribute value tokens)
+		if (/\s/.test(s[i])) { // whitespace character
 			i++;
 			continue;
 		}
 
-		// 属性名を取得（英数字、コロン、ハイフン、ドット等）
-		if (/[a-zA-Z_:]/.test(s[i])) { // 属性名の開始文字
-			let start = i; // 属性名の開始位置
-			while (i < s.length && s[i] !== '=' && !/\s/.test(s[i]) && s[i] !== '/' && s[i] !== '>') { // 属性名の終端まで
+		// get attribute name (alphanumeric, colon, hyphen, dot, etc.)
+		if (/[a-zA-Z_:]/.test(s[i])) { // starting character of attribute name
+			let start = i; // start position of attribute name
+			while (i < s.length && s[i] !== '=' && !/\s/.test(s[i]) && s[i] !== '/' && s[i] !== '>') { // advance to end of attribute name
 				i++;
 			}
-			tokens.push(s.substring(start, i)); // 属性名トークン（例: aaname, check:innerText）
+			tokens.push(s.substring(start, i)); // attribute name token (e.g. aaname, check:innerText)
 
-			// = に続くクォートされた値を取得
-			if (i < s.length && s[i] === '=') { // 値がある場合
-				let valStart = i; // = の位置から
-				i++; // = をスキップ
-				if (i < s.length && (s[i] === "'" || s[i] === '"')) { // クォート開始
-					const quote = s[i]; // クォート文字を記憶
-					i++; // 開きクォートをスキップ
-					while (i < s.length && s[i] !== quote) i++; // 閉じクォートまで進む
-					if (i < s.length) i++; // 閉じクォートをスキップ
+			// get quoted value following =
+			if (i < s.length && s[i] === '=') { // if value is present
+				let valStart = i; // start from =
+				i++; // skip =
+				if (i < s.length && (s[i] === "'" || s[i] === '"')) { // quote start
+					const quote = s[i]; // remember quote character
+					i++; // skip opening quote
+					while (i < s.length && s[i] !== quote) i++; // advance to closing quote
+					if (i < s.length) i++; // skip closing quote
 				}
-				tokens.push(s.substring(valStart, i)); // 値トークン（例: ='ショッピング'）
+				tokens.push(s.substring(valStart, i)); // value token (e.g. ='Shopping')
 			}
 			continue;
 		}
 
-		// その他の文字はそのまま
-		tokens.push(s[i]); // 単一文字トークン
+		// other characters as-is
+		tokens.push(s[i]); // single character token
 		i++;
 	}
-	return tokens; // トークン配列を返す
+	return tokens; // return token array
 }
 
 /**
- * 文字列をトークン化（セレクター文字列は属性単位、それ以外は空白区切り）
+ * Tokenizes a string (selector strings by attribute unit, others by whitespace)
  */
-function tokenize(s: string): string[] { // 文字列を適切な単位でトークン化
-	if (s.startsWith('<') && s.includes('>')) { // セレクター文字列の場合
-		return tokenizeSelector(s); // 属性名・属性値の単位で分割
+function tokenize(s: string): string[] { // tokenize string into appropriate units
+	if (s.startsWith('<') && s.includes('>')) { // if selector string
+		return tokenizeSelector(s); // split by attribute name and value
 	}
-	if (s.includes(',')) { // カンマ区切りの場合（座標値等）
-		return s.split(/(,\s*)/); // カンマ+空白を区切りとして分割
+	if (s.includes(',')) { // if comma-separated (e.g. coordinate values)
+		return s.split(/(,\s*)/); // split using comma+whitespace as delimiter
 	}
-	return s.split(/(\s+)/); // それ以外は空白区切りで分割
+	return s.split(/(\s+)/); // otherwise split by whitespace
 }
 
 function findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
-	// トークン化して比較（セレクターは属性単位、それ以外は空白区切り）
-	const tokensA = tokenize(a); // aをトークン化
-	const tokensB = tokenize(b); // bをトークン化
-	const result: { value: string; same: boolean }[] = []; // 結果配列
-	let ai = 0; // tokensAのインデックス
-	let bi = 0; // tokensBのインデックス
+	// tokenize and compare (selector by attribute unit, others by whitespace)
+	const tokensA = tokenize(a); // tokenize a
+	const tokensB = tokenize(b); // tokenize b
+	const result: { value: string; same: boolean }[] = []; // result array
+	let ai = 0; // index into tokensA
+	let bi = 0; // index into tokensB
 
 	while (ai < tokensA.length && bi < tokensB.length) {
 		if (tokensA[ai] === tokensB[bi]) {
-			let start = ai; // 共通部分の開始位置
+			let start = ai; // start of common part
 			while (ai < tokensA.length && bi < tokensB.length && tokensA[ai] === tokensB[bi]) {
 				ai++;
 				bi++;
 			}
-			result.push({ value: tokensA.slice(start, ai).join(''), same: true }); // 共通トークン群
+			result.push({ value: tokensA.slice(start, ai).join(''), same: true }); // common token group
 		} else {
-			// 次の同期位置を探す（3パターン）
-			let foundA = -1;    // aだけスキップ（aに余分なトークンがある）
-			let foundB = -1;    // bだけスキップ（bに余分なトークンがある）
-			let foundBoth = -1; // 両方同じ量スキップ（トークンの置換）
-			const searchLimit = Math.min(Math.max(tokensA.length - ai, tokensB.length - bi), 20); // 探索範囲
+			// find next sync point (3 patterns)
+			let foundA = -1;    // skip A only (A has extra tokens)
+			let foundB = -1;    // skip B only (B has extra tokens)
+			let foundBoth = -1; // skip same amount from both (token substitution)
+			const searchLimit = Math.min(Math.max(tokensA.length - ai, tokensB.length - bi), 20); // search range
 			for (let d = 1; d < searchLimit; d++) {
 				if (foundBoth < 0 && ai + d < tokensA.length && bi + d < tokensB.length && tokensA[ai + d] === tokensB[bi + d]) {
-					foundBoth = d; // 両方dトークン進めると一致（置換）
+					foundBoth = d; // advancing both by d tokens gives a match (substitution)
 				}
 				if (foundA < 0 && ai + d < tokensA.length && tokensA[ai + d] === tokensB[bi]) {
-					foundA = d; // a側にdトークン進めると一致（aに余分）
+					foundA = d; // advancing A by d tokens gives a match (A has extra)
 				}
 				if (foundB < 0 && bi + d < tokensB.length && tokensA[ai] === tokensB[bi + d]) {
-					foundB = d; // b側にdトークン進めると一致（bに余分）
+					foundB = d; // advancing B by d tokens gives a match (B has extra)
 				}
-				if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // いずれか見つかったら終了
+				if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // stop when any is found
 			}
-			// 最小コストの戦略を選択
+			// select the minimum-cost strategy
 			if (foundBoth >= 0 && (foundA < 0 || foundBoth <= foundA) && (foundB < 0 || foundBoth <= foundB)) {
-				result.push({ value: tokensA.slice(ai, ai + foundBoth).join(''), same: false }); // 置換部分
+				result.push({ value: tokensA.slice(ai, ai + foundBoth).join(''), same: false }); // substituted part
 				ai += foundBoth;
 				bi += foundBoth;
 			} else if (foundA >= 0 && (foundB < 0 || foundA <= foundB)) {
-				result.push({ value: tokensA.slice(ai, ai + foundA).join(''), same: false }); // aの余分なトークン
+				result.push({ value: tokensA.slice(ai, ai + foundA).join(''), same: false }); // extra tokens in A
 				ai += foundA;
 			} else if (foundB >= 0) {
-				bi += foundB; // bの余分なトークンをスキップ（aには出力なし）
+				bi += foundB; // skip extra tokens in B (no output for A)
 			} else {
-				result.push({ value: tokensA.slice(ai).join(''), same: false }); // 残り全部が差分
+				result.push({ value: tokensA.slice(ai).join(''), same: false }); // all remaining is diff
 				ai = tokensA.length;
 				bi = tokensB.length;
 			}
 		}
 	}
 	if (ai < tokensA.length) {
-		result.push({ value: tokensA.slice(ai).join(''), same: false }); // aの残り
+		result.push({ value: tokensA.slice(ai).join(''), same: false }); // remaining in A
 	}
 	return result;
 }
 
 /**
- * ワードレベルdiffでHTMLを構築（変更箇所だけ<span class="word-highlight">で囲む）
+ * Builds HTML using word-level diff (wraps changed parts in <span class="word-highlight">)
  */
 function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, otherText: string): void {
-	const parts = findCommonParts(text, otherText); // 共通部分と差分部分を計算
-	div.textContent = ''; // textContentをクリア
-	div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+	const parts = findCommonParts(text, otherText); // calculate common and differing parts
+	div.textContent = ''; // clear textContent
 
-	// 共通部分の割合を計算（低すぎる場合は全体をハイライト）
-	const sameLen = parts.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0); // 共通文字数
-	const totalLen = parts.reduce((sum, p) => sum + p.value.length, 0);                // 全文字数
-	const similarity = totalLen > 0 ? sameLen / totalLen : 0;                          // 類似度(0〜1)
+	div.appendChild(document.createTextNode(prefix + ' ')); // prefix (- / +)
+
+	// calculate proportion of common parts (highlight entirely if too low)
+	const sameLen = parts.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0); // common character count
+	const totalLen = parts.reduce((sum, p) => sum + p.value.length, 0);                // total character count
+	const similarity = totalLen > 0 ? sameLen / totalLen : 0;                          // similarity (0-1)
 
 	if (similarity < 0.5) {
-		// 類似度50%未満: 全体をハイライト（ハッシュ等の偶然一致を防ぐ）
+		// below 50% similarity: highlight entirely (avoids accidental matches like hashes)
 		const span = document.createElement('span');
 		span.className = 'word-highlight';
 		span.textContent = text;
@@ -1715,10 +1719,10 @@ function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, other
 
 	parts.forEach(part => {
 		if (part.same) {
-			div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
+			div.appendChild(document.createTextNode(part.value)); // common part as-is
 		} else {
-			const span = document.createElement('span'); // 差分部分はspanで囲む
-			span.className = 'word-highlight'; // ワードハイライトクラス
+			const span = document.createElement('span'); // wrap differing part in span
+			span.className = 'word-highlight'; // word highlight class
 			span.textContent = part.value;
 			div.appendChild(span);
 		}
@@ -1726,371 +1730,371 @@ function buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, other
 }
 
 /**
- * 差分表示用の値フォーマット（オブジェクトはJSON文字列化）
+ * Formats a diff value for display (objects are JSON-stringified)
  */
 function formatDiffValue(value: any): string {
-	if (value === null || value === undefined) return '(なし)';            // null/undefinedは「なし」表示
-	if (typeof value === 'object') return JSON.stringify(value);           // オブジェクトはJSON文字列化
-	return String(value);                                                  // プリミティブはそのまま文字列化
+	if (value === null || value === undefined) return '(none)';            // null/undefined displayed as "none"
+	if (typeof value === 'object') return JSON.stringify(value);           // objects JSON-stringified
+	return String(value);                                                  // primitives converted to string as-is
 }
 
 /**
- * オブジェクト型プロパティの差分を属性レベルで展開表示
- * 変更があった属性のみ before/after を表示する
+ * Expands and displays object-type property diffs at the attribute level
+ * Only displays before/after for attributes that have changed
  */
 function renderObjectPropertyDiff(
 	container: HTMLElement,
 	beforeObj: Record<string, any>,
 	afterObj: Record<string, any>
 ): void {
-	const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // 全キーを収集
+	const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // collect all keys
 	for (const key of allKeys) {
-		if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
-		if (key === 'InformativeScreenshot') continue;                     // スクリーンショットは別途比較表示
-		if (key === 'ImageBase64') continue;                               // バイナリデータは非表示
+		if (key === 'type') continue;                                      // skip type key (internal use)
+		if (key === 'InformativeScreenshot') continue;                     // screenshot displayed separately as comparison
+		if (key === 'ImageBase64') continue;                               // binary data not shown
 		const bVal = beforeObj[key];
 		const aVal = afterObj[key];
-		const bStr = formatDiffValue(bVal);                                // 変更前テキスト
-		const aStr = formatDiffValue(aVal);                                // 変更後テキスト
-		if (bStr === aStr) continue;                                       // 同じなら差分なし
+		const bStr = formatDiffValue(bVal);                                // before text
+		const aStr = formatDiffValue(aVal);                                // after text
+		if (bStr === aStr) continue;                                       // skip if no diff
 
-		const changeItem = document.createElement('div');                  // 個別変更要素
-		changeItem.className = 'property-change-item';                     // CSSクラス
+		const changeItem = document.createElement('div');                  // individual change element
+		changeItem.className = 'property-change-item';                     // CSS class
 
-		const propName = document.createElement('span');                   // プロパティ名
-		propName.className = 'prop-name';                                  // CSSクラス
-		propName.textContent = `${key}:`;                                  // サブキー名を表示
+		const propName = document.createElement('span');                   // property name
+		propName.className = 'prop-name';                                  // CSS class
+		propName.textContent = `${key}:`;                                  // display sub-key name
 		changeItem.appendChild(propName);
 
-		const beforeDiv = document.createElement('div');                   // 変更前の行
-		beforeDiv.className = 'diff-before';                               // CSSクラス
-		buildWordDiffHtml(beforeDiv, '-', bStr, aStr);                     // ワードレベルdiff
+		const beforeDiv = document.createElement('div');                   // before line
+		beforeDiv.className = 'diff-before';                               // CSS class
+		buildWordDiffHtml(beforeDiv, '-', bStr, aStr);                     // word-level diff
 		changeItem.appendChild(beforeDiv);
 
-		const afterDiv = document.createElement('div');                    // 変更後の行
-		afterDiv.className = 'diff-after';                                 // CSSクラス
-		buildWordDiffHtml(afterDiv, '+', aStr, bStr);                      // ワードレベルdiff
+		const afterDiv = document.createElement('div');                    // after line
+		afterDiv.className = 'diff-after';                                 // CSS class
+		buildWordDiffHtml(afterDiv, '+', aStr, bStr);                      // word-level diff
 		changeItem.appendChild(afterDiv);
 
-		container.appendChild(changeItem);                                 // 変更詳細に追加
+		container.appendChild(changeItem);                                 // add to change details
 	}
 }
 
 /**
- * 差分プロパティ変更を描画する共通関数
- * オブジェクト同士の比較は属性レベルで展開、プリミティブは before/after 行で表示
+ * Common function for rendering diff property changes
+ * Object comparisons are expanded at attribute level; primitives shown as before/after lines
  */
-function renderDiffChangeList(container: HTMLElement, changes: any[]): void { // 変更リストをコンテナに描画
-	for (const change of changes) { // 各変更をループ
-		// オブジェクト同士の比較は属性レベルで展開
-		if (typeof change.before === 'object' && change.before !== null // 変更前がオブジェクト
-			&& typeof change.after === 'object' && change.after !== null // 変更後もオブジェクト
-			&& !Array.isArray(change.before) && !Array.isArray(change.after)) { // 配列でない
-			renderObjectPropertyDiff(container, change.before, change.after); // 属性レベルで展開
+function renderDiffChangeList(container: HTMLElement, changes: any[]): void { // render change list into container
+	for (const change of changes) { // loop over each change
+		// expand object comparisons at attribute level
+		if (typeof change.before === 'object' && change.before !== null // before is object
+			&& typeof change.after === 'object' && change.after !== null // after is also object
+			&& !Array.isArray(change.before) && !Array.isArray(change.after)) { // not arrays
+			renderObjectPropertyDiff(container, change.before, change.after); // expand at attribute level
 			continue;
 		}
 
-		const changeItem = document.createElement('div'); // 個別変更要素
-		changeItem.className = 'property-change-item'; // CSSクラス
+		const changeItem = document.createElement('div'); // individual change element
+		changeItem.className = 'property-change-item'; // CSS class
 
-		const propName = document.createElement('span'); // プロパティ名
-		propName.className = 'prop-name'; // CSSクラス
-		propName.textContent = `${change.propertyName}:`; // プロパティ名テキスト
+		const propName = document.createElement('span'); // property name
+		propName.className = 'prop-name'; // CSS class
+		propName.textContent = `${change.propertyName}:`; // property name text
 		changeItem.appendChild(propName);
 
-		const bfText = formatDiffValue(change.before); // 変更前テキスト
-		const afText = formatDiffValue(change.after); // 変更後テキスト
+		const bfText = formatDiffValue(change.before); // before text
+		const afText = formatDiffValue(change.after); // after text
 
-		const beforeDiv = document.createElement('div'); // 変更前の値
-		beforeDiv.className = 'diff-before'; // CSSクラス
-		buildWordDiffHtml(beforeDiv, '-', bfText, afText); // ワードレベルdiff
+		const beforeDiv = document.createElement('div'); // before value
+		beforeDiv.className = 'diff-before'; // CSS class
+		buildWordDiffHtml(beforeDiv, '-', bfText, afText); // word-level diff
 		changeItem.appendChild(beforeDiv);
 
-		const afterDiv = document.createElement('div'); // 変更後の値
-		afterDiv.className = 'diff-after'; // CSSクラス
-		buildWordDiffHtml(afterDiv, '+', afText, bfText); // ワードレベルdiff
+		const afterDiv = document.createElement('div'); // after value
+		afterDiv.className = 'diff-after'; // CSS class
+		buildWordDiffHtml(afterDiv, '+', afText, bfText); // word-level diff
 		changeItem.appendChild(afterDiv);
 
-		container.appendChild(changeItem); // コンテナに追加
+		container.appendChild(changeItem); // add to container
 	}
 }
 
 function applyDiffHighlights(
 	container: HTMLElement,
 	diffResult: any,
-	baseScreenshotResolver?: ScreenshotPathResolver, // 変更前スクリーンショットのURL解決
-	headScreenshotResolver?: ScreenshotPathResolver   // 変更後スクリーンショットのURL解決
+	baseScreenshotResolver?: ScreenshotPathResolver, // URL resolver for before-state screenshots
+	headScreenshotResolver?: ScreenshotPathResolver   // URL resolver for after-state screenshots
 ): void {
-	// 変更アクティビティをハイライト
+	// highlight modified activities
 	for (const item of diffResult.modified) {
-		const key = buildActivityKey(item.activity, 0); // キーを生成（IdRef優先）
-		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // カードを検索
+		const key = buildActivityKey(item.activity, 0); // generate key (IdRef preferred)
+		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // find card
 		if (!card) continue;
-		card.classList.add('diff-highlight-modified'); // 変更ハイライトクラスを追加
+		card.classList.add('diff-highlight-modified'); // add modified highlight class
 
-		// プロパティ変更の詳細を注入
+		// inject property change details
 		if (item.changes && item.changes.length > 0) {
-			const changesDiv = document.createElement('div'); // 変更詳細コンテナ
-			changesDiv.className = 'diff-highlight-changes'; // CSSクラス
+			const changesDiv = document.createElement('div'); // change details container
+			changesDiv.className = 'diff-highlight-changes'; // CSS class
 
-			// Assignアクティビティの場合はTo/Valueを統合形式で表示
-			const isAssign = item.activity.type === 'Assign'; // Assignかどうか
-			const hasAssignChange = isAssign && item.changes.some( // To/Valueの変更があるか
+			// for Assign activities, display To/Value in integrated format
+			const isAssign = item.activity.type === 'Assign'; // whether it is Assign
+			const hasAssignChange = isAssign && item.changes.some( // whether To/Value changed
 				(c: any) => c.propertyName === 'To' || c.propertyName === 'Value'
 			);
 
 			if (hasAssignChange && item.beforeActivity) {
-				// 統合形式: 「左辺 = 右辺」をまとめて表示
-				const beforeTo = item.beforeActivity.properties['To']; // 変更前の左辺
-				const beforeVal = item.beforeActivity.properties['Value']; // 変更前の右辺
-				const afterTo = item.activity.properties['To']; // 変更後の左辺
-				const afterVal = item.activity.properties['Value']; // 変更後の右辺
+				// integrated format: display "left-hand side = right-hand side" together
+				const beforeTo = item.beforeActivity.properties['To']; // before left-hand side
+				const beforeVal = item.beforeActivity.properties['Value']; // before right-hand side
+				const afterTo = item.activity.properties['To']; // after left-hand side
+				const afterVal = item.activity.properties['Value']; // after right-hand side
 
-				const changeItem = document.createElement('div'); // 統合変更要素
-				changeItem.className = 'property-change-item'; // CSSクラス
+				const changeItem = document.createElement('div'); // integrated change element
+				changeItem.className = 'property-change-item'; // CSS class
 
-				const beforeText = `${formatDiffValue(beforeTo)} = ${formatDiffValue(beforeVal)}`; // 変更前テキスト
-				const afterText = `${formatDiffValue(afterTo)} = ${formatDiffValue(afterVal)}`; // 変更後テキスト
+				const beforeText = `${formatDiffValue(beforeTo)} = ${formatDiffValue(beforeVal)}`; // before text
+				const afterText = `${formatDiffValue(afterTo)} = ${formatDiffValue(afterVal)}`; // after text
 
-				const beforeDiv = document.createElement('div'); // 変更前の行
-				beforeDiv.className = 'diff-before'; // CSSクラス
-				buildWordDiffHtml(beforeDiv, '-', beforeText, afterText); // ワードレベルdiff
+				const beforeDiv = document.createElement('div'); // before line
+				beforeDiv.className = 'diff-before'; // CSS class
+				buildWordDiffHtml(beforeDiv, '-', beforeText, afterText); // word-level diff
 				changeItem.appendChild(beforeDiv);
 
-				const afterDiv = document.createElement('div'); // 変更後の行
-				afterDiv.className = 'diff-after'; // CSSクラス
-				buildWordDiffHtml(afterDiv, '+', afterText, beforeText); // ワードレベルdiff
+				const afterDiv = document.createElement('div'); // after line
+				afterDiv.className = 'diff-after'; // CSS class
+				buildWordDiffHtml(afterDiv, '+', afterText, beforeText); // word-level diff
 				changeItem.appendChild(afterDiv);
 
-				changesDiv.appendChild(changeItem); // 変更詳細に追加
+				changesDiv.appendChild(changeItem); // add to change details
 
-				// 差分表示があるので通常のプロパティ表示を非表示にする
-				const propsDiv = card.querySelector(':scope > .activity-properties'); // 通常プロパティ
+				// hide the normal property display since diff is being shown
+				const propsDiv = card.querySelector(':scope > .activity-properties'); // normal properties
 				if (propsDiv) {
-					(propsDiv as HTMLElement).style.display = 'none'; // 重複を防ぐため非表示
+					(propsDiv as HTMLElement).style.display = 'none'; // hide to prevent duplication
 				}
-				// サブプロパティパネルのトグル・パネルも非表示にする
-				const subToggle = card.querySelector(':scope > .property-sub-panel-toggle'); // サブパネルトグル
+				// also hide sub-property panel toggle and panel
+				const subToggle = card.querySelector(':scope > .property-sub-panel-toggle'); // sub-panel toggle
 				if (subToggle) {
-					(subToggle as HTMLElement).style.display = 'none'; // 非表示
+					(subToggle as HTMLElement).style.display = 'none'; // hide
 				}
-				const subPanel = card.querySelector(':scope > .property-sub-panel'); // サブパネル本体
+				const subPanel = card.querySelector(':scope > .property-sub-panel'); // sub-panel body
 				if (subPanel) {
-					(subPanel as HTMLElement).style.display = 'none'; // 非表示
+					(subPanel as HTMLElement).style.display = 'none'; // hide
 				}
 
-				// To/Value以外のプロパティ変更は通常通り表示
-				const otherChanges = item.changes.filter( // To/Value・InformativeScreenshot・ImageBase64以外を抽出
+				// display property changes other than To/Value as normal
+				const otherChanges = item.changes.filter( // extract changes other than To/Value, InformativeScreenshot, ImageBase64
 					(c: any) => c.propertyName !== 'To' && c.propertyName !== 'Value' && c.propertyName !== 'InformativeScreenshot' && c.propertyName !== 'ImageBase64'
 				);
-				renderDiffChangeList(changesDiv, otherChanges); // ヘルパー関数で描画
+				renderDiffChangeList(changesDiv, otherChanges); // render using helper function
 			} else {
-				// 通常のプロパティ変更表示（メイン/サブに分類、スクリーンショットは別途比較表示）
-				const nonScreenshotChanges = item.changes.filter( // InformativeScreenshot・ImageBase64以外を抽出
+				// normal property change display (classified as main/sub, screenshots shown separately as comparison)
+				const nonScreenshotChanges = item.changes.filter( // extract changes other than InformativeScreenshot and ImageBase64
 					(c: any) => c.propertyName !== 'InformativeScreenshot' && c.propertyName !== 'ImageBase64'
 				);
-				const { main: mainChanges, sub: subChanges } = categorizeDiffChanges(nonScreenshotChanges, item.activity.type); // 変更を分類
-				renderDiffChangeList(changesDiv, mainChanges); // メイン変更を表示
+				const { main: mainChanges, sub: subChanges } = categorizeDiffChanges(nonScreenshotChanges, item.activity.type); // categorize changes
+				renderDiffChangeList(changesDiv, mainChanges); // display main changes
 
-				// サブプロパティ変更を折りたたみパネルで表示
-				if (subChanges.length > 0) { // サブ変更がある場合
-					const subToggle = document.createElement('button'); // トグルボタン
-					subToggle.className = 'property-sub-panel-toggle'; // CSSクラス
-					subToggle.textContent = `${t('Toggle property panel')} ▶`; // 折りたたみ状態のラベル
+				// display sub-property changes in a collapsible panel
+				if (subChanges.length > 0) { // if there are sub changes
+					const subToggle = document.createElement('button'); // toggle button
+					subToggle.className = 'property-sub-panel-toggle'; // CSS class
+					subToggle.textContent = `${t('Toggle property panel')} ▶`; // label in collapsed state
 
-					const subPanel = document.createElement('div'); // サブパネル
-					subPanel.className = 'property-sub-panel'; // CSSクラス
-					subPanel.style.display = 'none'; // 初期非表示
+					const subPanel = document.createElement('div'); // sub-panel
+					subPanel.className = 'property-sub-panel'; // CSS class
+					subPanel.style.display = 'none'; // initially hidden
 
-					renderDiffChangeList(subPanel, subChanges); // サブ変更をパネル内に描画
+					renderDiffChangeList(subPanel, subChanges); // render sub changes into panel
 
-					subToggle.addEventListener('click', (e) => { // トグルクリックイベント
-						e.stopPropagation(); // 親要素への伝播を阻止
-						const isExpanded = subPanel.style.display !== 'none'; // 現在の表示状態
-						subPanel.style.display = isExpanded ? 'none' : 'block'; // 表示切替
-						subToggle.textContent = isExpanded // ラベル更新
-							? `${t('Toggle property panel')} ▶` // 折りたたみ状態
-							: `${t('Toggle property panel')} ▼`; // 展開状態
+					subToggle.addEventListener('click', (e) => { // toggle click event
+						e.stopPropagation(); // stop propagation to parent elements
+						const isExpanded = subPanel.style.display !== 'none'; // current display state
+						subPanel.style.display = isExpanded ? 'none' : 'block'; // toggle display
+						subToggle.textContent = isExpanded // update label
+							? `${t('Toggle property panel')} ▶` // collapsed state
+							: `${t('Toggle property panel')} ▼`; // expanded state
 					});
 
-					changesDiv.appendChild(subToggle); // トグルボタンを追加
-					changesDiv.appendChild(subPanel); // パネルを追加
+					changesDiv.appendChild(subToggle); // add toggle button
+					changesDiv.appendChild(subPanel); // add panel
 				}
 			}
-			// activity-header の後に挿入
-			const header = card.querySelector(':scope > .activity-header'); // ヘッダー要素
+			// insert after activity-header
+			const header = card.querySelector(':scope > .activity-header'); // header element
 			if (header && header.nextSibling) {
-				card.insertBefore(changesDiv, header.nextSibling); // ヘッダーの直後に挿入
+				card.insertBefore(changesDiv, header.nextSibling); // insert immediately after header
 			} else {
-				card.appendChild(changesDiv); // フォールバック: カード末尾に追加
+				card.appendChild(changesDiv); // fallback: append to end of card
 			}
 
-			// InformativeScreenshot の変更があれば比較表示を構築
-			const screenshotChange = item.changes.find( // スクリーンショット変更を探す
+			// if InformativeScreenshot changed, build comparison display
+			const screenshotChange = item.changes.find( // find screenshot change
 				(c: any) => c.propertyName === 'InformativeScreenshot'
 			);
 			if (screenshotChange && baseScreenshotResolver && headScreenshotResolver) {
-				// 既存のスクリーンショット表示を削除
-				const existingScreenshot = card.querySelector(':scope > .informative-screenshot'); // 既存要素
-				if (existingScreenshot) existingScreenshot.remove(); // 削除
+				// remove existing screenshot display
+				const existingScreenshot = card.querySelector(':scope > .informative-screenshot'); // existing element
+				if (existingScreenshot) existingScreenshot.remove(); // remove
 
-				// 比較コンテナを構築
-				const compareDiv = document.createElement('div'); // 比較コンテナ
-				compareDiv.className = 'screenshot-compare'; // CSSクラス
+				// build comparison container
+				const compareDiv = document.createElement('div'); // comparison container
+				compareDiv.className = 'screenshot-compare'; // CSS class
 
-				// 変更前（Before）
-				const beforeBox = document.createElement('div'); // 変更前ボックス
-				beforeBox.className = 'screenshot-before'; // CSSクラス（赤の左ボーダー）
-				const beforeImg = document.createElement('img'); // 変更前画像
-				beforeImg.src = baseScreenshotResolver(screenshotChange.before); // base側のURL
-				beforeImg.alt = 'Before screenshot'; // alt属性
-				beforeImg.onerror = () => { beforeImg.style.display = 'none'; }; // 読み込みエラー時は非表示
+				// before state
+				const beforeBox = document.createElement('div'); // before box
+				beforeBox.className = 'screenshot-before'; // CSS class (red left border)
+				const beforeImg = document.createElement('img'); // before image
+				beforeImg.src = baseScreenshotResolver(screenshotChange.before); // base-side URL
+				beforeImg.alt = 'Before screenshot'; // alt attribute
+				beforeImg.onerror = () => { beforeImg.style.display = 'none'; }; // hide on load error
 				beforeBox.appendChild(beforeImg);
 				compareDiv.appendChild(beforeBox);
 
-				// 変更後（After）
-				const afterBox = document.createElement('div'); // 変更後ボックス
-				afterBox.className = 'screenshot-after'; // CSSクラス（緑の左ボーダー）
-				const afterImg = document.createElement('img'); // 変更後画像
-				afterImg.src = headScreenshotResolver(screenshotChange.after); // head側のURL
-				afterImg.alt = 'After screenshot'; // alt属性
-				afterImg.onerror = () => { afterImg.style.display = 'none'; }; // 読み込みエラー時は非表示
+				// after state
+				const afterBox = document.createElement('div'); // after box
+				afterBox.className = 'screenshot-after'; // CSS class (green left border)
+				const afterImg = document.createElement('img'); // after image
+				afterImg.src = headScreenshotResolver(screenshotChange.after); // head-side URL
+				afterImg.alt = 'After screenshot'; // alt attribute
+				afterImg.onerror = () => { afterImg.style.display = 'none'; }; // hide on load error
 				afterBox.appendChild(afterImg);
 				compareDiv.appendChild(afterBox);
-				card.appendChild(compareDiv); // カードに追加
+				card.appendChild(compareDiv); // add to card
 			}
 		}
 	}
 
-	// 追加アクティビティをハイライト
+	// highlight added activities
 	for (const item of diffResult.added) {
-		const key = buildActivityKey(item.activity, 0); // キーを生成
-		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // カードを検索
+		const key = buildActivityKey(item.activity, 0); // generate key
+		const card = container.querySelector(`[data-activity-key="${key}"]`) as HTMLElement; // find card
 		if (!card) continue;
-		card.classList.add('diff-highlight-added'); // 追加ハイライトクラスを追加
+		card.classList.add('diff-highlight-added'); // add added highlight class
 	}
 
-	// 削除アクティビティを末尾に表示（head版には存在しないため）
+	// display removed activities at the bottom (they don't exist in the head version)
 	if (diffResult.removed.length > 0) {
-		const removedSection = document.createElement('div'); // 削除セクション
-		removedSection.className = 'removed-activities-section'; // CSSクラス
+		const removedSection = document.createElement('div'); // removed section
+		removedSection.className = 'removed-activities-section'; // CSS class
 
-		const removedLabel = document.createElement('div'); // 削除ラベル
-		removedLabel.className = 'status-deleted-file'; // CSSクラス
-		removedLabel.textContent = `Removed Activities (${diffResult.removed.length})`; // ラベルテキスト
+		const removedLabel = document.createElement('div'); // removed label
+		removedLabel.className = 'status-deleted-file'; // CSS class
+		removedLabel.textContent = `Removed Activities (${diffResult.removed.length})`; // label text
 		removedSection.appendChild(removedLabel);
 
 		for (const item of diffResult.removed) {
-			const card = document.createElement('div'); // 削除カード
-			card.className = 'activity-card diff-highlight-removed'; // CSSクラス
+			const card = document.createElement('div'); // removed card
+			card.className = 'activity-card diff-highlight-removed'; // CSS class
 
-			const header = document.createElement('div'); // ヘッダー
-			header.className = 'activity-header'; // CSSクラス
+			const header = document.createElement('div'); // header
+			header.className = 'activity-header'; // CSS class
 
-			const title = document.createElement('span'); // タイトル
-			title.className = 'activity-title'; // CSSクラス
-			title.textContent = `${item.activity.type}: ${item.activity.displayName} `; // アクティビティ名
+			const title = document.createElement('span'); // title
+			title.className = 'activity-title'; // CSS class
+			title.textContent = `${item.activity.type}: ${item.activity.displayName} `; // activity name
 
-			const badge = document.createElement('span'); // バッジ
-			badge.className = 'badge badge-removed'; // CSSクラス
-			badge.textContent = '- Removed'; // バッジテキスト
+			const badge = document.createElement('span'); // badge
+			badge.className = 'badge badge-removed'; // CSS class
+			badge.textContent = '- Removed'; // badge text
 			title.appendChild(badge);
 
 			header.appendChild(title);
 			card.appendChild(header);
-			removedSection.appendChild(card); // セクションに追加
+			removedSection.appendChild(card); // add to section
 		}
-		container.appendChild(removedSection); // コンテナに追加
+		container.appendChild(removedSection); // add to container
 	}
 }
 
-// ========== 初期化とMutationObserver ==========
+// ========== Initialization and MutationObserver ==========
 
 /**
- * メイン初期化関数
+ * Main initialization function
  */
 async function init(): Promise<void> {
-	console.log('UiPath XAML Visualizer for GitHub が読み込まれました'); // ログ出力
-	await loadLanguagePreference(); // 言語設定を読み込み
-	injectSyncHighlightStyles(); // GitHub側ハイライト用CSSを注入
+	console.log('UiPath XAML Visualizer for GitHub has been loaded'); // log output
+	await loadLanguagePreference(); // load language preference
+	injectSyncHighlightStyles(); // inject CSS for GitHub-side highlights
 
-	const pageType = detectPageType(); // ページタイプを検出
+	const pageType = detectPageType(); // detect page type
 
 	switch (pageType) {
 		case 'blob-xaml':
-			addVisualizerButton(); // 個別ファイルページにボタン追加
+			addVisualizerButton(); // add button to individual file page
 			break;
 		case 'pr-diff':
-			scanAndInjectDiffButtons(); // PR diff ページにボタン注入
+			scanAndInjectDiffButtons(); // inject buttons to PR diff page
 			break;
 		case 'commit-diff':
-			scanAndInjectDiffButtons(showCommitDiffVisualizer); // コミット/Compare差分ページにボタン注入
+			scanAndInjectDiffButtons(showCommitDiffVisualizer); // inject buttons to commit/Compare diff page
 			break;
 		default:
-			break; // その他のページでは何もしない
+			break; // do nothing on other pages
 	}
 }
 
-// Ctrl+F (Mac: Cmd+F) で検索入力にフォーカス
+// Ctrl+F (Mac: Cmd+F) focuses the search input
 document.addEventListener('keydown', (e: KeyboardEvent) => {
 	if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-		const panel = document.getElementById('uipath-visualizer-panel'); // パネルの存在チェック
-		if (!panel) return; // パネルがなければブラウザデフォルトに任せる
-		const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // 検索入力要素
+		const panel = document.getElementById('uipath-visualizer-panel'); // check if panel exists
+		if (!panel) return; // let browser default handle if no panel
+		const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // search input element
 		if (!searchInput) return;
-		e.preventDefault(); // ブラウザデフォルトの検索を抑止
-		searchInput.focus(); // フォーカスを設定
-		searchInput.select(); // テキストを全選択
+		e.preventDefault(); // suppress browser default search
+		searchInput.focus(); // set focus
+		searchInput.select(); // select all text
 	}
 });
 
-// Escapeキーでパネルを閉じる
+// Escape key closes the panel
 document.addEventListener('keydown', (e: KeyboardEvent) => {
-	if (e.key !== 'Escape') return; // Escape以外はスキップ
-	const panel = document.getElementById('uipath-visualizer-panel'); // パネルの存在チェック
-	if (!panel) return; // パネルがなければスキップ
-	// 検索入力にフォーカス中はスキップ（検索のEscapeが優先）
-	const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // 検索入力要素
-	if (searchInput && document.activeElement === searchInput) return; // 検索Escapeに委譲
-	closePanel(); // パネルを閉じてページレイアウトを復元
+	if (e.key !== 'Escape') return; // skip non-Escape keys
+	const panel = document.getElementById('uipath-visualizer-panel'); // check if panel exists
+	if (!panel) return; // skip if no panel
+	// skip if search input is focused (search Escape takes priority)
+	const searchInput = panel.querySelector('.panel-search-input') as HTMLInputElement; // search input element
+	if (searchInput && document.activeElement === searchInput) return; // delegate to search Escape
+	closePanel(); // close panel and restore page layout
 });
 
-// ページロード時に初期化
+// initialize on page load
 if (document.readyState === 'loading') {
-	document.addEventListener('DOMContentLoaded', init); // DOMロード後に初期化
+	document.addEventListener('DOMContentLoaded', init); // initialize after DOM load
 } else {
-	init(); // すでにロード済みなら即座に初期化
+	init(); // initialize immediately if already loaded
 }
 
-// 現在のURLを記録
+// record the current URL
 lastUrl = window.location.href;
 
-// GitHub の SPA ナビゲーションに対応（デバウンス付きMutationObserver）
+// handle GitHub SPA navigation (MutationObserver with debounce)
 const observer = new MutationObserver(() => {
-	// デバウンス: 300ms以内の連続変更をまとめる
+	// debounce: batch rapid changes within 300ms
 	if (debounceTimer) clearTimeout(debounceTimer);
 
 	debounceTimer = setTimeout(() => {
-		const currentUrl = window.location.href; // 現在のURL
+		const currentUrl = window.location.href; // current URL
 
 		if (currentUrl !== lastUrl) {
-			// URL変更 → キャッシュクリアして再初期化
-			cachedPrRefs = null; // PRキャッシュをクリア
-			lastUrl = currentUrl; // URLを更新
-			init(); // 再初期化
+			// URL changed -> clear cache and re-initialize
+			cachedPrRefs = null; // clear PR cache
+			lastUrl = currentUrl; // update URL
+			init(); // re-initialize
 		} else {
-			// 同一URLでDOM変更 → lazy-loaded diffsに対応してボタンを再スキャン
-			const currentPageType = detectPageType(); // 現在のページタイプ
+			// same URL, DOM changed -> re-scan buttons for lazy-loaded diffs
+			const currentPageType = detectPageType(); // current page type
 			if (currentPageType === 'pr-diff') {
-				scanAndInjectDiffButtons(); // PR差分ページ
+				scanAndInjectDiffButtons(); // PR diff page
 			} else if (currentPageType === 'commit-diff') {
-				scanAndInjectDiffButtons(showCommitDiffVisualizer); // コミット/Compare差分ページ
+				scanAndInjectDiffButtons(showCommitDiffVisualizer); // commit/Compare diff page
 			}
 		}
-	}, 300); // 300msデバウンス
+	}, 300); // 300ms debounce
 });
 
 observer.observe(document.body, {
-	childList: true, // 子要素の変更を監視
-	subtree: true    // サブツリーも監視
+	childList: true, // observe child element changes
+	subtree: true    // also observe subtree
 });

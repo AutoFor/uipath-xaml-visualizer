@@ -1,63 +1,70 @@
 import { Activity } from './xaml-parser';
 
 /**
- * アクティビティの一意キーを生成（差分計算・行マッピング共通）
- * IdRef（安定した一意識別子）を優先使用、なければフォールバック
+ * Generate a stable unique key for an activity (shared by diff calculation and line mapping).
+ * Uses IdRef (stable identifier) when available, falls back to a positional key otherwise.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#activity-key
  */
 export function buildActivityKey(activity: Activity, index: number): string {
-  const idRef = activity.properties['sap2010:WorkflowViewState.IdRef']; // IdRef属性
-  return idRef || `${activity.type}_${activity.displayName}_${index}`; // フォールバック
+  const idRef = activity.properties['sap2010:WorkflowViewState.IdRef']; // IdRef attribute
+  return idRef || `${activity.type}_${activity.displayName}_${index}`; // Fallback key
 }
 
 /**
- * 差分の種類
+ * Diff type enum
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#diff-types
  */
 export enum DiffType {
-  ADDED = 'added',                              // 追加
-  REMOVED = 'removed',                          // 削除
-  MODIFIED = 'modified'                         // 変更
+  ADDED = 'added',                              // Added
+  REMOVED = 'removed',                          // Removed
+  MODIFIED = 'modified'                         // Modified
 }
 
 /**
- * プロパティ変更の詳細
+ * Details of a property change
  */
 export interface PropertyChange {
-  propertyName: string;                         // プロパティ名
-  before: any;                                  // 変更前の値
-  after: any;                                   // 変更後の値
+  propertyName: string;                         // Property name
+  before: any;                                  // Value before change
+  after: any;                                   // Value after change
 }
 
 /**
- * 差分アクティビティ
+ * A diff entry for a single activity
  */
 export interface DiffActivity {
-  diffType: DiffType;                           // 差分の種類
-  activity: Activity;                           // アクティビティ本体
-  beforeActivity?: Activity;                    // 変更前のアクティビティ（変更時のみ）
-  changes?: PropertyChange[];                   // プロパティ変更リスト（変更時のみ）
+  diffType: DiffType;                           // Type of diff
+  activity: Activity;                           // The activity (after state)
+  beforeActivity?: Activity;                    // Activity before change (for MODIFIED only)
+  changes?: PropertyChange[];                   // List of property changes (for MODIFIED only)
 }
 
 /**
- * 差分計算結果
+ * Result of a diff calculation
  */
 export interface DiffResult {
-  added: DiffActivity[];                        // 追加されたアクティビティ
-  removed: DiffActivity[];                      // 削除されたアクティビティ
-  modified: DiffActivity[];                     // 変更されたアクティビティ
+  added: DiffActivity[];                        // Added activities
+  removed: DiffActivity[];                      // Removed activities
+  modified: DiffActivity[];                     // Modified activities
 }
 
 /**
- * 差分計算クラス
+ * Property prefixes excluded from diff calculation (UI layout metadata)
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#ignored-properties
  */
-/** 差分表示から除外するプロパティのプレフィックス */
 const IGNORED_PROPERTY_PREFIXES = [
-  'sap:',          // UIレイアウトメタデータ（HintSize等）
-  'sap2010:',      // ViewState関連メタデータ（WorkflowViewState.IdRef等）
+  'sap:',          // UI layout metadata (HintSize, etc.)
+  'sap2010:',      // ViewState-related metadata (WorkflowViewState.IdRef, etc.)
 ];
 
+/**
+ * Diff calculator class
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#diff-calculator
+ */
 export class DiffCalculator {
   /**
-   * 2つのアクティビティツリーの差分を計算
+   * Calculate the diff between two Activity trees.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Parser#diff-calculator
    */
   calculate(beforeData: any, afterData: any): DiffResult {
     const result: DiffResult = {
@@ -66,7 +73,7 @@ export class DiffCalculator {
       modified: []
     };
 
-    // ルートアクティビティから再帰的に比較
+    // Recursively compare starting from the root activity
     this.compareActivities(
       beforeData.rootActivity,
       afterData.rootActivity,
@@ -77,18 +84,18 @@ export class DiffCalculator {
   }
 
   /**
-   * アクティビティを再帰的に比較
+   * Recursively compare two activities
    */
   private compareActivities(
     before: Activity,
     after: Activity,
     result: DiffResult
   ): void {
-    // 子アクティビティをマップに変換（displayNameをキーとする）
+    // Convert child activities to maps (keyed by activity key)
     const beforeMap = this.buildActivityMap(before.children);
     const afterMap = this.buildActivityMap(after.children);
 
-    // 追加されたアクティビティを検出
+    // Detect added activities
     afterMap.forEach((activity, key) => {
       if (!beforeMap.has(key)) {
         result.added.push({
@@ -98,7 +105,7 @@ export class DiffCalculator {
       }
     });
 
-    // 削除されたアクティビティを検出
+    // Detect removed activities
     beforeMap.forEach((activity, key) => {
       if (!afterMap.has(key)) {
         result.removed.push({
@@ -108,7 +115,7 @@ export class DiffCalculator {
       }
     });
 
-    // 変更されたアクティビティを検出
+    // Detect modified activities
     beforeMap.forEach((beforeActivity, key) => {
       const afterActivity = afterMap.get(key);
       if (afterActivity) {
@@ -123,20 +130,20 @@ export class DiffCalculator {
           });
         }
 
-        // 子アクティビティも再帰的に比較
+        // Recursively compare children
         this.compareActivities(beforeActivity, afterActivity, result);
       }
     });
   }
 
   /**
-   * アクティビティリストをマップに変換
+   * Convert an activity list to a map keyed by activity key
    */
   private buildActivityMap(activities: Activity[]): Map<string, Activity> {
     const map = new Map<string, Activity>();
 
     activities.forEach((activity, index) => {
-      const key = buildActivityKey(activity, index); // 共有キー生成関数を使用
+      const key = buildActivityKey(activity, index);
       map.set(key, activity);
     });
 
@@ -144,7 +151,7 @@ export class DiffCalculator {
   }
 
   /**
-   * プロパティの変更を検出
+   * Detect property changes between two activity versions
    */
   private detectPropertyChanges(
     before: Activity,
@@ -152,19 +159,19 @@ export class DiffCalculator {
   ): PropertyChange[] {
     const changes: PropertyChange[] = [];
 
-    // すべてのプロパティ名を収集
+    // Collect all property names from both versions
     const allPropertyNames = new Set([
       ...Object.keys(before.properties),
       ...Object.keys(after.properties)
     ]);
 
-    // 各プロパティを比較（除外プレフィックスに該当するものはスキップ）
+    // Compare each property (skip ignored prefixes)
     allPropertyNames.forEach(propName => {
       if (IGNORED_PROPERTY_PREFIXES.some(prefix => propName.startsWith(prefix))) return;
       const beforeValue = before.properties[propName];
       const afterValue = after.properties[propName];
 
-      // 値が異なる場合は変更として記録
+      // Record as changed if values differ
       if (!this.areValuesEqual(beforeValue, afterValue)) {
         changes.push({
           propertyName: propName,
@@ -174,7 +181,7 @@ export class DiffCalculator {
       }
     });
 
-    // DisplayNameの変更チェック
+    // Check DisplayName changes
     if (before.displayName !== after.displayName) {
       changes.push({
         propertyName: 'DisplayName',
@@ -183,7 +190,7 @@ export class DiffCalculator {
       });
     }
 
-    // アノテーションの変更チェック
+    // Check annotation changes
     if (before.annotations !== after.annotations) {
       changes.push({
         propertyName: 'Annotation',
@@ -192,7 +199,7 @@ export class DiffCalculator {
       });
     }
 
-    // InformativeScreenshotの変更もチェック
+    // Check InformativeScreenshot changes
     if (before.informativeScreenshot !== after.informativeScreenshot) {
       changes.push({
         propertyName: 'InformativeScreenshot',
@@ -205,21 +212,21 @@ export class DiffCalculator {
   }
 
   /**
-   * 2つの値が等しいかを判定
+   * Determine if two values are equal
    */
   private areValuesEqual(value1: any, value2: any): boolean {
-    // undefinedとnullは等しいとみなす
+    // Treat undefined and null as equal
     if ((value1 === undefined || value1 === null) &&
         (value2 === undefined || value2 === null)) {
       return true;
     }
 
-    // プリミティブ型の比較
+    // Compare primitive types directly
     if (typeof value1 !== 'object' && typeof value2 !== 'object') {
       return value1 === value2;
     }
 
-    // オブジェクトの場合はJSON文字列で比較（簡易的な方法）
+    // For objects, compare as JSON strings (simple approach)
     try {
       return JSON.stringify(value1) === JSON.stringify(value2);
     } catch {

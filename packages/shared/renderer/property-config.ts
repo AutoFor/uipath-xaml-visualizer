@@ -1,170 +1,177 @@
-// === プロパティ分類設定モジュール ===
-// アクティビティ別にメインプロパティ・サブプロパティ・非表示プロパティを定義
+// === Property Configuration Module ===
+// Defines main properties, sub-properties, and hidden properties per activity type.
+// @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#property-config
 
-import { t } from '../i18n/i18n'; // UI文字列翻訳
+import { t } from '../i18n/i18n'; // UI string translation
 
-// === 型定義 ===
+// === Type Definitions ===
 
-/** プロパティグループ（UiPath Studio風のカテゴリ） */
-export interface PropertyGroup { // プロパティグループの型
-  label: () => string; // グループ名（翻訳対応のため関数）
-  properties: string[]; // グループに属するプロパティ名一覧
+/** Property group (UiPath Studio-style category) */
+export interface PropertyGroup {
+  label: () => string; // Group label (function for i18n support)
+  properties: string[]; // Property names belonging to this group
 }
 
-/** アクティビティ別のプロパティ設定 */
-export interface ActivityPropertyConfig { // アクティビティ別設定の型
-  mainProperties: string[]; // メインエリアに表示するプロパティ
-  subGroups: PropertyGroup[]; // サブパネル内のグループ一覧
+/** Per-activity property configuration */
+export interface ActivityPropertyConfig {
+  mainProperties: string[]; // Properties shown in the main card area
+  subGroups: PropertyGroup[]; // Groups inside the sub-panel
 }
 
-// === 非表示プロパティ判定 ===
+// === Hidden Property Detection ===
 
-/** メタデータ系プレフィックス（表示不要なXAML属性） */
-const HIDDEN_PREFIXES = [ // 非表示判定用のプレフィックス一覧
-  'sap:', // System.Activities.Presentation名前空間
-  'sap2010:', // System.Activities.Presentation 2010名前空間
-  'xmlns', // XML名前空間宣言
-  'mc:', // Markup Compatibility名前空間
-  'mva:', // Microsoft.VisualBasic.Activities名前空間
+/** Metadata prefixes (XAML attributes that should not be displayed) */
+const HIDDEN_PREFIXES = [
+  'sap:', // System.Activities.Presentation namespace
+  'sap2010:', // System.Activities.Presentation 2010 namespace
+  'xmlns', // XML namespace declarations
+  'mc:', // Markup Compatibility namespace
+  'mva:', // Microsoft.VisualBasic.Activities namespace
 ];
 
 /**
- * メタデータプロパティかどうかを判定
- * sap:*, sap2010:*, xmlns* 等のXAML内部属性を除外
+ * Determines if a property is a metadata property that should be hidden.
+ * Returns true for sap:*, sap2010:*, xmlns*, etc.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function isHiddenProperty(name: string): boolean { // プロパティ名を受け取り非表示判定
-  return HIDDEN_PREFIXES.some(prefix => name.startsWith(prefix)); // いずれかのプレフィックスで始まるか
+export function isHiddenProperty(name: string): boolean {
+  return HIDDEN_PREFIXES.some(prefix => name.startsWith(prefix));
 }
 
-// === アクティビティ別プロパティ設定 ===
+// === Per-Activity Property Configuration ===
 
-/** メインエリアに表示するデフォルトの重要プロパティ */
-const DEFAULT_MAIN_PROPERTIES = ['To', 'Value', 'Condition', 'Selector', 'Message']; // デフォルトのメインプロパティ一覧
+/** Default important properties shown in the main area */
+const DEFAULT_MAIN_PROPERTIES = ['To', 'Value', 'Condition', 'Selector', 'Message'];
 
-/** アクティビティ別の設定マップ */
-const ACTIVITY_CONFIGS: Record<string, ActivityPropertyConfig> = { // アクティビティタイプ → 設定
-  'NApplicationCard': { // モダンアプリケーションカード
-    mainProperties: ['TargetApp'], // メイン: URL（特殊レンダリング）
-    subGroups: [ // サブパネル内のグループ
-      { label: () => t('Target'), properties: ['Selector', 'ObjectRepository'] }, // ターゲットグループ: セレクター・リポジトリ状態
-      { label: () => t('Input'), properties: ['AttachMode'] }, // 入力グループ
-      { label: () => t('Options'), properties: ['InteractionMode', 'HealingAgentBehavior'] }, // オプショングループ
+/** Per-activity configuration map */
+const ACTIVITY_CONFIGS: Record<string, ActivityPropertyConfig> = {
+  'NApplicationCard': { // Modern application card
+    mainProperties: ['TargetApp'], // Main: URL (special rendering)
+    subGroups: [
+      { label: () => t('Target'), properties: ['Selector', 'ObjectRepository'] }, // Target group: selector, repo status
+      { label: () => t('Input'), properties: ['AttachMode'] }, // Input group
+      { label: () => t('Options'), properties: ['InteractionMode', 'HealingAgentBehavior'] }, // Options group
     ],
   },
-  'NClick': { // モダンクリック
-    mainProperties: ['Target'], // メイン: ターゲット
-    subGroups: [ // サブパネル内のグループ（UiPath Studioのプロパティパネル準拠）
-      { label: () => t('Target'), properties: ['FullSelectorArgument', 'FuzzySelectorArgument', 'ObjectRepository'] }, // ターゲットグループ: セレクター・リポジトリ状態
-      { label: () => t('Input'), properties: ['ClickType', 'CursorMotionType', 'MouseButton'] }, // 入力グループ
-      { label: () => t('Options'), properties: ['ActivateBefore', 'AlterDisabledElement', 'InteractionMode', 'KeyModifiers'] }, // オプショングループ
+  'NClick': { // Modern click
+    mainProperties: ['Target'], // Main: target
+    subGroups: [ // Groups following UiPath Studio's property panel layout
+      { label: () => t('Target'), properties: ['FullSelectorArgument', 'FuzzySelectorArgument', 'ObjectRepository'] },
+      { label: () => t('Input'), properties: ['ClickType', 'CursorMotionType', 'MouseButton'] },
+      { label: () => t('Options'), properties: ['ActivateBefore', 'AlterDisabledElement', 'InteractionMode', 'KeyModifiers'] },
     ],
   },
-  'NTypeInto': { // モダン文字入力
-    mainProperties: ['Target', 'Text'], // メイン: ターゲット・テキスト
-    subGroups: [ // サブパネル内のグループ
-      { label: () => t('Input'), properties: ['ClickType', 'MouseButton', 'KeyModifiers'] }, // 入力グループ
-      { label: () => t('Options'), properties: ['ActivateBefore', 'InteractionMode', 'EmptyField', 'DelayBetweenKeys', 'DelayBefore', 'DelayAfter'] }, // オプショングループ
+  'NTypeInto': { // Modern type into
+    mainProperties: ['Target', 'Text'], // Main: target, text
+    subGroups: [
+      { label: () => t('Input'), properties: ['ClickType', 'MouseButton', 'KeyModifiers'] },
+      { label: () => t('Options'), properties: ['ActivateBefore', 'InteractionMode', 'EmptyField', 'DelayBetweenKeys', 'DelayBefore', 'DelayAfter'] },
     ],
   },
-  'NGetText': { // モダンテキスト取得
-    mainProperties: ['Target', 'Value'], // メイン: ターゲット・値
-    subGroups: [ // サブパネル内のグループ
-      { label: () => t('Options'), properties: ['ActivateBefore', 'InteractionMode'] }, // オプショングループ
+  'NGetText': { // Modern get text
+    mainProperties: ['Target', 'Value'], // Main: target, value
+    subGroups: [
+      { label: () => t('Options'), properties: ['ActivateBefore', 'InteractionMode'] },
     ],
   },
 };
 
 /**
- * アクティビティタイプに応じたプロパティ設定を取得
- * 未登録のアクティビティはデフォルト設定（グループなし）を返す
+ * Returns the property configuration for the given activity type.
+ * Returns the default configuration (no groups) for unregistered activities.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function getActivityPropertyConfig(type: string): ActivityPropertyConfig { // アクティビティタイプから設定を取得
-  return ACTIVITY_CONFIGS[type] || { // 登録済み設定があればそれを返す
-    mainProperties: DEFAULT_MAIN_PROPERTIES, // デフォルトのメインプロパティ
-    subGroups: [], // デフォルトはグループなし
+export function getActivityPropertyConfig(type: string): ActivityPropertyConfig {
+  return ACTIVITY_CONFIGS[type] || {
+    mainProperties: DEFAULT_MAIN_PROPERTIES,
+    subGroups: [],
   };
 }
 
 /**
- * サブプロパティを抽出
- * メインプロパティでもメタデータでもないプロパティを返す
+ * Extracts sub-panel properties.
+ * Returns properties that are neither main properties nor hidden metadata.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function getSubProperties( // サブプロパティ抽出関数
-  properties: Record<string, any>, // 全プロパティ
-  activityType: string // アクティビティタイプ
-): Record<string, any> { // サブプロパティの連想配列を返す
-  const config = getActivityPropertyConfig(activityType); // 設定を取得
-  const mainSet = new Set(config.mainProperties); // メインプロパティをSetに変換（高速検索）
-  const result: Record<string, any> = {}; // 結果オブジェクト
+export function getSubProperties(
+  properties: Record<string, any>,
+  activityType: string
+): Record<string, any> {
+  const config = getActivityPropertyConfig(activityType);
+  const mainSet = new Set(config.mainProperties); // Fast lookup set for main properties
+  const result: Record<string, any> = {};
 
-  for (const [key, value] of Object.entries(properties)) { // 全プロパティをループ
-    if (mainSet.has(key)) continue; // メインプロパティはスキップ
-    if (isHiddenProperty(key)) continue; // メタデータはスキップ
-    if (key === 'DisplayName') continue; // 表示名はヘッダーに表示済み
-    if (key === 'AssignOperations') continue; // MultipleAssignの専用プロパティはスキップ
-    if (key === 'ScopeGuid' || key === 'ScopeIdentifier') continue; // スコープGUIDは内部用（表示不要）
-    if (key === 'Version') continue; // バージョンは内部用（表示不要）
-    if (key === 'Body') continue; // Bodyはアクティビティコンテナ（表示不要）
-    if (key === 'VerifyOptions') continue; // 検証オプションは複合オブジェクト（表示不要）
-    result[key] = value; // サブプロパティとして追加
+  for (const [key, value] of Object.entries(properties)) {
+    if (mainSet.has(key)) continue; // Skip main properties
+    if (isHiddenProperty(key)) continue; // Skip metadata
+    if (key === 'DisplayName') continue; // Already shown in the card header
+    if (key === 'AssignOperations') continue; // Handled by MultipleAssign dedicated rendering
+    if (key === 'ScopeGuid' || key === 'ScopeIdentifier') continue; // Internal IDs (not useful to display)
+    if (key === 'Version') continue; // Internal version (not useful to display)
+    if (key === 'Body') continue; // Activity container (rendered as child elements)
+    if (key === 'VerifyOptions') continue; // Composite object (verbose when expanded)
+    result[key] = value;
   }
 
-  return result; // サブプロパティを返す
+  return result;
 }
 
 /**
- * アクティビティがサブパネルを持つべきか判定
- * 専用レンダリング（Assign, MultipleAssign）はサブパネル不要
+ * Determines if an activity should have a sub-panel.
+ * Assign and MultipleAssign use dedicated rendering and do not need a sub-panel.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function hasSubPanel(activityType: string): boolean { // サブパネル要否判定
-  if (activityType === 'Assign') return false; // Assignは専用レンダリング
-  if (activityType === 'MultipleAssign') return false; // MultipleAssignは専用レンダリング
-  return true; // その他はサブパネル対象
+export function hasSubPanel(activityType: string): boolean {
+  if (activityType === 'Assign') return false; // Dedicated rendering
+  if (activityType === 'MultipleAssign') return false; // Dedicated rendering
+  return true;
 }
 
 /**
- * アクティビティがACTIVITY_CONFIGSまたは専用レンダリングに登録済みか判定
- * 未定義アクティビティのプロパティ・サブパネル非表示に使用
+ * Determines if an activity has defined rendering (registered in ACTIVITY_CONFIGS or has dedicated rendering).
+ * Undefined activities have their properties and sub-panel completely hidden.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function isDefinedActivity(type: string): boolean { // 定義済みアクティビティ判定
-  if (type === 'Assign') return true; // Assignは専用レンダリングあり
-  if (type === 'MultipleAssign') return true; // MultipleAssignは専用レンダリングあり
-  if (type === 'LogMessage') return true; // LogMessageは専用レンダリングあり
-  if (type in ACTIVITY_CONFIGS) return true; // ACTIVITY_CONFIGSに登録済み
-  if (type.startsWith('N')) return true; // Nプレフィックス（モダンアクティビティ）は専用レンダリングあり
-  return false; // 上記以外は未定義
+export function isDefinedActivity(type: string): boolean {
+  if (type === 'Assign') return true; // Has dedicated rendering
+  if (type === 'MultipleAssign') return true; // Has dedicated rendering
+  if (type === 'LogMessage') return true; // Has dedicated rendering
+  if (type in ACTIVITY_CONFIGS) return true; // Registered in ACTIVITY_CONFIGS
+  if (type.startsWith('N')) return true; // N-prefix modern activities have dedicated rendering
+  return false;
 }
 
 /**
- * 差分表示時にプロパティ変更をメイン表示とサブパネルに分類
- * ACTIVITY_CONFIGSに登録されたアクティビティのみ分類を適用
- * 未登録アクティビティは全てメイン表示（従来どおり）
+ * Categorizes diff changes into main and sub for the diff renderer.
+ * Only applies categorization to activities registered in ACTIVITY_CONFIGS.
+ * Unregistered activities keep all changes in main (legacy behavior).
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#key-functions
  */
-export function categorizeDiffChanges<T extends { propertyName: string; before?: any; after?: any }>( // 差分プロパティ分類関数
-  changes: T[], // プロパティ変更の配列
-  activityType: string // アクティビティタイプ
-): { main: T[]; sub: T[] } { // メインとサブに分類して返す
-  if (!(activityType in ACTIVITY_CONFIGS)) { // ACTIVITY_CONFIGSに未登録の場合
-    return { main: changes, sub: [] }; // 全てメイン表示（従来どおり）
+export function categorizeDiffChanges<T extends { propertyName: string; before?: any; after?: any }>(
+  changes: T[],
+  activityType: string
+): { main: T[]; sub: T[] } {
+  if (!(activityType in ACTIVITY_CONFIGS)) {
+    return { main: changes, sub: [] }; // All to main for unregistered activities
   }
-  const config = ACTIVITY_CONFIGS[activityType]; // アクティビティ設定を取得
-  const mainSet = new Set(config.mainProperties); // メインプロパティ名をSetに変換
-  const main: T[] = []; // メイン表示用
-  const sub: T[] = []; // サブパネル用
-  for (const change of changes) { // 各変更を分類
-    if (!mainSet.has(change.propertyName)) { // メインプロパティ以外
-      sub.push(change); // サブに追加
+  const config = ACTIVITY_CONFIGS[activityType];
+  const mainSet = new Set(config.mainProperties);
+  const main: T[] = [];
+  const sub: T[] = [];
+  for (const change of changes) {
+    if (!mainSet.has(change.propertyName)) {
+      sub.push(change); // Non-main properties go to sub
       continue;
     }
-    // オブジェクト型のメインプロパティは展開すると多数の属性になるためサブに移動
-    const b = change.before; // 変更前の値
-    const a = change.after; // 変更後の値
-    if (typeof b === 'object' && b !== null && typeof a === 'object' && a !== null // 前後ともオブジェクト
-      && !Array.isArray(b) && !Array.isArray(a)) { // 配列でない
-      sub.push(change); // サブに移動（展開時にノイズが多いため）
+    // Object-typed main properties are moved to sub to avoid excessive noise when expanded
+    const b = change.before;
+    const a = change.after;
+    if (typeof b === 'object' && b !== null && typeof a === 'object' && a !== null
+      && !Array.isArray(b) && !Array.isArray(a)) {
+      sub.push(change); // Move object-typed changes to sub
     } else {
-      main.push(change); // フラットな変更はメインに残す
+      main.push(change); // Flat changes stay in main
     }
   }
-  return { main, sub }; // 分類結果を返す
+  return { main, sub };
 }

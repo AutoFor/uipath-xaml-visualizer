@@ -1,50 +1,52 @@
 import { DiffResult, DiffActivity, DiffType, PropertyChange, buildActivityKey } from '../parser/diff-calculator';
 import { Activity } from '../parser/xaml-parser';
-import { ActivityLineIndex } from '../parser/line-mapper'; // 行番号マッピング型
-import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n翻訳関数
+import { ActivityLineIndex } from '../parser/line-mapper'; // Line number mapping type
+import { translateActivityType, translatePropertyName, t } from '../i18n/i18n'; // i18n translation functions
 
 /**
- * 差分レンダラー
+ * Diff renderer: renders DiffResult as a list of diff cards.
+ * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#diff-renderer
  */
-export type DiffScreenshotPathResolver = (filename: string) => string; // スクリーンショットパス解決関数の型
+export type DiffScreenshotPathResolver = (filename: string) => string; // Screenshot path resolver function type
 
 export class DiffRenderer {
-  private activityIndex: number = 0; // アクティビティインデックス（キー生成用）
-  private headLineIndex: ActivityLineIndex | null = null; // head側の行番号マッピング
-  private baseLineIndex: ActivityLineIndex | null = null; // base側の行番号マッピング
-  private screenshotPathResolver: DiffScreenshotPathResolver; // スクリーンショットパスリゾルバー
+  private activityIndex: number = 0; // Activity index (for key generation)
+  private headLineIndex: ActivityLineIndex | null = null; // Line number mapping for head side
+  private baseLineIndex: ActivityLineIndex | null = null; // Line number mapping for base side
+  private screenshotPathResolver: DiffScreenshotPathResolver; // Screenshot path resolver
 
   constructor(screenshotPathResolver?: DiffScreenshotPathResolver) {
-    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // デフォルトは相対パス
+    this.screenshotPathResolver = screenshotPathResolver || ((f) => `.screenshots/${f}`); // Default: relative path
   }
 
   /**
-   * 差分結果をHTMLとしてレンダリング
+   * Render a DiffResult as HTML into the given container.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#diff-renderer
    */
   render(
     diff: DiffResult,
     container: HTMLElement,
-    headLineIndex?: ActivityLineIndex,  // head側の行番号マッピング
-    baseLineIndex?: ActivityLineIndex   // base側の行番号マッピング
+    headLineIndex?: ActivityLineIndex,  // Line number mapping for head side
+    baseLineIndex?: ActivityLineIndex   // Line number mapping for base side
   ): void {
-    container.innerHTML = '';                   // コンテナをクリア
-    this.activityIndex = 0; // インデックスをリセット
-    this.headLineIndex = headLineIndex || null; // head側行マップを保存
-    this.baseLineIndex = baseLineIndex || null; // base側行マップを保存
+    container.innerHTML = '';                   // Clear container
+    this.activityIndex = 0; // Reset index
+    this.headLineIndex = headLineIndex || null; // Store head line map
+    this.baseLineIndex = baseLineIndex || null; // Store base line map
 
-    // 追加されたアクティビティ
+    // Added activities
     diff.added.forEach(diffActivity => {
       const element = this.renderDiffActivity(diffActivity);
       container.appendChild(element);
     });
 
-    // 削除されたアクティビティ
+    // Removed activities
     diff.removed.forEach(diffActivity => {
       const element = this.renderDiffActivity(diffActivity);
       container.appendChild(element);
     });
 
-    // 変更されたアクティビティ
+    // Modified activities
     diff.modified.forEach(diffActivity => {
       const element = this.renderDiffActivity(diffActivity);
       container.appendChild(element);
@@ -52,49 +54,48 @@ export class DiffRenderer {
   }
 
   /**
-   * 差分アクティビティをレンダリング
+   * Render a single diff activity as an HTML card element
    */
   private renderDiffActivity(diffActivity: DiffActivity): HTMLElement {
     const card = document.createElement('div');
     card.className = `diff-item activity-card diff-${diffActivity.diffType}`;
     card.dataset.id = diffActivity.activity.id;
 
-    // アクティビティキーを計算
+    // Compute activity key
     const activityKey = this.getActivityKeyForDiff(diffActivity);
-    card.dataset.activityKey = activityKey; // data属性にキーを保存
+    card.dataset.activityKey = activityKey;
 
-    // ヘッダー
+    // Header
     const header = document.createElement('div');
     header.className = 'activity-header';
 
-    const icon = this.getActivityIcon(diffActivity.activity.type);
     const badge = this.getDiffBadge(diffActivity.diffType);
 
     const title = document.createElement('span');
     title.className = 'activity-title';
 
-    title.innerHTML = `${translateActivityType(diffActivity.activity.type)}: ${diffActivity.activity.displayName} ${badge}`; // アクティビティタイプを翻訳
+    title.innerHTML = `${translateActivityType(diffActivity.activity.type)}: ${diffActivity.activity.displayName} ${badge}`;
 
     header.appendChild(title);
 
-    // 行番号バッジを挿入（追加→head、削除→base、変更→head）
+    // Insert line number badge (added -> head, removed -> base, modified -> head)
     const lineIndex = diffActivity.diffType === DiffType.REMOVED ? this.baseLineIndex : this.headLineIndex;
     if (lineIndex) {
-      const lineRange = lineIndex.keyToLines.get(activityKey); // アクティビティの行範囲を取得
+      const lineRange = lineIndex.keyToLines.get(activityKey);
       if (lineRange) {
-        const lineBadge = document.createElement('span'); // バッジ要素
-        lineBadge.className = 'line-range-badge'; // スタイル用クラス
-        lineBadge.dataset.startLine = String(lineRange.startLine); // 開始行をdata属性に保存
-        lineBadge.dataset.endLine = String(lineRange.endLine); // 終了行をdata属性に保存
+        const lineBadge = document.createElement('span');
+        lineBadge.className = 'line-range-badge';
+        lineBadge.dataset.startLine = String(lineRange.startLine);
+        lineBadge.dataset.endLine = String(lineRange.endLine);
         lineBadge.textContent = lineRange.startLine === lineRange.endLine
-          ? `L${lineRange.startLine}`                // 1行の場合
-          : `L${lineRange.startLine}-L${lineRange.endLine}`; // 複数行の場合
-        lineBadge.title = `XAML ${lineRange.startLine}行目〜${lineRange.endLine}行目`; // ツールチップ
-        lineBadge.style.cursor = 'pointer'; // クリック可能カーソル
+          ? `L${lineRange.startLine}`
+          : `L${lineRange.startLine}-L${lineRange.endLine}`;
+        lineBadge.title = `XAML line ${lineRange.startLine}–${lineRange.endLine}`;
+        lineBadge.style.cursor = 'pointer';
         lineBadge.addEventListener('click', (e) => {
-          e.stopPropagation(); // カードのクリックイベントを阻止
-          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // カーソル同期イベントを発火
-            bubbles: true, // バブリングでパネルまで伝播
+          e.stopPropagation(); // Prevent card click event
+          lineBadge.dispatchEvent(new CustomEvent('visualizer-line-click', { // Fire cursor sync event
+            bubbles: true, // Bubble up to the panel
             detail: { activityKey, startLine: lineRange.startLine, endLine: lineRange.endLine }
           }));
         });
@@ -104,40 +105,40 @@ export class DiffRenderer {
 
     card.appendChild(header);
 
-    // 注釈表示（DisplayNameの直後に表示）
+    // Annotation display (shown immediately after the header)
     if (diffActivity.activity.annotations) {
-      const annotationDiv = this.renderAnnotation(diffActivity.activity.annotations); // 注釈をレンダリング
+      const annotationDiv = this.renderAnnotation(diffActivity.activity.annotations);
       card.appendChild(annotationDiv);
     }
 
-    // Assignアクティビティの代入式を表示（追加・削除の場合）
+    // Show assign expression for Assign (added or removed)
     if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
         && diffActivity.activity.type === 'Assign') {
       const expr = this.renderAssignExpression(diffActivity.activity, diffActivity.diffType);
-      if (expr) card.appendChild(expr);          // 代入式があれば表示
+      if (expr) card.appendChild(expr);
     }
 
-    // MultipleAssignアクティビティの代入式を表示（追加・削除の場合）
+    // Show assign expressions for MultipleAssign (added or removed)
     if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
         && diffActivity.activity.type === 'MultipleAssign') {
       const expr = this.renderMultipleAssignExpression(diffActivity.activity, diffActivity.diffType);
-      if (expr) card.appendChild(expr);          // 代入式があれば表示
+      if (expr) card.appendChild(expr);
     }
 
-    // NApplicationCardアクティビティの重要プロパティを表示（追加・削除の場合）
+    // Show key properties for NApplicationCard (added or removed)
     if ((diffActivity.diffType === DiffType.ADDED || diffActivity.diffType === DiffType.REMOVED)
         && diffActivity.activity.type === 'NApplicationCard') {
       const props = this.renderNApplicationCardProperties(diffActivity.activity, diffActivity.diffType);
-      if (props) card.appendChild(props); // URL・リポジトリ状態があれば表示
+      if (props) card.appendChild(props);
     }
 
-    // 変更内容を表示（変更の場合のみ）
+    // Show changes for modified activities
     if (diffActivity.diffType === DiffType.MODIFIED && diffActivity.changes) {
       if (diffActivity.activity.type === 'Assign') {
-        const assignChanges = this.renderAssignChanges(diffActivity);  // Assign専用の変更表示
+        const assignChanges = this.renderAssignChanges(diffActivity);  // Assign-specific change display
         card.appendChild(assignChanges);
       } else if (diffActivity.activity.type === 'MultipleAssign') {
-        const multiChanges = this.renderMultipleAssignChanges(diffActivity); // MultipleAssign専用の変更表示
+        const multiChanges = this.renderMultipleAssignChanges(diffActivity); // MultipleAssign-specific change display
         card.appendChild(multiChanges);
       } else {
         const changesDiv = this.renderPropertyChanges(diffActivity.changes);
@@ -145,7 +146,7 @@ export class DiffRenderer {
       }
     }
 
-    // スクリーンショット変更を表示
+    // Show screenshot diff if applicable
     if (this.hasScreenshotChange(diffActivity)) {
       const screenshotDiff = this.renderScreenshotDiff(diffActivity);
       card.appendChild(screenshotDiff);
@@ -155,28 +156,28 @@ export class DiffRenderer {
   }
 
   /**
-   * アクティビティキーをDiffActivityから取得
+   * Get the activity key for a DiffActivity
    */
   private getActivityKeyForDiff(diffActivity: DiffActivity): string {
-    const key = buildActivityKey(diffActivity.activity, this.activityIndex); // 組み込みキー生成
+    const key = buildActivityKey(diffActivity.activity, this.activityIndex);
     this.activityIndex++;
     return key;
   }
 
   /**
-   * 注釈をレンダリング（メモ風表示）
+   * Render an annotation as a note-style element
    */
   private renderAnnotation(text: string): HTMLElement {
-    const div = document.createElement('div'); // 注釈コンテナ
-    div.className = 'activity-annotation'; // メモ風スタイル用クラス
-    div.textContent = text; // 注釈テキストを設定
+    const div = document.createElement('div');
+    div.className = 'activity-annotation'; // Note-style class
+    div.textContent = text;
     return div;
   }
 
-  // ========== 既存メソッド ==========
+  // ========== Rendering methods ==========
 
   /**
-   * プロパティ変更をレンダリング
+   * Render property changes as a diff list
    */
   private renderPropertyChanges(changes: PropertyChange[]): HTMLElement {
     const changesDiv = document.createElement('div');
@@ -186,7 +187,7 @@ export class DiffRenderer {
     changesList.className = 'property-diff-detail';
 
     changes.forEach(change => {
-      // オブジェクト同士の比較は属性レベルで展開
+      // For object-to-object changes, expand to attribute-level diffs
       if (typeof change.before === 'object' && change.before !== null
           && typeof change.after === 'object' && change.after !== null
           && !Array.isArray(change.before) && !Array.isArray(change.after)) {
@@ -197,23 +198,23 @@ export class DiffRenderer {
       const changeItem = document.createElement('div');
       changeItem.className = 'property-change-item';
 
-      // プロパティ名
+      // Property name
       const propName = document.createElement('div');
       propName.className = 'prop-name';
-      propName.textContent = `${translatePropertyName(change.propertyName)}:`; // プロパティ名を翻訳
+      propName.textContent = `${translatePropertyName(change.propertyName)}:`;
 
-      // Before値（ワードレベルdiff付き）
-      const beforeText = this.formatValue(change.before); // 変更前テキスト
-      const afterText = this.formatValue(change.after);   // 変更後テキスト
+      // Before value (with word-level diff highlighting)
+      const beforeText = this.formatValue(change.before);
+      const afterText = this.formatValue(change.after);
 
       const beforeValue = document.createElement('div');
       beforeValue.className = 'diff-before';
-      this.buildWordDiffHtml(beforeValue, '-', beforeText, afterText); // 差分部分をハイライト
+      this.buildWordDiffHtml(beforeValue, '-', beforeText, afterText);
 
-      // After値（ワードレベルdiff付き）
+      // After value (with word-level diff highlighting)
       const afterValue = document.createElement('div');
       afterValue.className = 'diff-after';
-      this.buildWordDiffHtml(afterValue, '+', afterText, beforeText); // 差分部分をハイライト
+      this.buildWordDiffHtml(afterValue, '+', afterText, beforeText);
 
       changeItem.appendChild(propName);
       changeItem.appendChild(beforeValue);
@@ -226,34 +227,34 @@ export class DiffRenderer {
   }
 
   /**
-   * オブジェクト型プロパティの差分を属性レベルで展開表示
+   * Expand an object-typed property change to attribute-level diffs
    */
   private renderObjectPropertyDiff(
     container: HTMLElement,
     beforeObj: Record<string, any>,
     afterObj: Record<string, any>
   ): void {
-    const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]); // 全キーを収集
+    const allKeys = new Set([...Object.keys(beforeObj), ...Object.keys(afterObj)]);
     for (const key of allKeys) {
-      if (key === 'type') continue;                                      // typeキーはスキップ（内部用）
-      const bStr = this.formatValue(beforeObj[key]);                     // 変更前テキスト
-      const aStr = this.formatValue(afterObj[key]);                      // 変更後テキスト
-      if (bStr === aStr) continue;                                       // 同じなら差分なし
+      if (key === 'type') continue;                                      // Skip internal 'type' key
+      const bStr = this.formatValue(beforeObj[key]);
+      const aStr = this.formatValue(afterObj[key]);
+      if (bStr === aStr) continue;                                       // No change
 
       const changeItem = document.createElement('div');
       changeItem.className = 'property-change-item';
 
       const propName = document.createElement('div');
       propName.className = 'prop-name';
-      propName.textContent = `${key}:`;                                  // サブキー名を表示
+      propName.textContent = `${key}:`;                                  // Sub-key name
 
       const beforeValue = document.createElement('div');
       beforeValue.className = 'diff-before';
-      this.buildWordDiffHtml(beforeValue, '-', bStr, aStr);             // ワードレベルdiff
+      this.buildWordDiffHtml(beforeValue, '-', bStr, aStr);             // Word-level diff
 
       const afterValue = document.createElement('div');
       afterValue.className = 'diff-after';
-      this.buildWordDiffHtml(afterValue, '+', aStr, bStr);             // ワードレベルdiff
+      this.buildWordDiffHtml(afterValue, '+', aStr, bStr);             // Word-level diff
 
       changeItem.appendChild(propName);
       changeItem.appendChild(beforeValue);
@@ -263,7 +264,7 @@ export class DiffRenderer {
   }
 
   /**
-   * スクリーンショット変更があるかチェック
+   * Check if a diff activity has a screenshot change
    */
   private hasScreenshotChange(diffActivity: DiffActivity): boolean {
     if (diffActivity.diffType !== DiffType.MODIFIED) {
@@ -276,7 +277,7 @@ export class DiffRenderer {
   }
 
   /**
-   * スクリーンショット差分をレンダリング
+   * Render a screenshot comparison (before/after)
    */
   private renderScreenshotDiff(diffActivity: DiffActivity): HTMLElement {
     const screenshotDiffDiv = document.createElement('div');
@@ -284,12 +285,12 @@ export class DiffRenderer {
 
     const header = document.createElement('div');
     header.className = 'screenshot-header';
-    header.textContent = t('Screenshot Changed:'); // スクリーンショット変更ラベルを翻訳
+    header.textContent = t('Screenshot Changed:');
 
     const compareContainer = document.createElement('div');
     compareContainer.className = 'compare-container';
 
-    // Before画像
+    // Before image
     const beforeScreenshot = diffActivity.beforeActivity?.informativeScreenshot;
     if (beforeScreenshot) {
       const beforeDiv = document.createElement('div');
@@ -301,7 +302,7 @@ export class DiffRenderer {
       compareContainer.appendChild(beforeDiv);
     }
 
-    // After画像
+    // After image
     const afterScreenshot = diffActivity.activity.informativeScreenshot;
     if (afterScreenshot) {
       const afterDiv = document.createElement('div');
@@ -320,15 +321,15 @@ export class DiffRenderer {
   }
 
   /**
-   * Assignアクティビティの代入式をレンダリング
+   * Render the assign expression for an Assign activity (for added/removed)
    */
   private renderAssignExpression(activity: Activity, diffType: DiffType): HTMLElement | null {
-    const to = activity.properties['To'];        // 代入先（左辺）
-    const value = activity.properties['Value'];  // 代入値（右辺）
-    if (!to && !value) return null;              // 両方なければ表示しない
+    const to = activity.properties['To'];        // Left-hand side
+    const value = activity.properties['Value'];  // Right-hand side
+    if (!to && !value) return null;              // Nothing to show
 
     const div = document.createElement('div');
-    const isAdded = diffType === DiffType.ADDED;  // 追加か削除かで表示を切替
+    const isAdded = diffType === DiffType.ADDED;
     div.className = isAdded ? 'diff-after' : 'diff-before';
     const prefix = isAdded ? '+' : '-';
     div.textContent = `${prefix} ${this.formatValue(to)} = ${this.formatValue(value)}`;
@@ -336,44 +337,43 @@ export class DiffRenderer {
   }
 
   /**
-   * Assignアクティビティの変更詳細をレンダリング
+   * Render assign change details for a modified Assign activity
    */
   private renderAssignChanges(diffActivity: DiffActivity): HTMLElement {
     const container = document.createElement('div');
     container.className = 'property-changes';
 
-    const beforeAct = diffActivity.beforeActivity;  // 変更前のアクティビティ
-    const afterAct = diffActivity.activity;         // 変更後のアクティビティ
+    const beforeAct = diffActivity.beforeActivity;
+    const afterAct = diffActivity.activity;
 
-    // To/Valueのいずれかが変更されていれば統合形式で表示
+    // If To or Value changed, display in unified expression format
     const hasAssignChange = diffActivity.changes?.some(
       c => c.propertyName === 'To' || c.propertyName === 'Value'
     );
 
     if (hasAssignChange && beforeAct) {
-      const beforeTo = beforeAct.properties['To'];      // 変更前の左辺
-      const beforeVal = beforeAct.properties['Value'];  // 変更前の右辺
-      const afterTo = afterAct.properties['To'];        // 変更後の左辺
-      const afterVal = afterAct.properties['Value'];    // 変更後の右辺
+      const beforeTo = beforeAct.properties['To'];
+      const beforeVal = beforeAct.properties['Value'];
+      const afterTo = afterAct.properties['To'];
+      const afterVal = afterAct.properties['Value'];
 
-      // 変更前/後のテキストを生成
-      const beforeText = `${this.formatValue(beforeTo)} = ${this.formatValue(beforeVal)}`; // 変更前テキスト
-      const afterText = `${this.formatValue(afterTo)} = ${this.formatValue(afterVal)}`;   // 変更後テキスト
+      const beforeText = `${this.formatValue(beforeTo)} = ${this.formatValue(beforeVal)}`;
+      const afterText = `${this.formatValue(afterTo)} = ${this.formatValue(afterVal)}`;
 
-      // 変更前の行（ワードレベルdiff付き）
+      // Before line with word-level diff
       const beforeDiv = document.createElement('div');
       beforeDiv.className = 'diff-before';
-      this.buildWordDiffHtml(beforeDiv, '-', beforeText, afterText); // 差分部分をハイライト
+      this.buildWordDiffHtml(beforeDiv, '-', beforeText, afterText);
       container.appendChild(beforeDiv);
 
-      // 変更後の行（ワードレベルdiff付き）
+      // After line with word-level diff
       const afterDiv = document.createElement('div');
       afterDiv.className = 'diff-after';
-      this.buildWordDiffHtml(afterDiv, '+', afterText, beforeText); // 差分部分をハイライト
+      this.buildWordDiffHtml(afterDiv, '+', afterText, beforeText);
       container.appendChild(afterDiv);
     }
 
-    // To/Value以外のプロパティ変更は通常通り表示
+    // Show other property changes normally
     const otherChanges = diffActivity.changes?.filter(
       c => c.propertyName !== 'To' && c.propertyName !== 'Value'
     ) || [];
@@ -387,21 +387,21 @@ export class DiffRenderer {
   }
 
   /**
-   * MultipleAssignアクティビティの代入式をレンダリング（追加・削除用）
+   * Render assign expressions for a MultipleAssign activity (for added/removed)
    */
   private renderMultipleAssignExpression(activity: Activity, diffType: DiffType): HTMLElement | null {
     const operations = activity.properties['AssignOperations'] as Array<{ To: string; Value: string }>;
-    if (!operations || operations.length === 0) return null; // 代入操作がなければ表示しない
+    if (!operations || operations.length === 0) return null;
 
-    const container = document.createElement('div'); // コンテナ
+    const container = document.createElement('div');
     container.className = 'property-changes';
-    const isAdded = diffType === DiffType.ADDED; // 追加か削除かで表示を切替
+    const isAdded = diffType === DiffType.ADDED;
 
     operations.forEach(op => {
-      const div = document.createElement('div'); // 各代入式の行
+      const div = document.createElement('div');
       div.className = isAdded ? 'diff-after' : 'diff-before';
-      const prefix = isAdded ? '+' : '-'; // プレフィックス
-      div.textContent = `${prefix} ${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // [左辺] = [右辺]
+      const prefix = isAdded ? '+' : '-';
+      div.textContent = `${prefix} ${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`;
       container.appendChild(div);
     });
 
@@ -409,32 +409,32 @@ export class DiffRenderer {
   }
 
   /**
-   * NApplicationCardアクティビティの重要プロパティをレンダリング（追加・削除用）
+   * Render key properties for NApplicationCard (for added/removed)
    */
   private renderNApplicationCardProperties(activity: Activity, diffType: DiffType): HTMLElement | null {
-    const targetApp = activity.properties['TargetApp']; // TargetAppオブジェクトを取得
-    if (!targetApp || typeof targetApp !== 'object') return null; // オブジェクトでなければ表示しない
+    const targetApp = activity.properties['TargetApp'];
+    if (!targetApp || typeof targetApp !== 'object') return null;
 
-    const propsDiv = document.createElement('div'); // コンテナ
+    const propsDiv = document.createElement('div');
     propsDiv.className = 'property-changes';
-    const isAdded = diffType === DiffType.ADDED; // 追加か削除かで表示を切替
+    const isAdded = diffType === DiffType.ADDED;
     const className = isAdded ? 'diff-after' : 'diff-before';
     const prefix = isAdded ? '+' : '-';
     let hasProps = false;
 
-    // URLを表示
+    // Show URL
     if (targetApp.Url) {
-      const urlDiv = document.createElement('div'); // URL行
+      const urlDiv = document.createElement('div');
       urlDiv.className = className;
-      urlDiv.textContent = `${prefix} ${translatePropertyName('Url')}: ${targetApp.Url}`; // URL値
+      urlDiv.textContent = `${prefix} ${translatePropertyName('Url')}: ${targetApp.Url}`;
       propsDiv.appendChild(urlDiv);
       hasProps = true;
     }
 
-    // オブジェクトリポジトリ連携状態を表示
-    const repoDiv = document.createElement('div'); // リポジトリ状態行
+    // Show object repository link status
+    const repoDiv = document.createElement('div');
     repoDiv.className = className;
-    repoDiv.textContent = `${prefix} ${translatePropertyName('ObjectRepository')}: ${targetApp.Reference ? t('Linked') : t('Not linked')}`; // 連携状態
+    repoDiv.textContent = `${prefix} ${translatePropertyName('ObjectRepository')}: ${targetApp.Reference ? t('Linked') : t('Not linked')}`;
     propsDiv.appendChild(repoDiv);
     hasProps = true;
 
@@ -442,46 +442,46 @@ export class DiffRenderer {
   }
 
   /**
-   * MultipleAssignアクティビティの変更詳細をレンダリング
+   * Render change details for a modified MultipleAssign activity
    */
   private renderMultipleAssignChanges(diffActivity: DiffActivity): HTMLElement {
-    const container = document.createElement('div'); // コンテナ
+    const container = document.createElement('div');
     container.className = 'property-changes';
 
     const hasAssignOpsChange = diffActivity.changes?.some(
       c => c.propertyName === 'AssignOperations'
-    ); // AssignOperationsの変更があるか
+    );
 
     if (hasAssignOpsChange && diffActivity.beforeActivity) {
       const beforeOps = (diffActivity.beforeActivity.properties['AssignOperations'] || []) as Array<{ To: string; Value: string }>;
       const afterOps = (diffActivity.activity.properties['AssignOperations'] || []) as Array<{ To: string; Value: string }>;
 
-      // 変更前の各代入式を表示
+      // Show each before expression
       beforeOps.forEach(op => {
-        const beforeText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // 変更前テキスト
-        const beforeDiv = document.createElement('div'); // 行要素
+        const beforeText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`;
+        const beforeDiv = document.createElement('div');
         beforeDiv.className = 'diff-before';
-        beforeDiv.textContent = `- ${beforeText}`; // 削除プレフィックス
+        beforeDiv.textContent = `- ${beforeText}`; // Removal prefix
         container.appendChild(beforeDiv);
       });
 
-      // 変更後の各代入式を表示
+      // Show each after expression
       afterOps.forEach(op => {
-        const afterText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`; // 変更後テキスト
-        const afterDiv = document.createElement('div'); // 行要素
+        const afterText = `${this.formatValue(op.To)} = ${this.formatValue(op.Value)}`;
+        const afterDiv = document.createElement('div');
         afterDiv.className = 'diff-after';
-        afterDiv.textContent = `+ ${afterText}`; // 追加プレフィックス
+        afterDiv.textContent = `+ ${afterText}`; // Addition prefix
         container.appendChild(afterDiv);
       });
     }
 
-    // AssignOperations以外のプロパティ変更は通常通り表示
+    // Show other property changes normally
     const otherChanges = diffActivity.changes?.filter(
       c => c.propertyName !== 'AssignOperations'
     ) || [];
 
     if (otherChanges.length > 0) {
-      const otherDiv = this.renderPropertyChanges(otherChanges); // 汎用プロパティ変更表示
+      const otherDiv = this.renderPropertyChanges(otherChanges);
       container.appendChild(otherDiv);
     }
 
@@ -489,20 +489,20 @@ export class DiffRenderer {
   }
 
   /**
-   * XMLエンティティをデコード
+   * Decode XML entities in a string
    */
   private decodeXmlEntities(text: string): string {
     return text
-      .replace(/&amp;/g, '&')                   // アンパサンド
-      .replace(/&lt;/g, '<')                     // 小なり
-      .replace(/&gt;/g, '>')                     // 大なり
-      .replace(/&quot;/g, '"')                   // ダブルクォート
-      .replace(/&apos;/g, "'")                   // シングルクォート
-      .replace(/&nbsp;/g, ' ');                  // ノーブレークスペース
+      .replace(/&amp;/g, '&')                   // Ampersand
+      .replace(/&lt;/g, '<')                     // Less than
+      .replace(/&gt;/g, '>')                     // Greater than
+      .replace(/&quot;/g, '"')                   // Double quote
+      .replace(/&apos;/g, "'")                   // Single quote
+      .replace(/&nbsp;/g, ' ');                  // Non-breaking space
   }
 
   /**
-   * 値をフォーマット
+   * Format a value for display
    */
   private formatValue(value: any): string {
     if (value === null || value === undefined) {
@@ -510,27 +510,28 @@ export class DiffRenderer {
     }
 
     if (typeof value === 'object') {
-      return this.decodeXmlEntities(JSON.stringify(value));  // オブジェクトはJSON文字列化してデコード
+      return this.decodeXmlEntities(JSON.stringify(value));  // Stringify and decode XML entities
     }
 
-    return this.decodeXmlEntities(String(value));  // 文字列化してXMLエンティティをデコード
+    return this.decodeXmlEntities(String(value));  // Stringify and decode XML entities
   }
 
   /**
-   * ワードレベルdiffでHTMLを構築（変更箇所だけ<span class="word-highlight">で囲む）
+   * Build word-level diff HTML, wrapping changed parts in <span class="word-highlight">.
+   * @see https://github.com/AutoFor/uipath-xaml-visualizer/wiki/Renderer#word-level-diff
    */
   private buildWordDiffHtml(div: HTMLElement, prefix: string, text: string, otherText: string): void {
-    const common = this.findCommonParts(text, otherText); // 共通部分と差分部分を計算
-    div.textContent = ''; // textContentをクリア
-    div.appendChild(document.createTextNode(prefix + ' ')); // プレフィックス（- / +）
+    const common = this.findCommonParts(text, otherText); // Compute common and diff parts
+    div.textContent = ''; // Clear text content
+    div.appendChild(document.createTextNode(prefix + ' ')); // Prefix (- or +)
 
-    // 共通部分の割合を計算（低すぎる場合は全体をハイライト）
-    const sameLen = common.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0); // 共通文字数
-    const totalLen = common.reduce((sum, p) => sum + p.value.length, 0);                // 全文字数
-    const similarity = totalLen > 0 ? sameLen / totalLen : 0;                          // 類似度(0〜1)
+    // Calculate similarity (if too low, highlight the entire string)
+    const sameLen = common.reduce((sum, p) => sum + (p.same ? p.value.length : 0), 0);
+    const totalLen = common.reduce((sum, p) => sum + p.value.length, 0);
+    const similarity = totalLen > 0 ? sameLen / totalLen : 0;
 
     if (similarity < 0.5) {
-      // 類似度50%未満: 全体をハイライト（ハッシュ等の偶然一致を防ぐ）
+      // Less than 50% similarity: highlight the whole string (prevents spurious hash matches)
       const span = document.createElement('span');
       span.className = 'word-highlight';
       span.textContent = text;
@@ -540,10 +541,10 @@ export class DiffRenderer {
 
     common.forEach(part => {
       if (part.same) {
-        div.appendChild(document.createTextNode(part.value)); // 共通部分はそのまま
+        div.appendChild(document.createTextNode(part.value)); // Common parts as plain text
       } else {
-        const span = document.createElement('span'); // 差分部分はspanで囲む
-        span.className = 'word-highlight'; // ワードハイライトクラス
+        const span = document.createElement('span'); // Wrap diff parts in a span
+        span.className = 'word-highlight';
         span.textContent = part.value;
         div.appendChild(span);
       }
@@ -551,78 +552,78 @@ export class DiffRenderer {
   }
 
   /**
-   * 2つの文字列の共通部分と差分部分を計算
+   * Compute common and differing parts between two strings (character-level LCS approximation)
    */
   private findCommonParts(a: string, b: string): { value: string; same: boolean }[] {
     const result: { value: string; same: boolean }[] = [];
-    let ai = 0; // aのインデックス
-    let bi = 0; // bのインデックス
+    let ai = 0; // Index into a
+    let bi = 0; // Index into b
 
     while (ai < a.length && bi < b.length) {
       if (a[ai] === b[bi]) {
-        let start = ai; // 共通部分の開始位置
+        let start = ai; // Start of common section
         while (ai < a.length && bi < b.length && a[ai] === b[bi]) {
           ai++;
           bi++;
         }
-        result.push({ value: a.substring(start, ai), same: true }); // 共通部分
+        result.push({ value: a.substring(start, ai), same: true }); // Common part
       } else {
-        // 次の同期位置を探す（3パターン）
-        let foundA = -1;    // aだけスキップ（aに余分な文字がある）
-        let foundB = -1;    // bだけスキップ（bに余分な文字がある）
-        let foundBoth = -1; // 両方同じ量スキップ（文字の置換）
-        const searchLimit = Math.min(Math.max(a.length - ai, b.length - bi), 20); // 探索範囲
+        // Find the next sync point (three strategies)
+        let foundA = -1;    // Skip only in a (extra chars in a)
+        let foundB = -1;    // Skip only in b (extra chars in b)
+        let foundBoth = -1; // Skip same amount in both (replacement)
+        const searchLimit = Math.min(Math.max(a.length - ai, b.length - bi), 20); // Search window
         for (let d = 1; d < searchLimit; d++) {
           if (foundBoth < 0 && ai + d < a.length && bi + d < b.length && a[ai + d] === b[bi + d]) {
-            foundBoth = d; // 両方d文字進めると一致（置換）
+            foundBoth = d; // Advancing d steps in both leads to a match (replacement)
           }
           if (foundA < 0 && ai + d < a.length && a[ai + d] === b[bi]) {
-            foundA = d; // a側にd文字進めると一致（aに余分）
+            foundA = d; // Advancing d steps in a leads to a match (extra chars in a)
           }
           if (foundB < 0 && bi + d < b.length && a[ai] === b[bi + d]) {
-            foundB = d; // b側にd文字進めると一致（bに余分）
+            foundB = d; // Advancing d steps in b leads to a match (extra chars in b)
           }
-          if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break; // いずれか見つかったら終了
+          if (foundBoth >= 0 || foundA >= 0 || foundB >= 0) break;
         }
 
-        // 最小コストの戦略を選択
+        // Choose the minimum-cost strategy
         if (foundBoth >= 0 && (foundA < 0 || foundBoth <= foundA) && (foundB < 0 || foundBoth <= foundB)) {
-          result.push({ value: a.substring(ai, ai + foundBoth), same: false }); // 置換部分
+          result.push({ value: a.substring(ai, ai + foundBoth), same: false }); // Replacement
           ai += foundBoth;
           bi += foundBoth;
         } else if (foundA >= 0 && (foundB < 0 || foundA <= foundB)) {
-          result.push({ value: a.substring(ai, ai + foundA), same: false }); // aの余分な文字
+          result.push({ value: a.substring(ai, ai + foundA), same: false }); // Extra chars in a
           ai += foundA;
         } else if (foundB >= 0) {
-          bi += foundB; // bの余分な文字をスキップ（aには出力なし）
+          bi += foundB; // Skip extra chars in b (no output for a)
         } else {
-          result.push({ value: a.substring(ai), same: false }); // 残り全部が差分
+          result.push({ value: a.substring(ai), same: false }); // Rest of a is a diff
           ai = a.length;
           bi = b.length;
         }
       }
     }
     if (ai < a.length) {
-      result.push({ value: a.substring(ai), same: false }); // aの残り
+      result.push({ value: a.substring(ai), same: false }); // Remaining chars in a
     }
     return result;
   }
 
   /**
-   * 差分タイプに応じたバッジを取得
+   * Get the diff badge HTML for a given diff type
    */
   private getDiffBadge(diffType: DiffType): string {
     const badgeMap: Record<DiffType, string> = {
-      [DiffType.ADDED]: `<span class="badge badge-added">+ ${t('Added')}</span>`, // 追加バッジを翻訳
-      [DiffType.REMOVED]: `<span class="badge badge-removed">- ${t('Removed')}</span>`, // 削除バッジを翻訳
-      [DiffType.MODIFIED]: `<span class="badge badge-modified">~ ${t('Modified')}</span>` // 変更バッジを翻訳
+      [DiffType.ADDED]: `<span class="badge badge-added">+ ${t('Added')}</span>`,
+      [DiffType.REMOVED]: `<span class="badge badge-removed">- ${t('Removed')}</span>`,
+      [DiffType.MODIFIED]: `<span class="badge badge-modified">~ ${t('Modified')}</span>`
     };
 
     return badgeMap[diffType];
   }
 
   /**
-   * アクティビティタイプに応じたアイコンを取得
+   * Get the icon string for an activity type
    */
   private getActivityIcon(type: string): string {
     const iconMap: Record<string, string> = {
@@ -641,6 +642,6 @@ export class DiffRenderer {
       'Delay': '[Wait]'
     };
 
-    return iconMap[type] || '[Act]';            // デフォルトアイコン
+    return iconMap[type] || '[Act]';            // Default icon
   }
 }
